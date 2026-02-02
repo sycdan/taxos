@@ -1,0 +1,51 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile.dev
+    volumes:
+      - ./api:/app/api
+      - ./taxos:/app/taxos
+      - ./buckets:/app/buckets
+      - ./receipts:/app/receipts
+    ports:
+      - "50051:50051"
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./api
+          target: /app/api
+        - action: sync+restart
+          path: ./taxos
+          target: /app/taxos
+
+  envoy:
+    image: envoyproxy/envoy:v1.28-latest
+    volumes:
+      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+    ports:
+      - "8080:8080"
+      - "9901:9901" # Admin interface
+    depends_on:
+      - api
+
+  frontend:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./ui:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    develop:
+      watch:
+        - action: sync
+          path: ./ui/src
+          target: /app/src
+        - action: rebuild
+          path: ./ui/package.json
+    depends_on:
+      - envoy

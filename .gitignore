@@ -6,8 +6,10 @@ uploads/
 
 # Generated files
 __pycache__/
-*.pyc
-package-lock.json
-node_modules/
 .pytest_cache/
 .venv/
+*.pyc
+*pb2_grpc.py
+*pb2.py
+node_modules/
+package-lock.json

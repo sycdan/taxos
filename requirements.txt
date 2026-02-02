@@ -1,2 +1,0 @@
-git+http://github.com/sycdan/scaf
-tzdata==2025.3

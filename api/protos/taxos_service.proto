@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package taxos;
+
+import "google/protobuf/timestamp.proto";
+
+service TaxosApi {
+  rpc CreateBucket(CreateBucketRequest) returns (Bucket);
+  rpc GetBucket(GetBucketRequest) returns (Bucket);
+  rpc ListBuckets(ListBucketsRequest) returns (ListBucketsResponse);
+  rpc UpdateBucket(UpdateBucketRequest) returns (Bucket);
+  rpc DeleteBucket(DeleteBucketRequest) returns (DeleteBucketResponse);
+  
+  rpc GetDashboard(GetDashboardRequest) returns (DashboardResponse);
+  
+  rpc IngestReceipt(IngestReceiptRequest) returns (Receipt);
+}
+
+message Bucket {
+  string guid = 1;
+  string name = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message CreateBucketRequest {
+  string name = 1;
+}
+
+message GetBucketRequest {
+  string guid = 1;
+}
+
+message ListBucketsRequest {
+  google.protobuf.Timestamp start_date = 1;
+  google.protobuf.Timestamp end_date = 2;
+  bool include_empty = 3;
+}
+
+message ListBucketsResponse {
+  repeated BucketSummary buckets = 1;
+}
+
+message BucketSummary {
+  Bucket bucket = 1;
+  double total_amount = 2;
+  int32 receipt_count = 3;
+}
+
+message UpdateBucketRequest {
+  string guid = 1;
+  string name = 2;
+}
+
+message DeleteBucketRequest {
+  string guid = 1;
+}
+
+message DeleteBucketResponse {
+  bool success = 1;
+}
+
+message GetDashboardRequest {
+  google.protobuf.Timestamp start_date = 1;
+  google.protobuf.Timestamp end_date = 2;
+  bool include_empty_buckets = 3;
+}
+
+message DashboardResponse {
+  repeated BucketSummary bucket_summaries = 1;
+  double total_amount = 2;
+  int32 total_receipts = 3;
+}
+
+message Receipt {
+  string guid = 1;
+  string bucket_guid = 2;
+  string description = 3;
+  double amount = 4;
+  google.protobuf.Timestamp date = 5;
+  string image_url = 6;
+  map<string, string> metadata = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message IngestReceiptRequest {
+  string bucket_guid = 1;
+  bytes content = 2;
+  string filename = 3;
+}
