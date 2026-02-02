@@ -1,7 +1,0 @@
-grpcio==1.66.1
-grpcio-tools==1.66.1
-protobuf>=5.26.1,<6.0
-fastapi==0.115.0
-uvicorn==0.32.0
-pydantic==2.9.2
-aiosqlite==0.20.0

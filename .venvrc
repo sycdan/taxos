@@ -1,0 +1,6 @@
+# Add project-specific aliases to the shell:
+eval "$(scaf .)"
+# Add scaf's user aliases to the shell:
+eval "$(scaf)"
+# Echo all scaf aliases:
+alias | grep -P --color=always '^(alias \K[^=]+)(?=.+scaf )'

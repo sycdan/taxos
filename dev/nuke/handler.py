@@ -12,7 +12,7 @@ def handle(command: NukeDev):
     shutil.rmtree(BUCKETS_DIR,ignore_errors=True)
     shutil.rmtree(RECEIPTS_DIR,ignore_errors=True)
 
-  result = subprocess.run(["docker", "compose", "down", "--rm"], )
+  result = subprocess.run(["docker", "compose", "down"], )
   result = subprocess.run(["docker", "compose", "kill"])
 
   print("✅ Dev environment nuked.")
