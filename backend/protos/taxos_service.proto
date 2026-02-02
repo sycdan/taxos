@@ -1,0 +1,131 @@
+syntax = "proto3";
+
+package taxos;
+
+service TaxosService {
+  // Bucket operations
+  rpc CreateBucket(CreateBucketRequest) returns (Bucket);
+  rpc GetBucket(GetBucketRequest) returns (Bucket);
+  rpc ListBuckets(ListBucketsRequest) returns (ListBucketsResponse);
+  rpc UpdateBucket(UpdateBucketRequest) returns (Bucket);
+  rpc DeleteBucket(DeleteBucketRequest) returns (Empty);
+
+  // Receipt operations
+  rpc CreateReceipt(CreateReceiptRequest) returns (Receipt);
+  rpc GetReceipt(GetReceiptRequest) returns (Receipt);
+  rpc ListReceipts(ListReceiptsRequest) returns (ListReceiptsResponse);
+  rpc UpdateReceipt(UpdateReceiptRequest) returns (Receipt);
+  rpc DeleteReceipt(DeleteReceiptRequest) returns (Empty);
+
+  // Dashboard operations
+  rpc GetDashboard(GetDashboardRequest) returns (DashboardResponse);
+}
+
+message Empty {}
+
+message Bucket {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  int64 created_at = 4;
+  int64 updated_at = 5;
+}
+
+message Receipt {
+  string id = 1;
+  string bucket_id = 2;
+  string description = 3;
+  double amount = 4;
+  int64 date = 5;
+  string image_url = 6;
+  map<string, string> metadata = 7;
+  int64 created_at = 8;
+  int64 updated_at = 9;
+}
+
+message CreateBucketRequest {
+  string name = 1;
+  string description = 2;
+}
+
+message GetBucketRequest {
+  string id = 1;
+}
+
+message ListBucketsRequest {
+  int64 start_date = 1;
+  int64 end_date = 2;
+  bool include_empty = 3;
+}
+
+message ListBucketsResponse {
+  repeated BucketSummary buckets = 1;
+}
+
+message BucketSummary {
+  Bucket bucket = 1;
+  double total_amount = 2;
+  int32 receipt_count = 3;
+}
+
+message UpdateBucketRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message DeleteBucketRequest {
+  string id = 1;
+}
+
+message CreateReceiptRequest {
+  string bucket_id = 1;
+  string description = 2;
+  double amount = 3;
+  int64 date = 4;
+  string image_url = 5;
+  map<string, string> metadata = 6;
+}
+
+message GetReceiptRequest {
+  string id = 1;
+}
+
+message ListReceiptsRequest {
+  string bucket_id = 1;
+  int64 start_date = 2;
+  int64 end_date = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message ListReceiptsResponse {
+  repeated Receipt receipts = 1;
+  int32 total_count = 2;
+}
+
+message UpdateReceiptRequest {
+  string id = 1;
+  string bucket_id = 2;
+  string description = 3;
+  double amount = 4;
+  int64 date = 5;
+  string image_url = 6;
+  map<string, string> metadata = 7;
+}
+
+message DeleteReceiptRequest {
+  string id = 1;
+}
+
+message GetDashboardRequest {
+  int64 start_date = 1;
+  int64 end_date = 2;
+  bool include_empty_buckets = 3;
+}
+
+message DashboardResponse {
+  repeated BucketSummary bucket_summaries = 1;
+  double total_amount = 2;
+  int32 total_receipts = 3;
+}

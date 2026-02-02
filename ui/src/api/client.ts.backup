@@ -1,0 +1,169 @@
+import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
+import { TaxosServiceClient } from './generated/taxos_service.client';
+import type {
+  Bucket,
+  Receipt,
+  CreateBucketRequest,
+  CreateReceiptRequest,
+  ListBucketsRequest,
+  ListReceiptsRequest,
+  GetDashboardRequest,
+  DashboardResponse
+} from './generated/taxos_service';
+
+class TaxosApiClient {
+  private client: TaxosServiceClient;
+
+  constructor(baseUrl: string = 'http://localhost:8080') {
+    const transport = new GrpcWebFetchTransport({
+      baseUrl: baseUrl
+    });
+    this.client = new TaxosServiceClient(transport);
+  }
+
+  // Bucket operations
+  async createBucket(name: string, description?: string): Promise<Bucket> {
+    const request: CreateBucketRequest = {
+      name,
+      description: description || ''
+    };
+    const response = await this.client.createBucket(request);
+    return response.response;
+  }
+
+  async getBucket(id: string): Promise<Bucket> {
+    const response = await this.client.getBucket({ id });
+    return response.response;
+  }
+
+  async listBuckets(options: {
+    startDate?: Date;
+    endDate?: Date;
+    includeEmpty?: boolean;
+  } = {}): Promise<{ buckets: Array<{ bucket: Bucket; totalAmount: number; receiptCount: number }> }> {
+    const request: ListBucketsRequest = {
+      startDate: options.startDate ? BigInt(options.startDate.getTime()) : 0n,
+      endDate: options.endDate ? BigInt(options.endDate.getTime()) : 0n,
+      includeEmpty: options.includeEmpty ?? true
+    };
+    const response = await this.client.listBuckets(request);
+    return {
+      buckets: response.response.buckets.map(summary => ({
+        bucket: summary.bucket!,
+        totalAmount: summary.totalAmount,
+        receiptCount: summary.receiptCount
+      }))
+    };
+  }
+
+  async updateBucket(id: string, name: string, description?: string): Promise<Bucket> {
+    const response = await this.client.updateBucket({
+      id,
+      name,
+      description: description || ''
+    });
+    return response.response;
+  }
+
+  async deleteBucket(id: string): Promise<void> {
+    await this.client.deleteBucket({ id });
+  }
+
+  // Receipt operations
+  async createReceipt(receipt: {
+    bucketId: string;
+    description: string;
+    amount: number;
+    date: Date;
+    imageUrl?: string;
+    metadata?: Record<string, string>;
+  }): Promise<Receipt> {
+    const request: CreateReceiptRequest = {
+      bucketId: receipt.bucketId,
+      description: receipt.description,
+      amount: receipt.amount,
+      date: BigInt(receipt.date.getTime()),
+      imageUrl: receipt.imageUrl || '',
+      metadata: receipt.metadata || {}
+    };
+    const response = await this.client.createReceipt(request);
+    return response.response;
+  }
+
+  async getReceipt(id: string): Promise<Receipt> {
+    const response = await this.client.getReceipt({ id });
+    return response.response;
+  }
+
+  async listReceipts(options: {
+    bucketId: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ receipts: Receipt[]; totalCount: number }> {
+    const request: ListReceiptsRequest = {
+      bucketId: options.bucketId,
+      startDate: options.startDate ? BigInt(options.startDate.getTime()) : 0n,
+      endDate: options.endDate ? BigInt(options.endDate.getTime()) : 0n,
+      limit: options.limit || 0,
+      offset: options.offset || 0
+    };
+    const response = await this.client.listReceipts(request);
+    return {
+      receipts: response.response.receipts,
+      totalCount: response.response.totalCount
+    };
+  }
+
+  async updateReceipt(id: string, updates: {
+    bucketId?: string;
+    description?: string;
+    amount?: number;
+    date?: Date;
+    imageUrl?: string;
+    metadata?: Record<string, string>;
+  }): Promise<Receipt> {
+    // First get the current receipt to merge updates
+    const current = await this.getReceipt(id);
+
+    const response = await this.client.updateReceipt({
+      id,
+      bucketId: updates.bucketId || current.bucketId,
+      description: updates.description || current.description,
+      amount: updates.amount ?? current.amount,
+      date: updates.date ? BigInt(updates.date.getTime()) : current.date,
+      imageUrl: updates.imageUrl ?? current.imageUrl,
+      metadata: updates.metadata || current.metadata
+    });
+    return response.response;
+  }
+
+  async deleteReceipt(id: string): Promise<void> {
+    await this.client.deleteReceipt({ id });
+  }
+
+  // Dashboard operations
+  async getDashboard(options: {
+    startDate?: Date;
+    endDate?: Date;
+    includeEmptyBuckets?: boolean;
+  } = {}): Promise<DashboardResponse> {
+    const request: GetDashboardRequest = {
+      startDate: options.startDate ? BigInt(options.startDate.getTime()) : 0n,
+      endDate: options.endDate ? BigInt(options.endDate.getTime()) : 0n,
+      includeEmptyBuckets: options.includeEmptyBuckets ?? true
+    };
+    const response = await this.client.getDashboard(request);
+    return response.response;
+  }
+}
+
+// Create a singleton instance
+const apiClient = new TaxosApiClient(
+  import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080'
+);
+
+export default apiClient;
+export { TaxosApiClient };
+export type * from './generated/taxos_service';

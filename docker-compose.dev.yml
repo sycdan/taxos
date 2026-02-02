@@ -1,0 +1,67 @@
+# Development Docker Compose with hot reloading
+services:
+  taxos-backend-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+      - ./data:/app/data
+    environment:
+      - DB_PATH=/app/data/taxos.db
+      - PYTHONPATH=/app
+    networks:
+      - taxos-network
+    develop:
+      watch:
+        - action: sync
+          path: ./backend
+          target: /app
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - .git/
+
+  taxos-proxy-dev:
+    build:
+      context: ./proxy
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - BACKEND_HOST=taxos-backend-dev
+      - BACKEND_PORT=50051
+    depends_on:
+      - taxos-backend-dev
+    networks:
+      - taxos-network
+
+  taxos-ui-dev:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./ui:/app
+      - /app/node_modules # Anonymous volume for node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_BACKEND_URL=http://localhost:8080
+    depends_on:
+      - taxos-proxy-dev
+    networks:
+      - taxos-network
+    develop:
+      watch:
+        - action: sync
+          path: ./ui/src
+          target: /app/src
+        - action: rebuild
+          path: ./ui/package.json
+
+networks:
+  taxos-network:
+    driver: bridge
+
+volumes:
+  taxos-data:

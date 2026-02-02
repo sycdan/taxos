@@ -1,0 +1,10 @@
+# User data
+buckets/
+receipts/
+uploads/
+
+# Generated files
+__pycache__/
+*.pyc
+package-lock.json
+node_modules/

@@ -1,0 +1,26 @@
+# Development Dockerfile for hot reloading
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+  gcc \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install development dependencies for hot reload
+RUN pip install watchdog
+
+# Copy and set up the entrypoint script
+COPY dev-entrypoint.sh .
+RUN chmod +x dev-entrypoint.sh
+
+# Expose the gRPC port
+EXPOSE 50051
+
+# Use the entrypoint script that handles protobuf generation
+CMD ["./dev-entrypoint.sh"]

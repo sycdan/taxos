@@ -1,0 +1,63 @@
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # Logging
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+    # Gzip compression
+    gzip on;
+    gzip_types text/plain application/json application/javascript text/css application/xml;
+
+    upstream grpc_backend {
+        server ${BACKEND_HOST}:${BACKEND_PORT} max_fails=1 fail_timeout=30s;
+    }
+
+    resolver 127.0.0.11 valid=30s;
+
+    server {
+        listen 8080 http2;
+        server_name _;
+
+        # CORS headers for gRPC-Web
+        add_header Access-Control-Allow-Origin * always;
+        add_header Access-Control-Allow-Methods "GET, POST, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "grpc-timeout,content-type,grpc-encoding,grpc-accept-encoding" always;
+        add_header Access-Control-Expose-Headers "grpc-status,grpc-message" always;
+
+        # Handle preflight requests
+        location / {
+            if ($request_method = OPTIONS) {
+                add_header Access-Control-Allow-Origin * always;
+                add_header Access-Control-Allow-Methods "GET, POST, OPTIONS" always;
+                add_header Access-Control-Allow-Headers "grpc-timeout,content-type,grpc-encoding,grpc-accept-encoding" always;
+                add_header Access-Control-Max-Age 1728000;
+                add_header Content-Length 0;
+                add_header Content-Type text/plain;
+                return 204;
+            }
+
+            # Proxy gRPC requests
+            grpc_pass grpc://grpc_backend;
+            grpc_set_header X-Real-IP $remote_addr;
+            grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            grpc_set_header X-Forwarded-Proto $scheme;
+
+            # Error handling
+            error_page 502 = /error502grpc;
+        }
+
+        location = /error502grpc {
+            internal;
+            default_type application/grpc;
+            add_header grpc-status 14;
+            add_header grpc-message "Unavailable";
+            return 204;
+        }
+    }
+}
