@@ -17,15 +17,15 @@ services:
           path: ./taxos
           target: /app/taxos
 
-  # envoy:
-  #   image: envoyproxy/envoy:v1.28-latest
-  #   volumes:
-  #     - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
-  #   ports:
-  #     - "8080:8080"
-  #     - "9901:9901" # Admin interface
-  #   depends_on:
-  #     - api
+  envoy:
+    image: envoyproxy/envoy:v1.28-latest
+    volumes:
+      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+    ports:
+      - "8080:8080"
+      - "9901:9901" # Admin interface
+    depends_on:
+      - backend
 
   # frontend:
   #   build:

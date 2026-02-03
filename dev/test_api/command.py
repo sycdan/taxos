@@ -3,4 +3,6 @@ from dataclasses import dataclass
 
 @dataclass
 class TestApi:
-  "Run tets inside the API container."
+  "Ensure the API container is working."
+
+  use_proxy: bool = False

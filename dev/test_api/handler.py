@@ -8,10 +8,12 @@ from taxos import ROOT_DIR
 from dev.test_api.command import TestApi
 
 
-def get_stub():
+def get_stub(port: int):
   from api.v1.taxos_service_pb2_grpc import TaxosApiStub
 
-  channel = grpc.insecure_channel("localhost:50051")
+  target = f"localhost:{port}"
+  channel = grpc.insecure_channel(target)
+  print(f"Connecting to gRPC server at {target}...")
   return TaxosApiStub(channel)
 
 
@@ -86,8 +88,12 @@ def test(stub):
 
 
 def handle(command: TestApi):
-  sys.path.insert(0, ROOT_DIR.as_posix() + "/api")
-  stub = get_stub()
+  if command.use_proxy:
+    port = 8080
+  else:
+    port = 50051
 
-  print("Testing gRPC API...")
+  sys.path.insert(0, ROOT_DIR.as_posix() + "/api")
+  stub = get_stub(port)
+
   test(stub)
