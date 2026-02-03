@@ -1,11 +1,11 @@
 from pathlib import Path
 from uuid import UUID
 
-from taxos import BUCKET_ROOT
+from taxos import BUCKETS_DIR
 
 
 def get_content_folder(guid: UUID) -> Path:
-  return Path(BUCKET_ROOT) / f"bucket_{guid.hex}"
+  return Path(BUCKETS_DIR) / f"bucket_{guid.hex}"
 
 
 def get_state_file(guid: UUID) -> Path:

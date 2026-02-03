@@ -1,13 +1,12 @@
 import os
-from uuid import uuid7
 
 from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.entity import Bucket
-from taxos.tools import json
+from taxos.tools import guid, json
 
 
 def handle(command: CreateBucket) -> Bucket:
-  bucket = Bucket(uuid7(), command.name)
+  bucket = Bucket(guid.uuid7(), command.name)  # type: ignore
 
   if bucket.state_file.exists() and bucket.state_file.read_text().strip():
     raise RuntimeError(f"Bucket {bucket.name} already exists.")
