@@ -4,8 +4,8 @@ services:
       context: .
       dockerfile: api/Dockerfile
     volumes:
-      - ./buckets:/app/buckets
-      - ./receipts:/app/receipts
+      - ./.venv/taxos/buckets:/app/buckets
+      - ./.venv/taxos/receipts:/app/receipts
     ports:
       - "50051:50051"
     develop:
