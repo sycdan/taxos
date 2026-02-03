@@ -1,5 +1,4 @@
-grpcio==1.70.0
-grpcio-tools==1.70.0
-protobuf==5.29.3
-scaf @ git+http://github.com/sycdan/scaf
+grpcio==1.76.0
+grpcio-tools==1.76.0
+protobuf==6.33.5
 tzdata==2025.3

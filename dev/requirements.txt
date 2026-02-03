@@ -1,2 +1,3 @@
 -r ../api/requirements.txt
+scaf @ git+http://github.com/sycdan/scaf
 pytest

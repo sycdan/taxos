@@ -1,4 +1,3 @@
-import shutil
 from os import makedirs
 from pathlib import Path
 
@@ -12,8 +11,7 @@ WKT_DIR = pkg_resources.resource_filename("grpc_tools", "_proto")
 
 
 def build_backend(proto_dir: Path):
-  py_out = ROOT_DIR / "api" / "gen"
-  shutil.rmtree(py_out, ignore_errors=True)
+  py_out = ROOT_DIR / "api"
   makedirs(py_out.as_posix(), exist_ok=True)
   for proto in proto_dir.glob("*.proto"):
     protoc.main(
@@ -29,8 +27,7 @@ def build_backend(proto_dir: Path):
 
 
 def build_frontend(proto_dir: Path):
-  ts_out = ROOT_DIR / "ui" / "src" / "gen"
-  shutil.rmtree(ts_out, ignore_errors=True)
+  ts_out = ROOT_DIR / "ui" / "src"
   makedirs(ts_out.as_posix(), exist_ok=True)
   for proto in proto_dir.glob("*.proto"):
     protoc.main(
