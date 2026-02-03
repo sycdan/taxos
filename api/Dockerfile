@@ -6,12 +6,11 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y git g++ make && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install
-COPY api/requirements.txt .
+COPY ../requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy necessary source directories
 COPY api/ ./api/
-COPY protos/ /protos/
 COPY taxos/ ./taxos/
 
 # Set PYTHONPATH so taxos and api packages are discoverable

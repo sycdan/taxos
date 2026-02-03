@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Build:
-  """Build the app."""
+class Gen:
+  """Generate code from protos."""
 
   no_backend: bool = False
-  no_frontend: bool = False
+  no_frontend: bool = True

@@ -6,7 +6,7 @@ import pkg_resources
 from grpc_tools import protoc
 from taxos import ROOT_DIR
 
-from dev.build.command import Build
+from dev.gen.command import Gen
 
 WKT_DIR = pkg_resources.resource_filename("grpc_tools", "_proto")
 
@@ -47,7 +47,7 @@ def build_frontend(proto_dir: Path):
     )
 
 
-def handle(command: Build):
+def handle(command: Gen):
   proto_dir = ROOT_DIR / "protos"
   if not command.no_backend:
     build_backend(proto_dir)

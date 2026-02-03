@@ -2,7 +2,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: api/Dockerfile.dev
+      dockerfile: api/Dockerfile
     volumes:
       - ./api:/app/api
       - ./taxos:/app/taxos
@@ -19,34 +19,34 @@ services:
           path: ./taxos
           target: /app/taxos
 
-  envoy:
-    image: envoyproxy/envoy:v1.28-latest
-    volumes:
-      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
-    ports:
-      - "8080:8080"
-      - "9901:9901" # Admin interface
-    depends_on:
-      - api
+  # envoy:
+  #   image: envoyproxy/envoy:v1.28-latest
+  #   volumes:
+  #     - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+  #   ports:
+  #     - "8080:8080"
+  #     - "9901:9901" # Admin interface
+  #   depends_on:
+  #     - api
 
-  frontend:
-    build:
-      context: ./ui
-      dockerfile: Dockerfile.dev
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./ui:/app
-      - ./protos:/app/protos:ro
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=http://localhost:8080
-    develop:
-      watch:
-        - action: sync
-          path: ./ui/src
-          target: /app/src
-        - action: rebuild
-          path: ./ui/package.json
-    depends_on:
-      - envoy
+  # frontend:
+  #   build:
+  #     context: ./ui
+  #     dockerfile: Dockerfile.dev
+  #   ports:
+  #     - "5173:5173"
+  #   volumes:
+  #     - ./ui:/app
+  #     - ./protos:/app/protos:ro
+  #     - /app/node_modules
+  #   environment:
+  #     - VITE_API_URL=http://localhost:8080
+  #   develop:
+  #     watch:
+  #       - action: sync
+  #         path: ./ui/src
+  #         target: /app/src
+  #       - action: rebuild
+  #         path: ./ui/package.json
+  #   depends_on:
+  #     - envoy
