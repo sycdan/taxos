@@ -1,11 +1,9 @@
 import os
 
-from dev.up.command import Up
+from dev.serve.command import Serve
 
 
-def handle(command: Up):
-  if command.build:
-    os.system("docker compose build")
+def handle(command: Serve):
   try:
     os.system("docker compose up" + (" --watch" if not command.no_watch else ""))
   except KeyboardInterrupt:

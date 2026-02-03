@@ -9,25 +9,25 @@ from dev.test_api.command import TestApi
 
 
 def get_stub():
-  from gen.v1.taxos_service_pb2_grpc import TaxosApiStub
+  from api.v1.taxos_service_pb2_grpc import TaxosApiStub
 
   channel = grpc.insecure_channel("localhost:50051")
   return TaxosApiStub(channel)
 
 
 def test(stub):
-  import gen.v1.taxos_service_pb2 as pb
+  import api.v1.taxos_service_pb2 as api
 
   print("\nCreating a bucket...")
-  create_request = pb.CreateBucketRequest(name="Test Bucket")
+  create_request = api.CreateBucketRequest(name="Test Bucket")
   bucket = stub.CreateBucket(create_request)
   print(f"✓ Created bucket: {bucket.guid} - {bucket.name}")
   bucket_guid = bucket.guid
 
-  #   print("\n2. Getting the bucket...")
-  #   get_request = pb.GetBucketRequest(guid=bucket_guid)
-  #   retrieved_bucket = stub.GetBucket(get_request)
-  #   print(f"✓ Retrieved bucket: {retrieved_bucket.guid} - {retrieved_bucket.name}")
+  print("\n2. Getting the bucket...")
+  get_request = api.GetBucketRequest(guid=bucket_guid)
+  retrieved_bucket = stub.GetBucket(get_request)
+  print(f"✓ Retrieved bucket: {retrieved_bucket.guid} - {retrieved_bucket.name}")
 
   #   # Test 3: Update the bucket
   #   print("\n3. Updating the bucket...")

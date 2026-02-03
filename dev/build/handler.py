@@ -1,3 +1,4 @@
+import os
 from os import makedirs
 from pathlib import Path
 
@@ -5,13 +6,13 @@ import pkg_resources
 from grpc_tools import protoc
 from taxos import ROOT_DIR
 
-from dev.gen.command import Gen
+from dev.build.command import Build
 
 WKT_DIR = pkg_resources.resource_filename("grpc_tools", "_proto")
 
 
-def build_backend(proto_dir: Path):
-  py_out = ROOT_DIR / "gen"
+def gen_backend(proto_dir: Path):
+  py_out = ROOT_DIR / "api"
   makedirs(py_out.as_posix(), exist_ok=True)
   for proto in proto_dir.rglob("*.proto"):
     protoc.main(
@@ -27,7 +28,7 @@ def build_backend(proto_dir: Path):
     )
 
 
-def build_frontend(proto_dir: Path):
+def gen_frontend(proto_dir: Path):
   ts_out = ROOT_DIR / "ui" / "src"
   makedirs(ts_out.as_posix(), exist_ok=True)
   for proto in proto_dir.rglob("*.proto"):
@@ -45,9 +46,11 @@ def build_frontend(proto_dir: Path):
     )
 
 
-def handle(command: Gen):
+def handle(command: Build):
   proto_dir = ROOT_DIR / "protos"
   if not command.no_backend:
-    build_backend(proto_dir)
+    gen_backend(proto_dir)
   if not command.no_frontend:
-    build_frontend(proto_dir)
+    gen_frontend(proto_dir)
+  if not command.no_docker:
+    os.system("docker compose build")

@@ -1,8 +1,8 @@
 services:
-  api:
+  backend:
     build:
       context: .
-      dockerfile: api/Dockerfile
+      dockerfile: Dockerfile
     volumes:
       - ./.venv/taxos/buckets:/app/buckets
       - ./.venv/taxos/receipts:/app/receipts

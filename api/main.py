@@ -3,8 +3,9 @@ import time
 from concurrent import futures
 
 import grpc
-from gen.v1 import taxos_service_pb2, taxos_service_pb2_grpc
+from api.v1 import taxos_service_pb2, taxos_service_pb2_grpc
 from google.protobuf import timestamp_pb2
+
 from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.load.query import LoadBucket
 
@@ -20,9 +21,7 @@ class TaxosApiServicer(taxos_service_pb2_grpc.TaxosApiServicer):
 
   def GetBucket(self, request, context):
     logging.info(f"GetBucket called with guid: {request.guid}")
-    return taxos_service_pb2.Bucket(
-      
-    )
+    return taxos_service_pb2.Bucket()
 
   def ListBuckets(self, request, context):
     logging.info("ListBuckets called")

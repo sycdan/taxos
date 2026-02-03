@@ -2,8 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Up:
+class Serve:
   "Start a development server."
 
-  build: bool = True
   no_watch: bool = False

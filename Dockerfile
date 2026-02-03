@@ -11,10 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy necessary source directories
 COPY api/ ./api/
-COPY gen/ ./gen/
 COPY taxos/ ./taxos/
 
-# Set PYTHONPATH so taxos and api packages are discoverable
 ENV PYTHONPATH=/app
 
 EXPOSE 50051
