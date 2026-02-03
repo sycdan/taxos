@@ -11,10 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy necessary source directories
 COPY api/ ./api/
+COPY protos/ /protos/
 COPY taxos/ ./taxos/
-
-# Generate gRPC code into the api directory
-RUN python -m grpc_tools.protoc -I./api/protos --python_out=./api --grpc_python_out=./api ./api/protos/taxos_service.proto
 
 # Set PYTHONPATH so taxos and api packages are discoverable
 ENV PYTHONPATH=/app

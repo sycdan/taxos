@@ -1,141 +1,60 @@
-// Mock TypeScript types and client for testing
-export interface Bucket {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: bigint;
-  updatedAt: bigint;
-}
-
-export interface Receipt {
-  id: string;
-  bucketId: string;
-  description: string;
-  amount: number;
-  date: bigint;
-  imageUrl: string;
-  metadata: Record<string, string>;
-  createdAt: bigint;
-  updatedAt: bigint;
-}
-
-export interface CreateBucketRequest {
-  name: string;
-  description: string;
-}
-
-export interface DashboardResponse {
-  bucketSummaries: Array<{
-    bucket: Bucket;
-    totalAmount: number;
-    receiptCount: number;
-  }>;
-  totalAmount: number;
-  totalReceipts: number;
-}
+import { type Bucket, type Receipt, type DashboardResponse, BucketSchema, ReceiptSchema, DashboardResponseSchema, BucketSummarySchema } from './gen/taxos_service_pb';
+import { create } from '@bufbuild/protobuf';
 
 // Mock data for testing
 const mockBuckets: Bucket[] = [
-  {
-    id: '1',
-    name: 'Office Supplies',
-    description: 'Pens, paper, and other office items',
-    createdAt: BigInt(Date.now()),
-    updatedAt: BigInt(Date.now())
-  },
-  {
-    id: '2',
-    name: 'Travel Expenses',
-    description: 'Business travel costs',
-    createdAt: BigInt(Date.now()),
-    updatedAt: BigInt(Date.now())
-  }
+  create(BucketSchema, {
+    guid: '1',
+    name: 'Office Supplies'
+  }),
+  create(BucketSchema, {
+    guid: '2',
+    name: 'Travel Expenses'
+  })
 ];
 
-const mockReceipts: Receipt[] = [
-  {
-    id: 'r1',
-    bucketId: '1',
-    description: 'Printer paper',
-    amount: 25.99,
-    date: BigInt(Date.now() - 86400000), // Yesterday
-    imageUrl: '',
-    metadata: {},
-    createdAt: BigInt(Date.now()),
-    updatedAt: BigInt(Date.now())
-  },
-  {
-    id: 'r2',
-    bucketId: '1',
-    description: 'Pen set',
-    amount: 12.50,
-    date: BigInt(Date.now() - 172800000), // 2 days ago
-    imageUrl: '',
-    metadata: {},
-    createdAt: BigInt(Date.now()),
-    updatedAt: BigInt(Date.now())
-  },
-  {
-    id: 'r3',
-    bucketId: '2',
-    description: 'Hotel accommodation',
-    amount: 150.00,
-    date: BigInt(Date.now() - 259200000), // 3 days ago
-    imageUrl: '',
-    metadata: {},
-    createdAt: BigInt(Date.now()),
-    updatedAt: BigInt(Date.now())
-  }
-];
-
-class MockTaxosApiClient {
-  private buckets: Bucket[] = [...mockBuckets];
-  private receipts: Receipt[] = [...mockReceipts];
-
-  async createBucket(name: string, description?: string): Promise<Bucket> {
-    const bucket: Bucket = {
-      id: Math.random().toString(36).substr(2, 9),
-      name,
-      description: description || '',
-      createdAt: BigInt(Date.now()),
-      updatedAt: BigInt(Date.now())
-    };
-    this.buckets.push(bucket);
-    return bucket;
+class TaxosApiClient {
+  async createBucket(name: string): Promise<Bucket> {
+    const newBucket = create(BucketSchema, {
+      guid: Math.random().toString(36).substr(2, 9),
+      name
+    });
+    mockBuckets.push(newBucket);
+    return newBucket;
   }
 
-  async getBucket(id: string): Promise<Bucket> {
-    const bucket = this.buckets.find(b => b.id === id);
+  async getBucket(guid: string): Promise<Bucket> {
+    const bucket = mockBuckets.find(b => b.guid === guid);
     if (!bucket) throw new Error('Bucket not found');
     return bucket;
   }
 
-  async listBuckets(options: {
+  async listBuckets(_options: {
     startDate?: Date;
     endDate?: Date;
     includeEmpty?: boolean;
   } = {}): Promise<{ buckets: Array<{ bucket: Bucket; totalAmount: number; receiptCount: number }> }> {
-    const startMs = options.startDate ? BigInt(options.startDate.getTime()) : 0n;
-    const endMs = options.endDate ? BigInt(options.endDate.getTime()) : BigInt(Date.now());
-    
-    const bucketSummaries = this.buckets.map(bucket => {
-      const bucketReceipts = this.receipts.filter(r => 
-        r.bucketId === bucket.id &&
-        r.date >= startMs &&
-        r.date <= endMs
-      );
-      
-      const totalAmount = bucketReceipts.reduce((sum, r) => sum + r.amount, 0);
-      const receiptCount = bucketReceipts.length;
-      
-      return {
-        bucket,
-        totalAmount,
-        receiptCount
-      };
-    }).filter(summary => options.includeEmpty || summary.receiptCount > 0);
-    
+    const bucketSummaries = mockBuckets.map(bucket => ({
+      bucket,
+      totalAmount: Math.random() * 100, // Mock amount
+      receiptCount: Math.floor(Math.random() * 10) // Mock count
+    }));
+
     return { buckets: bucketSummaries };
+  }
+
+  async updateBucket(guid: string, name: string): Promise<Bucket> {
+    const bucket = mockBuckets.find(b => b.guid === guid);
+    if (!bucket) throw new Error('Bucket not found');
+    bucket.name = name;
+    return bucket;
+  }
+
+  async deleteBucket(guid: string): Promise<boolean> {
+    const index = mockBuckets.findIndex(b => b.guid === guid);
+    if (index === -1) return false;
+    mockBuckets.splice(index, 1);
+    return true;
   }
 
   async getDashboard(options: {
@@ -144,19 +63,49 @@ class MockTaxosApiClient {
     includeEmptyBuckets?: boolean;
   } = {}): Promise<DashboardResponse> {
     const bucketsResponse = await this.listBuckets(options);
-    
+
     const totalAmount = bucketsResponse.buckets.reduce((sum, b) => sum + b.totalAmount, 0);
     const totalReceipts = bucketsResponse.buckets.reduce((sum, b) => sum + b.receiptCount, 0);
-    
-    return {
-      bucketSummaries: bucketsResponse.buckets,
+
+    const bucketSummaries = bucketsResponse.buckets.map(summary =>
+      create(BucketSummarySchema, {
+        bucket: summary.bucket,
+        totalAmount: summary.totalAmount,
+        receiptCount: summary.receiptCount
+      })
+    );
+
+    return create(DashboardResponseSchema, {
+      bucketSummaries,
       totalAmount,
       totalReceipts
-    };
+    });
+  }
+
+  async ingestReceipt(bucketGuid: string, _content: Uint8Array, filename: string): Promise<Receipt> {
+    return create(ReceiptSchema, {
+      guid: Math.random().toString(36).substr(2, 9),
+      bucketGuid,
+      description: `Receipt from ${filename}`,
+      amount: Math.random() * 100
+    });
   }
 }
 
-// Create a singleton instance
-const apiClient = new MockTaxosApiClient();
+// Export singleton instance
+export const taxosApiClient = new TaxosApiClient();
 
-export default apiClient;
+// Export types for use in components
+export type {
+  Bucket,
+  Receipt,
+  DashboardResponse
+} from './generated/taxos_service_pb';
+
+// Helper interface for compatibility with existing code
+export interface CreateBucketRequest {
+  name: string;
+}
+
+// Default export for backward compatibility
+export default taxosApiClient;
