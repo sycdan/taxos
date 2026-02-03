@@ -1,26 +1,26 @@
 services:
   backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     volumes:
-      - ./.venv/taxos/buckets:/app/buckets
-      - ./.venv/taxos/receipts:/app/receipts
+      - ./backend/data/buckets:/app/buckets
+      - ./backend/data/receipts:/app/receipts
     ports:
       - "50051:50051"
     develop:
       watch:
         - action: sync+restart
-          path: ./api
+          path: ./backend/api
           target: /app/api
         - action: sync+restart
-          path: ./taxos
+          path: ./backend/taxos
           target: /app/taxos
 
   envoy:
     image: envoyproxy/envoy:v1.28-latest
     volumes:
-      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+      - ./backend/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
     ports:
       - "8080:8080"
       - "9901:9901" # Admin interface

@@ -3,8 +3,8 @@ from importlib.resources import files
 from os import makedirs
 from pathlib import Path
 
+from backend.taxos import ROOT_DIR
 from grpc_tools import protoc
-from taxos import ROOT_DIR
 
 from dev.build.command import Build
 
