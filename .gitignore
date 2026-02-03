@@ -12,5 +12,6 @@ __pycache__/
 *pb2_grpc.py
 *pb2.py
 *pb2.pyi
+gen/
 node_modules/
 package-lock.json

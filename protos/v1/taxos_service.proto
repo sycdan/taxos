@@ -1,24 +1,27 @@
 syntax = "proto3";
 
-package taxos;
+package taxos.v1;
 
 import "google/protobuf/timestamp.proto";
 
+// Taxos Backend
 service TaxosApi {
+  // Create a new bucket
   rpc CreateBucket(CreateBucketRequest) returns (Bucket);
+  // Retrieve a bucket by GUID
   rpc GetBucket(GetBucketRequest) returns (Bucket);
   rpc ListBuckets(ListBucketsRequest) returns (ListBucketsResponse);
   rpc UpdateBucket(UpdateBucketRequest) returns (Bucket);
   rpc DeleteBucket(DeleteBucketRequest) returns (DeleteBucketResponse);
-  
+
   rpc GetDashboard(GetDashboardRequest) returns (DashboardResponse);
-  
+
   rpc IngestReceipt(IngestReceiptRequest) returns (Receipt);
 }
 
 message Bucket {
-  string guid = 1;
-  string name = 2;
+  string                    guid       = 1;
+  string                    name       = 2;
   google.protobuf.Timestamp created_at = 3;
   google.protobuf.Timestamp updated_at = 4;
 }
@@ -32,9 +35,9 @@ message GetBucketRequest {
 }
 
 message ListBucketsRequest {
-  google.protobuf.Timestamp start_date = 1;
-  google.protobuf.Timestamp end_date = 2;
-  bool include_empty = 3;
+  google.protobuf.Timestamp start_date    = 1;
+  google.protobuf.Timestamp end_date      = 2;
+  bool                      include_empty = 3;
 }
 
 message ListBucketsResponse {
@@ -42,9 +45,9 @@ message ListBucketsResponse {
 }
 
 message BucketSummary {
-  Bucket bucket = 1;
-  double total_amount = 2;
-  int32 receipt_count = 3;
+  Bucket bucket        = 1;
+  double total_amount  = 2;
+  int32  receipt_count = 3;
 }
 
 message UpdateBucketRequest {
@@ -61,31 +64,31 @@ message DeleteBucketResponse {
 }
 
 message GetDashboardRequest {
-  google.protobuf.Timestamp start_date = 1;
-  google.protobuf.Timestamp end_date = 2;
-  bool include_empty_buckets = 3;
+  google.protobuf.Timestamp start_date            = 1;
+  google.protobuf.Timestamp end_date              = 2;
+  bool                      include_empty_buckets = 3;
 }
 
 message DashboardResponse {
   repeated BucketSummary bucket_summaries = 1;
-  double total_amount = 2;
-  int32 total_receipts = 3;
+  double                 total_amount     = 2;
+  int32                  total_receipts   = 3;
 }
 
 message Receipt {
-  string guid = 1;
-  string bucket_guid = 2;
-  string description = 3;
-  double amount = 4;
-  google.protobuf.Timestamp date = 5;
-  string image_url = 6;
-  map<string, string> metadata = 7;
-  google.protobuf.Timestamp created_at = 8;
-  google.protobuf.Timestamp updated_at = 9;
+  string                    guid        = 1;
+  string                    bucket_guid = 2;
+  string                    description = 3;
+  double                    amount      = 4;
+  google.protobuf.Timestamp date        = 5;
+  string                    image_url   = 6;
+  map<string, string>       metadata    = 7;
+  google.protobuf.Timestamp created_at  = 8;
+  google.protobuf.Timestamp updated_at  = 9;
 }
 
 message IngestReceiptRequest {
   string bucket_guid = 1;
-  bytes content = 2;
-  string filename = 3;
+  bytes  content     = 2;
+  string filename    = 3;
 }

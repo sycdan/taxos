@@ -11,17 +11,17 @@ WKT_DIR = pkg_resources.resource_filename("grpc_tools", "_proto")
 
 
 def build_backend(proto_dir: Path):
-  py_out = ROOT_DIR / "api"
+  py_out = ROOT_DIR / "gen"
   makedirs(py_out.as_posix(), exist_ok=True)
-  for proto in proto_dir.glob("*.proto"):
+  for proto in proto_dir.rglob("*.proto"):
     protoc.main(
       [
         "protoc",
         f"--proto_path={WKT_DIR}",
         f"--proto_path={proto_dir.as_posix()}",
+        f"--pyi_out={py_out.as_posix()}",
         f"--python_out={py_out.as_posix()}",
         f"--grpc_python_out={py_out.as_posix()}",
-        f"--pyi_out={py_out.as_posix()}",
         proto.as_posix(),
       ]
     )
@@ -30,7 +30,7 @@ def build_backend(proto_dir: Path):
 def build_frontend(proto_dir: Path):
   ts_out = ROOT_DIR / "ui" / "src"
   makedirs(ts_out.as_posix(), exist_ok=True)
-  for proto in proto_dir.glob("*.proto"):
+  for proto in proto_dir.rglob("*.proto"):
     protoc.main(
       [
         "protoc",
