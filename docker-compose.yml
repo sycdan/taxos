@@ -4,8 +4,6 @@ services:
       context: .
       dockerfile: api/Dockerfile
     volumes:
-      - ./api:/app/api
-      - ./taxos:/app/taxos
       - ./buckets:/app/buckets
       - ./receipts:/app/receipts
     ports:

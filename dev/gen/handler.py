@@ -21,6 +21,7 @@ def build_backend(proto_dir: Path):
         f"--proto_path={proto_dir.as_posix()}",
         f"--python_out={py_out.as_posix()}",
         f"--grpc_python_out={py_out.as_posix()}",
+        f"--pyi_out={py_out.as_posix()}",
         proto.as_posix(),
       ]
     )
