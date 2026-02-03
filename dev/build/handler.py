@@ -29,7 +29,7 @@ def gen_backend(proto_dir: Path):
 
 
 def gen_frontend(proto_dir: Path):
-  ts_out = ROOT_DIR / "ui" / "src"
+  ts_out = ROOT_DIR / "frontend" / "src"
   makedirs(ts_out.as_posix(), exist_ok=True)
   for proto in proto_dir.rglob("*.proto"):
     protoc.main(

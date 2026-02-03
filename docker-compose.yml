@@ -26,24 +26,20 @@ services:
     depends_on:
       - backend
 
-  # frontend:
-  #   build:
-  #     context: ./ui
-  #     dockerfile: Dockerfile.dev
-  #   ports:
-  #     - "5173:5173"
-  #   volumes:
-  #     - ./ui:/app
-  #     - ./protos:/app/protos:ro
-  #     - /app/node_modules
-  #   environment:
-  #     - VITE_API_URL=http://localhost:8080
-  #   develop:
-  #     watch:
-  #       - action: sync
-  #         path: ./ui/src
-  #         target: /app/src
-  #       - action: rebuild
-  #         path: ./ui/package.json
-  #   depends_on:
-  #     - envoy
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend/src
+          target: /app/src
+        - action: rebuild
+          path: ./frontend/package.json
+    depends_on:
+      - envoy
