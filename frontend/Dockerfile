@@ -2,13 +2,16 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+COPY frontend/package*.json ./
 RUN npm install
 
-COPY index.html vite.config.ts ./
-COPY tsconfig*.json ./
-COPY public/ ./public/
-COPY src/ ./src/
+COPY frontend/index.html ./
+COPY frontend/vite.config.ts ./
+COPY frontend/tsconfig*.json ./
+COPY frontend/public/ ./public/
+COPY frontend/src/ ./src/
+
+COPY proto/ ./proto/
 
 EXPOSE 5173
 
