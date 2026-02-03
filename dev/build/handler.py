@@ -1,14 +1,14 @@
 import os
+from importlib.resources import files
 from os import makedirs
 from pathlib import Path
 
-import pkg_resources
 from grpc_tools import protoc
 from taxos import ROOT_DIR
 
 from dev.build.command import Build
 
-WKT_DIR = pkg_resources.resource_filename("grpc_tools", "_proto")
+WKT_DIR = str(files("grpc_tools").joinpath("_proto"))
 
 
 def gen_backend(proto_dir: Path):
