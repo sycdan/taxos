@@ -4,8 +4,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     volumes:
-      - ./backend/data/buckets:/app/buckets
-      - ./backend/data/receipts:/app/receipts
+      - ./backend/data:/app/data
     ports:
       - "50051:50051"
     develop:

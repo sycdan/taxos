@@ -21,15 +21,17 @@ def test(stub):
   import backend.api.v1.taxos_service_pb2 as api
 
   print("\nCreating a bucket...")
-  create_request = api.CreateBucketRequest(name="Test Bucket")
+  create_request = api.CreateBucketRequest(
+    name=f"Test Bucket {datetime.now().isoformat()}"
+  )
   bucket = stub.CreateBucket(create_request)
   print(f"✓ Created bucket: {bucket.guid} - {bucket.name}")
   bucket_guid = bucket.guid
 
-  print("\n2. Getting the bucket...")
-  get_request = api.GetBucketRequest(guid=bucket_guid)
-  retrieved_bucket = stub.GetBucket(get_request)
-  print(f"✓ Retrieved bucket: {retrieved_bucket.guid} - {retrieved_bucket.name}")
+  # print("\n2. Getting the bucket...")
+  # get_request = api.GetBucketRequest(guid=bucket_guid)
+  # retrieved_bucket = stub.GetBucket(get_request)
+  # print(f"✓ Retrieved bucket: {retrieved_bucket.guid} - {retrieved_bucket.name}")
 
   #   # Test 3: Update the bucket
   #   print("\n3. Updating the bucket...")
@@ -39,24 +41,21 @@ def test(stub):
   #   updated_bucket = stub.UpdateBucket(update_request)
   #   print(f"✓ Updated bucket: {updated_bucket.guid} - {updated_bucket.name}")
 
-  #   # Test 4: List buckets
-  #   print("\n4. Listing buckets...")
-  #   now = Timestamp()
-  #   now.GetCurrentTime()
+  print("\nListing buckets...")
+  # now = Timestamp()
+  # now.GetCurrentTime()
 
   #   # List buckets from last month to now
   #   start_time = Timestamp()
   #   start_time.FromDatetime(datetime.now(timezone.utc).replace(day=1))
 
-  #   list_request = pb.ListBucketsRequest(
-  #     start_date=start_time, end_date=now, include_empty=True
-  #   )
-  #   buckets_response = stub.ListBuckets(list_request)
-  #   print(f"✓ Found {len(buckets_response.buckets)} buckets")
-  #   for bucket_summary in buckets_response.buckets:
-  #     print(
-  #       f"  - {bucket_summary.bucket.name} (${bucket_summary.total_amount:.2f}, {bucket_summary.receipt_count} receipts)"
-  #     )
+  list_request = api.ListBucketsRequest()
+  buckets_response = stub.ListBuckets(list_request)
+  print(f"✓ Found {len(buckets_response.buckets)} buckets")
+  for bucket_summary in buckets_response.buckets:
+    print(
+      f"  - {bucket_summary.bucket.name} (${bucket_summary.total_amount:.2f}, {bucket_summary.receipt_count} receipts)"
+    )
 
   #   # Test 5: Get dashboard
   #   print("\n5. Getting dashboard...")

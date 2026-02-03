@@ -3,44 +3,61 @@ import time
 from concurrent import futures
 
 import grpc
-from api.v1 import taxos_service_pb2, taxos_service_pb2_grpc
 from google.protobuf import timestamp_pb2
-
 from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.load.query import LoadBucket
+from taxos.list_buckets.query import ListBuckets
+
+from api.v1 import taxos_service_pb2 as models
+from api.v1 import taxos_service_pb2_grpc
+
+logger = logging.getLogger("api")
 
 
 class TaxosApiServicer(taxos_service_pb2_grpc.TaxosApiServicer):
   def CreateBucket(self, request, context):
-    logging.info(f"CreateBucket called with: {request}")
+    logger.info(f"CreateBucket called with: {request}")
     bucket = CreateBucket(request.name).execute()
-    return taxos_service_pb2.Bucket(
+    return models.Bucket(
       guid=str(bucket.guid),
       name=bucket.name,
     )
 
   def GetBucket(self, request, context):
-    logging.info(f"GetBucket called with guid: {request.guid}")
-    return taxos_service_pb2.Bucket()
-
-  def ListBuckets(self, request, context):
-    logging.info("ListBuckets called")
+    logger.info(f"GetBucket called with guid: {request.guid}")
     return None
 
+  def ListBuckets(self, request, context):
+    logger.info("ListBuckets called")
+    repo = ListBuckets().execute()
+    buckets = [
+      models.BucketSummary(
+        bucket=models.Bucket(
+          guid=str(bucket.guid),
+          name=bucket.name,
+        )
+      )
+      for bucket in repo.index.values()
+    ]
+    logger.info(f"Listing {len(buckets)} buckets")
+    for bucket_summary in buckets:
+      logger.info(f"  - {bucket_summary.bucket.name}")
+    return models.ListBucketsResponse(buckets=buckets)
+
   def UpdateBucket(self, request, context):
-    logging.info(f"UpdateBucket called for {request.guid}")
+    logger.info(f"UpdateBucket called for {request.guid}")
     return None
 
   def DeleteBucket(self, request, context):
-    logging.info(f"DeleteBucket called for {request.guid}")
+    logger.info(f"DeleteBucket called for {request.guid}")
     return None
 
   def GetDashboard(self, request, context):
-    logging.info("GetDashboard called")
+    logger.info("GetDashboard called")
     return None
 
   def IngestReceipt(self, request, context):
-    logging.info(f"IngestReceipt called for bucket {request.bucket_guid}")
+    logger.info(f"IngestReceipt called for bucket {request.bucket_guid}")
     return None
 
 
@@ -48,7 +65,7 @@ def serve():
   server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
   taxos_service_pb2_grpc.add_TaxosApiServicer_to_server(TaxosApiServicer(), server)
   server.add_insecure_port("[::]:50051")
-  logging.info("Starting gRPC server on port 50051...")
+  logger.info("Starting gRPC server on port 50051...")
   server.start()
   try:
     while True:
