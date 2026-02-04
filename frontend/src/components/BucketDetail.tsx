@@ -59,16 +59,16 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
     return receipts.filter(r => {
       const rDate = new Date(r.date);
       if (rDate < startDate || rDate > endDate) return false;
-      
+
       const hasAlloc = r.allocations.some(a => a.bucketId === bucketId);
       if (hasAlloc) return true;
-      
+
       // If unallocated bucket, check if there's a remainder or it's empty
       if (bucketId === UNALLOCATED_BUCKET_ID) {
         const totalAllocated = r.allocations.reduce((sum, a) => sum + a.amount, 0);
         return totalAllocated < r.total || (r.total === 0 && r.allocations.length === 0);
       }
-      
+
       return false;
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [receipts, bucketId, startDate, endDate]);
@@ -101,7 +101,7 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
           {isEditing ? (
             <div className="flex flex-col gap-2 max-w-md">
               <div className="flex gap-2">
-                <input 
+                <input
                   autoFocus
                   className={`text-3xl font-bold bg-transparent border-b-2 border-primary focus:outline-none w-full ${editName.trim() && isNameTaken(editName, bucketId) ? 'border-error' : ''}`}
                   value={editName}
@@ -124,14 +124,14 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
               <h1 className="text-3xl font-bold">{bucketName}</h1>
               {bucketId !== UNALLOCATED_BUCKET_ID && (
                 <div className="flex gap-2 opacity-0 group-hover/header:opacity-100 transition-opacity">
-                  <button 
+                  <button
                     className="p-1.5 text-muted hover:text-primary transition-colors"
                     onClick={handleStartEdit}
                     title="Rename Bucket"
                   >
                     <Edit2 size={18} />
                   </button>
-                  <button 
+                  <button
                     className="p-1.5 text-muted hover:text-error transition-colors"
                     onClick={handleDelete}
                     title="Delete Bucket"
@@ -158,13 +158,13 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
           </div>
         ) : (
           filteredReceipts.map(receipt => {
-            const amountForThisBucket = bucketId === UNALLOCATED_BUCKET_ID 
+            const amountForThisBucket = bucketId === UNALLOCATED_BUCKET_ID
               ? receipt.total - receipt.allocations.reduce((sum, a) => sum + a.amount, 0)
               : receipt.allocations.find(a => a.bucketId === bucketId)?.amount || 0;
 
             return (
-              <motion.div 
-                key={receipt.id} 
+              <motion.div
+                key={receipt.id}
                 className="card flex justify-between items-center hover:bg-slate-800/50 cursor-pointer"
                 whileHover={{ x: 4 }}
                 onClick={() => onEditReceipt(receipt)}
@@ -181,7 +181,7 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="text-right">
                   <div className="text-xl font-bold">${amountForThisBucket.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   <div className="text-xs text-muted">Total: ${receipt.total.toFixed(2)}</div>

@@ -15,10 +15,10 @@ interface DashboardProps {
   isNameTaken: (name: string) => boolean;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ 
-  onSelectBucket, 
+const Dashboard: React.FC<DashboardProps> = ({
+  onSelectBucket,
   onUpload,
-  showEmpty, 
+  showEmpty,
   setShowEmpty,
   startDate,
   endDate,
@@ -80,7 +80,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     e.stopPropagation();
     setIsDragging(false);
     dragCounter.current = 0;
-    
+
     const files = Array.from(e.dataTransfer.files);
     files.forEach(file => {
       onUpload(file);
@@ -123,7 +123,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   }, [bucketTotals]);
 
   return (
-    <div 
+    <div
       className="dashboard-outer"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
@@ -131,7 +131,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       onDrop={handleDrop}
       style={{ position: 'relative', minHeight: 'calc(100vh - 120px)' }}
     >
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className="dashboard"
@@ -149,14 +149,14 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl">Spending Buckets</h2>
           <div className="flex items-center gap-2">
-            <button 
+            <button
               className="btn btn-primary btn-sm flex items-center gap-1"
               onClick={() => setIsAddingBucket(true)}
             >
               <Plus size={16} />
               <span>New Bucket</span>
             </button>
-            <button 
+            <button
               className="btn btn-ghost btn-sm flex items-center gap-2"
               onClick={() => setShowEmpty(!showEmpty)}
             >
@@ -183,18 +183,18 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <ChevronRight className="text-muted group-hover:text-primary transition-colors" size={20} />
               </div>
               <div className="text-muted text-sm uppercase font-semibold mb-1">{bucket.name}</div>
-            <div className="flex items-baseline gap-2">
-              <div className="text-3xl font-bold">${bucket.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-              <div className="text-muted text-sm font-bold">({bucket.count})</div>
-            </div>
-              
+              <div className="flex items-baseline gap-2">
+                <div className="text-3xl font-bold">${bucket.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div className="text-muted text-sm font-bold">({bucket.count})</div>
+              </div>
+
               <div className="mt-4 w-full bg-slate-800 rounded-full h-1.5 overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                <div 
-                  className="h-full bg-primary" 
-                  style={{ 
+                <div
+                  className="h-full bg-primary"
+                  style={{
                     width: `${totalFunds > 0 ? (bucket.total / totalFunds * 100) : 0}%`,
                     transition: 'width 1s ease-out'
-                  }} 
+                  }}
                 />
               </div>
             </motion.div>
@@ -204,7 +204,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       <AnimatePresence>
         {isDragging && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -224,13 +224,13 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {isAddingBucket && (
         <div className="fixed inset-0 bg-black-60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className="card w-full max-w-md relative"
             style={{ border: '1px solid rgba(255,255,255,0.1)' }}
           >
-            <button 
+            <button
               className="absolute top-4 right-4 text-muted hover:text-white"
               onClick={() => setIsAddingBucket(false)}
             >
@@ -238,10 +238,10 @@ const Dashboard: React.FC<DashboardProps> = ({
             </button>
             <h2 className="text-2xl font-bold mb-2">Create New Bucket</h2>
             <p className="text-muted mb-6">Give your new category a descriptive name.</p>
-            
+
             <form onSubmit={handleCreateBucket}>
               <div className="mb-6">
-                <input 
+                <input
                   autoFocus
                   type="text"
                   placeholder="e.g. Travel, Office Supplies"
@@ -253,17 +253,17 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <div className="text-error text-xs font-semibold mt-2">This bucket name is already taken.</div>
                 )}
               </div>
-              
+
               <div className="flex gap-3">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="btn btn-ghost flex-1"
                   onClick={() => setIsAddingBucket(false)}
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="btn btn-primary flex-1"
                   disabled={!newBucketName.trim() || isNameTaken(newBucketName)}
                 >

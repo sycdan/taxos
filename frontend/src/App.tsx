@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, LayoutDashboard, ArrowLeft } from 'lucide-react';
-import Dashboard from './components/Dashboard';
-import BucketDetail from './components/BucketDetail';
-import ReceiptModal from './components/ReceiptModal';
-import { useTaxos } from './contexts/TaxosContext';
-import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
-import type { Receipt } from './types';
+import React, { useState, useEffect } from "react";
+import { Plus, LayoutDashboard, ArrowLeft } from "lucide-react";
+import Dashboard from "./components/Dashboard";
+import BucketDetail from "./components/BucketDetail";
+import ReceiptModal from "./components/ReceiptModal";
+import { useTaxos } from "./contexts/TaxosContext";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+} from "date-fns";
+import type { Receipt } from "./types";
 
-
-type FilterMode = 'year' | 'month';
+type FilterMode = "year" | "month";
 
 interface FilterConfig {
   mode: FilterMode;
@@ -16,59 +21,80 @@ interface FilterConfig {
 }
 
 const App: React.FC = () => {
-  const { buckets, receipts, addReceipt, updateReceipt, deleteReceipt, addBucket, updateBucket, deleteBucket, isNameTaken } = useTaxos();
+  const {
+    buckets,
+    receipts,
+    addReceipt,
+    updateReceipt,
+    deleteReceipt,
+    addBucket,
+    updateBucket,
+    deleteBucket,
+    isNameTaken,
+  } = useTaxos();
   const [currentBucketId, setCurrentBucketId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<string | undefined>(undefined);
-  const [editingReceipt, setEditingReceipt] = useState<Receipt | undefined>(undefined);
+  const [uploadedFile, setUploadedFile] = useState<string | undefined>(
+    undefined,
+  );
+  const [editingReceipt, setEditingReceipt] = useState<Receipt | undefined>(
+    undefined,
+  );
   const [showEmpty, setShowEmpty] = useState(false);
-  
+
   const [filterConfig, setFilterConfig] = useState<FilterConfig>(() => {
-    const saved = localStorage.getItem('taxos_filter_config');
+    const saved = localStorage.getItem("taxos_filter_config");
     if (saved) return JSON.parse(saved);
     return {
-      mode: 'year',
-      value: format(new Date(), 'yyyy')
+      mode: "year",
+      value: format(new Date(), "yyyy"),
     };
   });
 
   // Persist filter config
   useEffect(() => {
-    localStorage.setItem('taxos_filter_config', JSON.stringify(filterConfig));
+    localStorage.setItem("taxos_filter_config", JSON.stringify(filterConfig));
   }, [filterConfig]);
 
   // Derive start/end dates for the rest of the app
   const dateRange = (() => {
     try {
-      if (filterConfig.mode === 'year') {
+      if (filterConfig.mode === "year") {
         const year = parseInt(filterConfig.value) || new Date().getFullYear();
         const date = new Date(year, 0, 1);
         return {
           start: startOfYear(date),
-          end: endOfYear(date)
+          end: endOfYear(date),
         };
       } else {
-        const [year, month] = (filterConfig.value || format(new Date(), 'yyyy-MM')).split('-').map(Number);
-        const date = isNaN(year) || isNaN(month) ? new Date() : new Date(year, month - 1, 1);
+        const [year, month] = (
+          filterConfig.value || format(new Date(), "yyyy-MM")
+        )
+          .split("-")
+          .map(Number);
+        const date =
+          isNaN(year) || isNaN(month)
+            ? new Date()
+            : new Date(year, month - 1, 1);
         return {
           start: startOfMonth(date),
-          end: endOfMonth(date)
+          end: endOfMonth(date),
         };
       }
     } catch (e) {
-      console.error('Date parsing failed, falling back to current month', e);
+      console.error("Date parsing failed, falling back to current month", e);
       return { start: startOfMonth(new Date()), end: endOfMonth(new Date()) };
     }
   })();
 
   const handleModeToggle = () => {
     setFilterConfig((prev: FilterConfig): FilterConfig => {
-      const isSwitchingToMonth = prev.mode === 'year';
+      const isSwitchingToMonth = prev.mode === "year";
       return {
-        mode: isSwitchingToMonth ? 'month' : 'year',
-        value: isSwitchingToMonth 
-          ? format(new Date(), 'yyyy-MM') 
-          : format(dateRange.start, 'yyyy')
+        mode: isSwitchingToMonth ? "month" : "year",
+        value: isSwitchingToMonth
+          ? format(new Date(), "yyyy-MM")
+          : format(dateRange.start, "yyyy"),
       };
     });
   };
@@ -77,32 +103,31 @@ const App: React.FC = () => {
     if (!value) {
       // If "Clear" is clicked in native picker, reset to current Year
       setFilterConfig({
-        mode: 'year',
-        value: format(new Date(), 'yyyy')
+        mode: "year",
+        value: format(new Date(), "yyyy"),
       });
       return;
     }
     setFilterConfig((prev: FilterConfig): FilterConfig => ({ ...prev, value }));
   };
 
-
   const calculateHash = async (file: File): Promise<string> => {
     const buffer = await file.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
   };
 
   const handleUpload = async (file: File) => {
     const hash = await calculateHash(file);
     addReceipt({
-      vendor: file.name.split('.')[0] || 'Unknown',
+      vendor: file.name.split(".")[0] || "Unknown",
       total: 0,
       date: new Date().toISOString(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       allocations: [],
       file: file.name,
-      hash
+      hash,
     });
   };
 
@@ -125,10 +150,10 @@ const App: React.FC = () => {
     <div className="app-layout">
       <aside className="sidebar">
         <div className="logo mb-12">TAXOS</div>
-        
+
         <nav className="flex flex-col gap-2">
-          <button 
-            className={`btn ${!currentBucketId ? 'btn-primary' : 'btn-ghost'} justify-start w-full`}
+          <button
+            className={`btn ${!currentBucketId ? "btn-primary" : "btn-ghost"} justify-start w-full`}
             onClick={navigateToDashboard}
           >
             <LayoutDashboard size={20} />
@@ -138,36 +163,42 @@ const App: React.FC = () => {
       </aside>
 
       <div className="app-container">
-        <header className="header" style={{ position: 'sticky', top: '1rem', zIndex: 40 }}>
+        <header
+          className="header"
+          style={{ position: "sticky", top: "1rem", zIndex: 40 }}
+        >
           <div className="flex items-center gap-4">
-             {currentBucketId && (
-               <button className="btn btn-ghost p-1" onClick={() => setCurrentBucketId(null)}>
-                 <ArrowLeft size={20} />
-               </button>
-             )}
-             <div className="text-sm font-bold uppercase tracking-wider text-muted">
-               {currentBucketId ? 'Bucket Detail' : 'Receipts'}
-             </div>
+            {currentBucketId && (
+              <button
+                className="btn btn-ghost p-1"
+                onClick={() => setCurrentBucketId(null)}
+              >
+                <ArrowLeft size={20} />
+              </button>
+            )}
+            <div className="text-sm font-bold uppercase tracking-wider text-muted">
+              {currentBucketId ? "Bucket Detail" : "Receipts"}
+            </div>
           </div>
-          
+
           <div className="flex items-center gap-4">
             <div className="filter-group">
-              <button 
-                className={`filter-mode-btn ${filterConfig.mode === 'year' ? 'active' : ''}`}
+              <button
+                className={`filter-mode-btn ${filterConfig.mode === "year" ? "active" : ""}`}
                 onClick={handleModeToggle}
               >
                 Year
               </button>
-              <button 
-                className={`filter-mode-btn ${filterConfig.mode === 'month' ? 'active' : ''}`}
+              <button
+                className={`filter-mode-btn ${filterConfig.mode === "month" ? "active" : ""}`}
                 onClick={handleModeToggle}
               >
                 Month
               </button>
-              
-              <input 
+
+              <input
                 className="filter-input"
-                type={filterConfig.mode === 'year' ? 'number' : 'month'} 
+                type={filterConfig.mode === "year" ? "number" : "month"}
                 value={filterConfig.value}
                 onChange={(e) => handleValueChange(e.target.value)}
                 min="2000"
@@ -175,8 +206,11 @@ const App: React.FC = () => {
                 step="1"
               />
             </div>
-            
-            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+
+            <button
+              className="btn btn-primary"
+              onClick={() => setIsModalOpen(true)}
+            >
               <Plus size={20} />
               <span>Add Receipt</span>
             </button>
@@ -185,7 +219,7 @@ const App: React.FC = () => {
 
         <main className="py-8">
           {currentBucketId ? (
-            <BucketDetail 
+            <BucketDetail
               bucketId={currentBucketId}
               buckets={buckets}
               receipts={receipts}
@@ -201,7 +235,7 @@ const App: React.FC = () => {
               onEditReceipt={handleEditReceipt}
             />
           ) : (
-            <Dashboard 
+            <Dashboard
               onSelectBucket={setCurrentBucketId}
               onUpload={handleUpload}
               showEmpty={showEmpty}
@@ -214,7 +248,7 @@ const App: React.FC = () => {
           )}
         </main>
 
-        <ReceiptModal 
+        <ReceiptModal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           onSave={(data: any) => {
