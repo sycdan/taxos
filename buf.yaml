@@ -1,0 +1,12 @@
+version: v1
+name: buf.build/sycdan/taxos
+
+deps: []
+
+lint:
+  use:
+    - DEFAULT
+
+breaking:
+  use:
+    - FILE
