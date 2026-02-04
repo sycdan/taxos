@@ -13,11 +13,11 @@ plugins:
     out: ../backend/api
 
   # TypeScript protobuf messages
-  - plugin: buf.build/bufbuild/es
+  - plugin: buf.build/bufbuild/es:v1.8.0
     out: ../frontend/src/api
     opt: target=ts
 
   # TypeScript ConnectRPC client
-  - plugin: buf.build/connectrpc/es
+  - plugin: buf.build/connectrpc/es:v1.6.1
     out: ../frontend/src/api
     opt: target=ts
