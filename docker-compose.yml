@@ -18,7 +18,7 @@ services:
   envoy:
     image: envoyproxy/envoy:v1.28-latest
     volumes:
-      - ./backend/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
     ports:
       - "8080:8080"
       - "9901:9901" # Admin interface
@@ -29,7 +29,8 @@ services:
     image: mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm
     volumes:
       - .:/workspaces/taxos
-    command: sleep infinity
+    working_dir: /workspaces/taxos/frontend
+    command: npm run dev
     ports:
       - "5173:5173"
     environment:
