@@ -33,7 +33,9 @@
         "ms-python.python",
         "charliermarsh.ruff",
         "GitHub.copilot",
-        "GitHub.copilot-chat"
+        "GitHub.copilot-chat",
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode"
       ]
     }
   },
