@@ -3,6 +3,10 @@
   "dockerComposeFile": "../docker-compose.yml",
   "service": "backend",
   "workspaceFolder": "/workspaces/taxos",
+  "mounts": [
+    "source=${localEnv:USERPROFILE}/.config/git,target=/root/.config/git,type=bind,consistency=cached",
+    "source=${localEnv:USERPROFILE}/.ssh,target=/root/.ssh,type=bind,consistency=cached"
+  ],
   "customizations": {
     "vscode": {
       "extensions": [
