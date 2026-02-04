@@ -14,5 +14,6 @@
         "charliermarsh.ruff"
       ]
     }
-  }
+  },
+  "postCreateCommand": "pip install -r dev/requirements.txt"
 }
