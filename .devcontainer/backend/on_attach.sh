@@ -1,0 +1,1 @@
+PYTHONPATH=backend python -m debugpy --listen 5678 backend/api/connect_http_server.py
