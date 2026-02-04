@@ -11,9 +11,13 @@
     "vscode": {
       "extensions": [
         "ms-python.python",
-        "charliermarsh.ruff"
+        "charliermarsh.ruff",
+        "GitHub.copilot",
+        "GitHub.copilot-chat"
       ]
     }
   },
-  "postCreateCommand": "pip install -r dev/requirements.txt"
+  "postCreateCommand": "pip install -r dev/requirements.txt",
+  "postStartCommand": "echo \"Container started\"",
+  "postAttachCommand": "echo \"Container attached\""
 }
