@@ -1,0 +1,26 @@
+{
+  "name": "Taxos Backend Development Environment",
+  "dockerComposeFile": [
+    "../../docker-compose.yml"
+  ],
+  "service": "backend",
+  "shutdownAction": "none",
+  "workspaceFolder": "/workspaces/taxos",
+  "mounts": [
+    "source=${localEnv:USERPROFILE}/.config/git,target=/home/vscode/.config/git,type=bind,consistency=cached",
+    "source=${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "ms-python.python",
+        "charliermarsh.ruff"
+      ]
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/backend/bootstrap.sh",
+  "postStartCommand": "sudo chown -R vscode:vscode /workspaces/taxos",
+  "postAttachCommand": "echo \"Welcome back!\""
+}

@@ -1,0 +1,23 @@
+version: v1
+plugins:
+  # Python protobuf messages (.py)
+  - plugin: buf.build/protocolbuffers/python
+    out: ../backend/api
+
+  # Python gRPC service stubs (.py)
+  - plugin: buf.build/grpc/python
+    out: ../backend/api
+
+  # Python type stubs (.pyi)
+  - plugin: buf.build/protocolbuffers/pyi
+    out: ../backend/api
+
+  # TypeScript protobuf messages
+  - plugin: buf.build/bufbuild/es
+    out: ../frontend/src/api
+    opt: target=ts
+
+  # TypeScript ConnectRPC client
+  - plugin: buf.build/connectrpc/es
+    out: ../frontend/src/api
+    opt: target=ts

@@ -1,0 +1,26 @@
+{
+  "name": "Taxos Frontend Development Environment",
+  "dockerComposeFile": [
+    "../../docker-compose.yml"
+  ],
+  "service": "frontend",
+  "shutdownAction": "none",
+  "workspaceFolder": "/workspaces/taxos",
+  "mounts": [
+    "source=${localEnv:USERPROFILE}/.config/git,target=/home/node/.config/git,type=bind,consistency=cached",
+    "source=${localEnv:USERPROFILE}/.ssh,target=/home/node/.ssh,type=bind,consistency=cached"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/frontend/bootstrap.sh",
+  "postStartCommand": "echo \"Container started\"",
+  "postAttachCommand": "echo \"Welcome back!\""
+}

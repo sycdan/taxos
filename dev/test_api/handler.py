@@ -7,6 +7,10 @@ from taxos import ROOT_DIR
 
 from dev.test_api.command import TestApi
 
+"""
+grpcurl -plaintext -import-path proto -proto v1/taxos_service.proto localhost:50051 taxos.v1.TaxosApi/ListBuckets
+"""
+
 
 def get_stub(port: int):
   from api.v1.taxos_service_pb2_grpc import TaxosApiStub

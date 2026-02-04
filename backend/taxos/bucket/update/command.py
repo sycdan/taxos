@@ -7,3 +7,8 @@ from taxos.bucket.entity import BucketRef
 class UpdateBucket:
   ref: BucketRef
   name: str
+
+  def execute(self):
+    from taxos.bucket.update.handler import handle
+
+    return handle(self)

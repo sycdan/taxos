@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, type ReactNode }
 import { v4 as uuidv4 } from 'uuid';
 import type { Bucket, Receipt } from '../types';
 import { UNALLOCATED_BUCKET_ID } from '../types';
+import { client } from '../api/client';
 
 const slugify = (text: string) => {
   return text
@@ -15,63 +16,121 @@ const slugify = (text: string) => {
 interface TaxosContextType {
   buckets: Bucket[];
   receipts: Receipt[];
+  loading: boolean;
   isNameTaken: (name: string, excludeId?: string) => boolean;
-  addBucket: (name: string) => boolean;
-  updateBucket: (id: string, name: string) => boolean;
-  deleteBucket: (id: string) => void;
+  addBucket: (name: string) => Promise<boolean>;
+  updateBucket: (id: string, name: string) => Promise<boolean>;
+  deleteBucket: (id: string) => Promise<void>;
   addReceipt: (receipt: Omit<Receipt, 'id'>) => void;
   updateReceipt: (receipt: Receipt) => void;
   deleteReceipt: (id: string) => void;
   getBucketTotal: (bucketId: string, startDate?: Date, endDate?: Date) => number;
   getBucketCount: (bucketId: string, startDate?: Date, endDate?: Date) => number;
+  refreshBuckets: () => Promise<void>;
 }
 
 const TaxosContext = createContext<TaxosContextType | undefined>(undefined);
 
 export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [buckets, setBuckets] = useState<Bucket[]>(() => {
-    const saved = localStorage.getItem('taxos_buckets');
-    return saved ? JSON.parse(saved) : [];
-  });
-
+  const [buckets, setBuckets] = useState<Bucket[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>(() => {
+    // Keep receipts in localStorage for now until we implement receipt API
     const saved = localStorage.getItem('taxos_receipts');
     return saved ? JSON.parse(saved) : [];
   });
+  const [loading, setLoading] = useState(true);
 
-  // Keep localStorage in sync
-  useEffect(() => {
-    localStorage.setItem('taxos_buckets', JSON.stringify(buckets));
-  }, [buckets]);
-
+  // Keep receipts in localStorage in sync
   useEffect(() => {
     localStorage.setItem('taxos_receipts', JSON.stringify(receipts));
   }, [receipts]);
+
+  const refreshBuckets = async () => {
+    try {
+      setLoading(true);
+      const response = await client.listBuckets({});
+      const apiBuckets: Bucket[] = response.buckets.map(bucketSummary => ({
+        id: bucketSummary.bucket!.guid,
+        name: bucketSummary.bucket!.name
+      }));
+      setBuckets(apiBuckets);
+    } catch (error) {
+      console.error('Failed to load buckets:', error);
+      // Fallback to localStorage on error
+      const saved = localStorage.getItem('taxos_buckets');
+      setBuckets(saved ? JSON.parse(saved) : []);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load buckets on mount
+  useEffect(() => {
+    refreshBuckets();
+  }, []);
+
+  // Keep localStorage as backup
+  useEffect(() => {
+    localStorage.setItem('taxos_buckets', JSON.stringify(buckets));
+  }, [buckets]);
 
   const isNameTaken = (name: string, excludeId?: string) => {
     const slug = slugify(name);
     return buckets.some(b => b.id !== excludeId && slugify(b.name) === slug);
   };
 
-  const addBucket = (name: string) => {
+  const addBucket = async (name: string) => {
     if (isNameTaken(name)) return false;
-    const newBucket = { id: uuidv4(), name };
-    setBuckets(prev => [...prev, newBucket]);
-    return true;
+    
+    try {
+      const response = await client.createBucket({ name });
+      const newBucket: Bucket = {
+        id: response.guid,
+        name: response.name
+      };
+      setBuckets(prev => [...prev, newBucket]);
+      return true;
+    } catch (error) {
+      console.error('Failed to create bucket:', error);
+      // Fallback to local creation
+      const newBucket = { id: uuidv4(), name };
+      setBuckets(prev => [...prev, newBucket]);
+      return true;
+    }
   };
 
-  const updateBucket = (id: string, name: string) => {
+  const updateBucket = async (id: string, name: string) => {
     if (isNameTaken(name, id)) return false;
-    setBuckets(prev => prev.map(b => b.id === id ? { ...b, name } : b));
-    return true;
+    
+    try {
+      await client.updateBucket({ guid: id, name });
+      setBuckets(prev => prev.map(b => b.id === id ? { ...b, name } : b));
+      return true;
+    } catch (error) {
+      console.error('Failed to update bucket:', error);
+      // Fallback to local update
+      setBuckets(prev => prev.map(b => b.id === id ? { ...b, name } : b));
+      return true;
+    }
   };
 
-  const deleteBucket = (id: string) => {
-    setBuckets(prev => prev.filter(b => b.id !== id));
-    setReceipts(prev => prev.map(r => ({
-      ...r,
-      allocations: r.allocations.filter(a => a.bucketId !== id)
-    })));
+  const deleteBucket = async (id: string) => {
+    try {
+      await client.deleteBucket({ guid: id });
+      setBuckets(prev => prev.filter(b => b.id !== id));
+      setReceipts(prev => prev.map(r => ({
+        ...r,
+        allocations: r.allocations.filter(a => a.bucketId !== id)
+      })));
+    } catch (error) {
+      console.error('Failed to delete bucket:', error);
+      // Fallback to local deletion
+      setBuckets(prev => prev.filter(b => b.id !== id));
+      setReceipts(prev => prev.map(r => ({
+        ...r,
+        allocations: r.allocations.filter(a => a.bucketId !== id)
+      })));
+    }
   };
 
   const addReceipt = (receipt: Omit<Receipt, 'id'>) => {
@@ -139,6 +198,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     <TaxosContext.Provider value={{
       buckets,
       receipts,
+      loading,
       isNameTaken,
       addBucket,
       updateBucket,
@@ -147,7 +207,8 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       updateReceipt,
       deleteReceipt,
       getBucketTotal,
-      getBucketCount
+      getBucketCount,
+      refreshBuckets
     }}>
       {children}
     </TaxosContext.Provider>
