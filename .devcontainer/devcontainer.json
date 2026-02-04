@@ -2,7 +2,7 @@
   "name": "Taxos Development Environment",
   "dockerComposeFile": "../docker-compose.yml",
   "service": "backend",
-  "workspaceFolder": "/app",
+  "workspaceFolder": "/workspaces/taxos",
   "customizations": {
     "vscode": {
       "extensions": [

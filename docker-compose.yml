@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: ./backend/Dockerfile
     volumes:
+      - .:/workspaces/taxos
       - ./backend/data:/app/data
     ports:
       - "50051:50051"
