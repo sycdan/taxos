@@ -1,4 +1,4 @@
-sudo chown -R vscode:vscode /workspaces/taxos
+sudo chown -R $USER:$USER /workspaces/taxos
 
 mkdir -p ~/.local/bin
 
