@@ -1,3 +1,5 @@
+sudo chown -R vscode:vscode /workspaces/taxos
+
 mkdir -p ~/.local/bin
 
 # Install Buf
