@@ -1,6 +1,9 @@
+mkdir -p ~/.local/bin
+sudo apt-get update
 sudo chown -R $USER:$USER /workspaces/taxos
 
-mkdir -p ~/.local/bin
+# Install tmux
+sudo apt-get install -y tmux
 
 # Install Buf
 curl -sSL \
