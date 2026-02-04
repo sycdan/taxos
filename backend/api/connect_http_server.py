@@ -3,12 +3,11 @@ import logging
 
 from flask import Flask, Response, request
 from flask_cors import CORS
-from google.protobuf.json_format import MessageToDict, Parse
+from google.protobuf.json_format import MessageToDict
 from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.delete.command import DeleteBucket
 from taxos.bucket.entity import BucketRef
 from taxos.bucket.load.query import LoadBucket
-from taxos.bucket.update.command import UpdateBucket
 from taxos.list_buckets.query import ListBuckets
 
 from api.v1 import taxos_service_pb2 as models
@@ -81,6 +80,24 @@ def get_bucket():
   except Exception as e:
     logger.error(f"Failed to get bucket: {e}")
     return Response(json.dumps({"error": str(e)}), status=404, content_type="application/json")
+
+
+# DeleteBucket RPC adapter
+@app.route("/taxos.v1.TaxosApi/DeleteBucket", methods=["POST"])
+def delete_bucket():
+  logger.info("DeleteBucket called via ConnectRPC")
+  try:
+    request_data = request.get_json()
+    bucket_ref = BucketRef(guid=request_data.get("guid", ""))
+    success = DeleteBucket(ref=bucket_ref).execute()
+
+    response = models.DeleteBucketResponse(success=success)
+    response_dict = MessageToDict(response, preserving_proto_field_name=True)
+
+    return Response(json.dumps(response_dict), content_type="application/json")
+  except Exception as e:
+    logger.error(f"Failed to delete bucket: {e}")
+    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
 
 
 if __name__ == "__main__":
