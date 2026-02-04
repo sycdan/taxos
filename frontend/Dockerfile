@@ -33,7 +33,8 @@ COPY frontend/ ./
 COPY --from=codegen /workspace/frontend/src/api ./src/api
 
 # Build Vite app
-RUN npm run build
+# RUN npm run build
+EXPOSE 5173
 
 CMD ["npm", "run", "dev"]
 # -----------------------------
