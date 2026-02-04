@@ -15,16 +15,6 @@ services:
           path: ./backend/taxos
           target: /app/taxos
 
-  envoy:
-    image: envoyproxy/envoy:v1.28-latest
-    volumes:
-      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
-    ports:
-      - "8080:8080"
-      - "9901:9901" # Admin interface
-    depends_on:
-      - backend
-
   frontend:
     image: mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm
     volumes:
@@ -34,7 +24,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_GRPC_API_URL=http://localhost:8080
+      - VITE_GRPC_API_URL=http://localhost:50051
       - CHOKIDAR_USEPOLLING=true
     develop:
       watch:
@@ -43,5 +33,3 @@ services:
           target: /app/src
         - action: rebuild
           path: ./frontend/package.json
-    depends_on:
-      - envoy
