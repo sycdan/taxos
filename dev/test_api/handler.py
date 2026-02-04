@@ -2,14 +2,14 @@ import sys
 from datetime import datetime, timezone
 
 import grpc
-from backend.taxos import ROOT_DIR
 from google.protobuf.timestamp_pb2 import Timestamp
+from taxos import ROOT_DIR
 
 from dev.test_api.command import TestApi
 
 
 def get_stub(port: int):
-  from backend.api.v1.taxos_service_pb2_grpc import TaxosApiStub
+  from api.v1.taxos_service_pb2_grpc import TaxosApiStub
 
   target = f"localhost:{port}"
   channel = grpc.insecure_channel(target)
@@ -18,12 +18,10 @@ def get_stub(port: int):
 
 
 def test(stub):
-  import backend.api.v1.taxos_service_pb2 as api
+  import api.v1.taxos_service_pb2 as api
 
   print("\nCreating a bucket...")
-  create_request = api.CreateBucketRequest(
-    name=f"Test Bucket {datetime.now().isoformat()}"
-  )
+  create_request = api.CreateBucketRequest(name=f"Test Bucket {datetime.now().isoformat()}")
   bucket = stub.CreateBucket(create_request)
   print(f"✓ Created bucket: {bucket.guid} - {bucket.name}")
   bucket_guid = bucket.guid

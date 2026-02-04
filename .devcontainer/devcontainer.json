@@ -17,7 +17,7 @@
       ]
     }
   },
-  "postCreateCommand": "pip install -r dev/requirements.txt",
+  "postCreateCommand": "sh dev/bootstrap.sh",
   "postStartCommand": "echo \"Container started\"",
   "postAttachCommand": "echo \"Container attached\""
 }
