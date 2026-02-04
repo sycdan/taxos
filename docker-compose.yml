@@ -31,10 +31,20 @@ services:
     build:
       context: .
       dockerfile: ./frontend/Dockerfile
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/package.json:/app/package.json
+      - ./frontend/package-lock.json:/app/package-lock.json
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/tsconfig.app.json:/app/tsconfig.app.json
+      - ./frontend/index.html:/app/index.html
+      - /app/node_modules
     ports:
       - "5173:5173"
     environment:
       - GRPC_API_URL=http://localhost:8080
+      - CHOKIDAR_USEPOLLING=true
     develop:
       watch:
         - action: sync

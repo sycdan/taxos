@@ -3,6 +3,26 @@
   "dockerComposeFile": "../docker-compose.yml",
   "service": "backend",
   "workspaceFolder": "/workspaces/taxos",
+  "forwardPorts": [
+    5173,
+    8080,
+    50051
+  ],
+  // HMR for frontend
+  "portsAttributes": {
+    "5173": {
+      "label": "Frontend Dev Server",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "Envoy Proxy",
+      "onAutoForward": "silent"
+    },
+    "50051": {
+      "label": "Backend gRPC",
+      "onAutoForward": "silent"
+    }
+  },
   "mounts": [
     "source=${localEnv:USERPROFILE}/.config/git,target=/root/.config/git,type=bind,consistency=cached",
     "source=${localEnv:USERPROFILE}/.ssh,target=/root/.ssh,type=bind,consistency=cached"
