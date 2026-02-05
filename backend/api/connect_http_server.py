@@ -8,6 +8,7 @@ from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.delete.command import DeleteBucket
 from taxos.bucket.entity import BucketRef
 from taxos.bucket.load.query import LoadBucket
+from taxos.bucket.update.command import UpdateBucket
 from taxos.list_buckets.query import ListBuckets
 
 from api.v1 import taxos_service_pb2 as models
@@ -80,6 +81,26 @@ def get_bucket():
   except Exception as e:
     logger.error(f"Failed to get bucket: {e}")
     return Response(json.dumps({"error": str(e)}), status=404, content_type="application/json")
+
+
+@app.route("/taxos.v1.TaxosApi/UpdateBucket", methods=["POST"])
+def update_bucket():
+  logger.info("UpdateBucket called via ConnectRPC")
+  try:
+    request_data = request.get_json()
+    bucket_ref = BucketRef(guid=request_data.get("guid", ""))
+    bucket = UpdateBucket(ref=bucket_ref, name=request_data.get("name", "")).execute()
+
+    response = models.Bucket(
+      guid=str(bucket.guid),
+      name=bucket.name,
+    )
+    response_dict = MessageToDict(response, preserving_proto_field_name=True)
+
+    return Response(json.dumps(response_dict), content_type="application/json")
+  except Exception as e:
+    logger.error(f"Failed to update bucket: {e}")
+    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
 
 
 # DeleteBucket RPC adapter
