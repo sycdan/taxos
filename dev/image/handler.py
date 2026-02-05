@@ -1,14 +1,13 @@
 import os
 
-from dev import PROTO_DIR, REPO_ROOT
-from dev.build.command import Build
+from dev import REPO_ROOT
+from dev.build.image.command import BuildImage
 
 
 def gen_proto():
-  print("Generating protos...")
-  os.chdir(PROTO_DIR)
-  if os.system("buf generate"):
-    raise RuntimeError("buf generate failed")
+  from dev.build.proto.command import BuildProto
+
+  BuildProto().execute()
 
 
 def build_image():
@@ -18,7 +17,7 @@ def build_image():
     raise RuntimeError("docker compose build failed")
 
 
-def handle(command: Build):
+def handle(command: BuildImage):
   if not command.no_proto:
     gen_proto()
   if not command.no_docker:
