@@ -1,6 +1,6 @@
 mkdir -p ~/.local/bin
 sudo apt-get update
-sudo chown -R $USER:$USER /workspaces/taxos
+sudo chown -R $USER /workspaces/taxos
 
 # Install tmux
 sudo apt-get install -y tmux

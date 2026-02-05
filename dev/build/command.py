@@ -5,6 +5,5 @@ from dataclasses import dataclass
 class Build:
   """Prepare an image."""
 
-  no_backend: bool = False
-  no_frontend: bool = False
+  no_proto: bool = False
   no_docker: bool = False
