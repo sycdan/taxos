@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 @dataclass
 class TestApi:
-  "Ensure the API container is working."
+  "Ensure the gRPC API server is working."
 
-  use_proxy: bool = False
+  port: int = 50051
+  nuke_data: bool = False

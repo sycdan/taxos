@@ -1,15 +1,18 @@
 import json
 import logging
+from datetime import datetime, timezone
 
 from flask import Flask, Response, request
 from flask_cors import CORS
 from google.protobuf.json_format import MessageToDict
+from google.protobuf.timestamp_pb2 import Timestamp
 from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.delete.command import DeleteBucket
 from taxos.bucket.entity import BucketRef
 from taxos.bucket.load.query import LoadBucket
 from taxos.bucket.update.command import UpdateBucket
 from taxos.list_buckets.query import ListBuckets
+from taxos.receipt.create.command import CreateReceipt
 
 from api.v1 import taxos_service_pb2 as models
 
@@ -17,6 +20,35 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
+
+
+def _parse_timestamp(value) -> datetime:
+  if isinstance(value, str) and value:
+    try:
+      return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+      pass
+
+  if isinstance(value, dict):
+    seconds = value.get("seconds")
+    nanos = value.get("nanos", 0)
+    if seconds is not None:
+      return datetime.fromtimestamp(float(seconds) + (float(nanos) / 1_000_000_000), tz=timezone.utc)
+
+  return datetime.now(timezone.utc)
+
+
+def _parse_allocations(values: list[dict]) -> list[dict]:
+  allocations = []
+  for item in values or []:
+    if not isinstance(item, dict):
+      continue
+    bucket_guid = item.get("bucket_guid") or item.get("bucketGuid") or ""
+    if not bucket_guid:
+      continue
+    amount = float(item.get("amount", 0))
+    allocations.append({"bucket_guid": bucket_guid, "amount": amount})
+  return allocations
 
 
 @app.route("/taxos.v1.TaxosApi/ListBuckets", methods=["POST"])
@@ -60,6 +92,57 @@ def create_bucket():
     return Response(json.dumps(response_dict), content_type="application/json")
   except Exception as e:
     logger.error(f"Failed to create bucket: {e}")
+    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+
+
+@app.route("/taxos.v1.TaxosApi/CreateReceipt", methods=["POST"])
+def create_receipt():
+  logger.info("CreateReceipt called via ConnectRPC")
+  try:
+    request_data = request.get_json() or {}
+    date_value = request_data.get("date")
+    date = _parse_timestamp(date_value)
+    allocations = _parse_allocations(request_data.get("allocations", []))
+
+    receipt = CreateReceipt(
+      vendor=request_data.get("vendor", ""),
+      total=float(request_data.get("total", 0)),
+      date=date.isoformat(),
+      timezone=request_data.get("timezone", ""),
+      allocations=allocations,
+      ref=request_data.get("ref") or "",
+      notes=request_data.get("notes") or "",
+      file=request_data.get("file") or None,
+      hash=request_data.get("hash") or None,
+    ).execute()
+
+    response_date = _parse_timestamp(receipt.date)
+    ts = Timestamp()
+    ts.FromDatetime(response_date)
+
+    response = models.Receipt(
+      guid=str(receipt.guid),
+      vendor=receipt.vendor,
+      date=ts,
+      timezone=receipt.timezone,
+      total=receipt.total,
+      allocations=[
+        models.ReceiptAllocation(
+          bucket_guid=a.get("bucket_guid", ""),
+          amount=float(a.get("amount", 0)),
+        )
+        for a in receipt.allocations
+      ],
+      ref=receipt.ref or "",
+      notes=receipt.notes or "",
+      file=receipt.file or "",
+      hash=receipt.hash or "",
+    )
+    response_dict = MessageToDict(response, preserving_proto_field_name=True)
+
+    return Response(json.dumps(response_dict), content_type="application/json")
+  except Exception as e:
+    logger.error(f"Failed to create receipt: {e}")
     return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
 
 

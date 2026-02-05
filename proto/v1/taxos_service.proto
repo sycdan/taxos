@@ -8,6 +8,8 @@ import "google/protobuf/timestamp.proto";
 service TaxosApi {
   // Create a new bucket
   rpc CreateBucket(CreateBucketRequest) returns (Bucket);
+  // Create a new receipt
+  rpc CreateReceipt(CreateReceiptRequest) returns (Receipt);
   // Retrieve a bucket by GUID
   rpc GetBucket(GetBucketRequest) returns (Bucket);
   // List all buckets
@@ -25,8 +27,38 @@ message Bucket {
   google.protobuf.Timestamp updated_at = 4;
 }
 
+message ReceiptAllocation {
+  string bucket_guid = 1;
+  double amount      = 2;
+}
+
+message Receipt {
+  string                    guid        = 1;
+  string                    vendor      = 2;
+  google.protobuf.Timestamp date        = 3;
+  string                    timezone    = 4;
+  double                    total       = 5;
+  repeated ReceiptAllocation allocations = 6;
+  string                    ref         = 7;
+  string                    notes       = 8;
+  string                    file        = 9;
+  string                    hash        = 10;
+}
+
 message CreateBucketRequest {
   string name = 1;
+}
+
+message CreateReceiptRequest {
+  string                    vendor      = 1;
+  google.protobuf.Timestamp date        = 2;
+  string                    timezone    = 3;
+  double                    total       = 4;
+  repeated ReceiptAllocation allocations = 5;
+  string                    ref         = 6;
+  string                    notes       = 7;
+  string                    file        = 8;
+  string                    hash        = 9;
 }
 
 message GetBucketRequest {

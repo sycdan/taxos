@@ -1,18 +1,17 @@
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, field
 
 
 @dataclass
 class CreateReceipt:
   vendor: str
   total: float
-  date: datetime
+  date: str
   timezone: str
-  allocations: list[dict] = None
-  ref: str = None
-  notes: str = None
-  file: str = None
-  hash: str = None
+  allocations: list[dict] = field(default_factory=list)
+  ref: str = ""
+  notes: str = ""
+  file: str | None = None
+  hash: str | None = None
 
   def __post_init__(self):
     if not self.vendor or not self.vendor.strip():

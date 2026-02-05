@@ -16,8 +16,8 @@ These domain actions must be hooked up to GRPC endpoints:
 ## Receipts
 
 - [x] create receipt domain action (manual, no source file)
-  - [ ] add proto service definition
-  - [ ] generate protos (dev.gen-proto)
-  - [ ] add an integration test that calls our grpc server to create a receipt
-  - [ ] ensure frontend client is hooked up
+  - [x] add proto service definition
+  - [x] generate protos (dev.gen-proto)
+  - [x] add an integration test that calls our grpc server to create a receipt
+  - [x] ensure frontend client is hooked up
 - [ ] ingest receipt domain action (save source file)

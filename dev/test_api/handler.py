@@ -1,100 +1,87 @@
+import json
+import shutil
 import sys
 from datetime import datetime, timezone
+from urllib.request import Request, urlopen
 
-import grpc
 from google.protobuf.timestamp_pb2 import Timestamp
-from taxos import ROOT_DIR
 
+from backend.taxos import DATA_DIR, ROOT_DIR
 from dev.test_api.command import TestApi
 
-"""
-grpcurl -plaintext -import-path proto -proto v1/taxos_service.proto localhost:50051 taxos.v1.TaxosApi/ListBuckets
-"""
+
+def call_connect(port: int, method: str, payload: dict):
+  url = f"http://localhost:{port}/taxos.v1.TaxosApi/{method}"
+  data = json.dumps(payload).encode("utf-8")
+  request = Request(url, data=data, headers={"Content-Type": "application/json"})
+  with urlopen(request, timeout=10) as response:
+    return json.loads(response.read().decode("utf-8"))
 
 
-def get_stub(port: int):
-  from api.v1.taxos_service_pb2_grpc import TaxosApiStub
-
-  target = f"localhost:{port}"
-  channel = grpc.insecure_channel(target)
-  print(f"Connecting to gRPC server at {target}...")
-  return TaxosApiStub(channel)
-
-
-def test(stub):
-  import api.v1.taxos_service_pb2 as api
-
+def test(port: int):
   print("\nCreating a bucket...")
-  create_request = api.CreateBucketRequest(name=f"Test Bucket {datetime.now().isoformat()}")
-  bucket = stub.CreateBucket(create_request)
-  print(f"✓ Created bucket: {bucket.guid} - {bucket.name}")
-  bucket_guid = bucket.guid
+  bucket = call_connect(
+    port,
+    "CreateBucket",
+    {"name": f"Test Bucket {datetime.now().isoformat()}"},
+  )
+  print(f"✓ Created bucket: {bucket['guid']} - {bucket['name']}")
+  bucket_guid = bucket["guid"]
 
-  # print("\n2. Getting the bucket...")
-  # get_request = api.GetBucketRequest(guid=bucket_guid)
-  # retrieved_bucket = stub.GetBucket(get_request)
-  # print(f"✓ Retrieved bucket: {retrieved_bucket.guid} - {retrieved_bucket.name}")
+  print("\nUpdating bucket name...")
+  updated_bucket = call_connect(
+    port,
+    "UpdateBucket",
+    {"guid": bucket_guid, "name": f"Updated Test Bucket {datetime.now().isoformat()}"},
+  )
+  print(f"✓ Updated bucket: {updated_bucket['guid']} - {updated_bucket['name']}")
 
-  #   # Test 3: Update the bucket
-  #   print("\n3. Updating the bucket...")
-  #   update_request = pb.UpdateBucketRequest(
-  #     guid=bucket_guid, name="Updated Test Bucket"
-  #   )
-  #   updated_bucket = stub.UpdateBucket(update_request)
-  #   print(f"✓ Updated bucket: {updated_bucket.guid} - {updated_bucket.name}")
+  print("\nCreating a receipt...")
+  now = Timestamp()
+  now.GetCurrentTime()
+  receipt = call_connect(
+    port,
+    "CreateReceipt",
+    {
+      "vendor": "Test Vendor",
+      "date": {"seconds": now.seconds, "nanos": now.nanos},
+      "timezone": "UTC",
+      "total": 12.34,
+      "allocations": [],
+      "ref": "TEST-REF",
+      "notes": "Test receipt",
+      "file": "test-receipt.txt",
+      "hash": "test-hash",
+    },
+  )
+  print(f"✓ Created receipt: {receipt['guid']} - {receipt['vendor']}")
 
   print("\nListing buckets...")
-  # now = Timestamp()
-  # now.GetCurrentTime()
-
-  #   # List buckets from last month to now
-  #   start_time = Timestamp()
-  #   start_time.FromDatetime(datetime.now(timezone.utc).replace(day=1))
-
-  list_request = api.ListBucketsRequest()
-  buckets_response = stub.ListBuckets(list_request)
-  print(f"✓ Found {len(buckets_response.buckets)} buckets")
-  for bucket_summary in buckets_response.buckets:
+  buckets_response = call_connect(port, "ListBuckets", {})
+  buckets = buckets_response.get("buckets", [])
+  print(f"✓ Found {len(buckets)} buckets")
+  for bucket_summary in buckets:
+    bucket_info = bucket_summary.get("bucket", {})
     print(
-      f"  - {bucket_summary.bucket.name} (${bucket_summary.total_amount:.2f}, {bucket_summary.receipt_count} receipts)"
+      f"  - {bucket_info.get('name')} (${bucket_summary.get('total_amount', 0):.2f}, {bucket_summary.get('receipt_count', 0)} receipts)"
     )
 
-  #   # Test 5: Get dashboard
-  #   print("\n5. Getting dashboard...")
-  #   dashboard_request = pb.GetDashboardRequest(
-  #     start_date=start_time, end_date=now, include_empty_buckets=True
-  #   )
-  #   dashboard = stub.GetDashboard(dashboard_request)
-  #   print(
-  #     f"✓ Dashboard: ${dashboard.total_amount:.2f} total, {dashboard.total_receipts} receipts"
-  #   )
+  print("\nDeleting bucket...")
+  delete_response = call_connect(
+    port,
+    "DeleteBucket",
+    {"guid": bucket_guid},
+  )
+  print(f"✓ Deleted bucket: {delete_response.get('success')}")
 
-  #   # Test 6: Ingest a receipt (optional - only if you want to test file upload)
-  #   # print("\n6. Ingesting a test receipt...")
-  #   # receipt_request = pb.IngestReceiptRequest(
-  #   #   bucket_guid=bucket_guid,
-  #   #   content=b"fake receipt content",
-  #   #   filename="test_receipt.txt"
-  #   # )
-  #   # receipt = stub.IngestReceipt(receipt_request)
-  #   # print(f"✓ Ingested receipt: {receipt.guid} - {receipt.description}")
-
-  #   # Test 7: Delete the bucket (cleanup)
-  #   print("\n7. Cleaning up - deleting test bucket...")
-  #   delete_request = pb.DeleteBucketRequest(guid=bucket_guid)
-  #   delete_response = stub.DeleteBucket(delete_request)
-  #   print(f"✓ Deleted bucket: {delete_response.success}")
-
-  #   print("\n🎉 All tests passed!")
+  print("\n🎉 All tests passed!")
 
 
 def handle(command: TestApi):
-  if command.use_proxy:
-    port = 8080
-  else:
-    port = 50051
-
   sys.path.insert(0, ROOT_DIR.as_posix() + "/api")
-  stub = get_stub(port)
-
-  test(stub)
+  if command.nuke_data:
+    print("💣  Nuking all data...")
+    shutil.rmtree(DATA_DIR, ignore_errors=True)
+    print("✓ All data nuked.")
+  print(f"Testing ConnectRPC server at localhost:{command.port}...")
+  test(command.port)

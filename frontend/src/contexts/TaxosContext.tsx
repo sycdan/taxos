@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { Timestamp } from '@bufbuild/protobuf';
 import type { Bucket, Receipt } from '../types';
 import { UNALLOCATED_BUCKET_ID } from '../types';
 import { client } from '../api/client';
@@ -81,7 +82,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const addBucket = async (name: string) => {
     if (isNameTaken(name)) return false;
-    
+
     try {
       const response = await client.createBucket({ name });
       const newBucket: Bucket = {
@@ -101,7 +102,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const updateBucket = async (id: string, name: string) => {
     if (isNameTaken(name, id)) return false;
-    
+
     try {
       await client.updateBucket({ guid: id, name });
       setBuckets(prev => prev.map(b => b.id === id ? { ...b, name } : b));
@@ -134,15 +135,80 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const addReceipt = (receipt: Omit<Receipt, 'id'>) => {
-    setReceipts(prev => {
-      // Prevent duplicates if hash is provided
-      if (receipt.hash && prev.some(r => r.hash === receipt.hash)) {
-        console.warn('Duplicate receipt detected, skipping:', receipt.vendor);
-        return prev;
+    const createLocal = (fallbackReceipt: Omit<Receipt, 'id'>) => {
+      setReceipts(prev => {
+        if (fallbackReceipt.hash && prev.some(r => r.hash === fallbackReceipt.hash)) {
+          console.warn('Duplicate receipt detected, skipping:', fallbackReceipt.vendor);
+          return prev;
+        }
+        const newReceipt = { ...fallbackReceipt, id: uuidv4() };
+        return [...prev, newReceipt];
+      });
+    };
+
+    const toTimestamp = (iso: string) => {
+      const date = new Date(iso);
+      const seconds = Math.floor(date.getTime() / 1000);
+      const nanos = (date.getTime() % 1000) * 1_000_000;
+      return new Timestamp({ seconds, nanos });
+    };
+
+    const timestampToIso = (ts?: Timestamp) => {
+      if (!ts) return new Date().toISOString();
+      const asAny = ts as any;
+      if (typeof asAny.toDate === 'function') return asAny.toDate().toISOString();
+      const seconds = Number(asAny.seconds ?? 0);
+      const nanos = Number(asAny.nanos ?? 0);
+      return new Date(seconds * 1000 + nanos / 1_000_000).toISOString();
+    };
+
+    const createRemote = async () => {
+      try {
+        const response = await client.createReceipt({
+          vendor: receipt.vendor,
+          total: receipt.total,
+          date: toTimestamp(receipt.date),
+          timezone: receipt.timezone,
+          allocations: receipt.allocations.map(a => ({
+            bucketGuid: a.bucketId,
+            amount: a.amount,
+          })),
+          ref: receipt.ref || '',
+          notes: receipt.notes || '',
+          file: receipt.file || '',
+          hash: receipt.hash || '',
+        });
+
+        const createdReceipt: Receipt = {
+          id: response.guid,
+          vendor: response.vendor,
+          total: response.total,
+          date: timestampToIso(response.date),
+          timezone: response.timezone,
+          allocations: response.allocations.map(a => ({
+            bucketId: a.bucketGuid,
+            amount: a.amount,
+          })),
+          ref: response.ref || undefined,
+          notes: response.notes || undefined,
+          file: response.file || undefined,
+          hash: response.hash || undefined,
+        };
+
+        setReceipts(prev => {
+          if (createdReceipt.hash && prev.some(r => r.hash === createdReceipt.hash)) {
+            console.warn('Duplicate receipt detected, skipping:', createdReceipt.vendor);
+            return prev;
+          }
+          return [...prev, createdReceipt];
+        });
+      } catch (error) {
+        console.error('Failed to create receipt:', error);
+        createLocal(receipt);
       }
-      const newReceipt = { ...receipt, id: uuidv4() };
-      return [...prev, newReceipt];
-    });
+    };
+
+    void createRemote();
   };
 
   const updateReceipt = (receipt: Receipt) => {
