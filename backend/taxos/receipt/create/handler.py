@@ -19,7 +19,6 @@ def handle(command: CreateReceipt) -> Receipt:
     allocations=command.allocations or [],
     ref=command.ref,
     notes=command.notes,
-    file=command.file,
     hash=command.hash,
   )
 

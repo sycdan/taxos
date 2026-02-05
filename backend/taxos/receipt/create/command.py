@@ -10,7 +10,6 @@ class CreateReceipt:
   allocations: list[dict] = field(default_factory=list)
   ref: str = ""
   notes: str = ""
-  file: str | None = None
   hash: str | None = None
 
   def __post_init__(self):

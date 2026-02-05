@@ -57,8 +57,7 @@ message CreateReceiptRequest {
   repeated ReceiptAllocation allocations = 5;
   string                    ref         = 6;
   string                    notes       = 7;
-  string                    file        = 8;
-  string                    hash        = 9;
+  string                    hash        = 8;
 }
 
 message GetBucketRequest {

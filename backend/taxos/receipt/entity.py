@@ -16,7 +16,6 @@ class Receipt:
   allocations: list[dict] = field(default_factory=list)
   ref: str = None
   notes: str = None
-  file: str = None
   hash: str = None
 
   @cached_property
