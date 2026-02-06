@@ -16,7 +16,7 @@
 - [x] Return 401 for invalid/missing tokens
 - [x] Store tenant in request context
 - [x] Create dev/tenant_setup action for testing
-- [ ] Test tenant creation and token generation
+- [x] Test tenant creation and token generation
 
 ## Move Buckets/Receipts Under Tenants
 
