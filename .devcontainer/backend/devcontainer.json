@@ -23,6 +23,13 @@
       ]
     }
   },
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": false,
+      "installOhMyZsh": false,
+      "installNode": false
+    }
+  },
   "postCreateCommand": "bash .devcontainer/backend/on_create.sh",
   "postStartCommand": "bash .devcontainer/backend/on_start.sh",
   "postAttachCommand": "bash .devcontainer/backend/on_attach.sh"
