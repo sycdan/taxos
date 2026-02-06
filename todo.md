@@ -1,8 +1,44 @@
-# Today's Task
+# Today's Task - Tenant Support
 
-**Important note:** If this file does not contain a list of todos, add one so we can check things off as we go.
+## Tenant Infrastructure (Core)
 
-## Tenant support
+- [x] Create Tenant entity and domain
+- [x] Create CreateTenant action
+- [x] Create LoadTenant query
+- [x] Create AccessToken entity
+- [x] Create AuthenticateTenant action
+- [x] Create GenerateAccessToken action
+- [ ] Update ConnectRPC API to check access tokens in headers
+- [ ] Test tenant creation and token generation
+
+## Move Buckets/Receipts Under Tenants
+
+- [ ] Update bucket storage paths to be under tenants
+- [ ] Update receipt storage paths to be under tenants
+- [ ] Update all bucket handlers to accept tenant context
+- [ ] Update all receipt handlers to accept tenant context
+- [ ] Update ListBuckets to filter by tenant
+- [ ] Test CRUD operations still work
+
+## Frontend Integration
+
+- [ ] Add access token input to frontend
+- [ ] Store token in localStorage
+- [ ] Send token in API request headers
+- [ ] Handle 401 responses
+
+## Architecture Notes
+
+Per the requirements:
+- Tokens are SHA256(guid + token_count)
+- Initial token: SHA256(guid + 0) for first generation
+- When new token requested: increment token_count, generate new hash, delete old token file
+- API checks token header first, returns 401 if invalid
+- Developers control access (no signup process)
+
+---
+
+## Original Task Description
 
 We need to add a Tenant domain & entity. (./backend/taxos/tenant/entity.py)
 
