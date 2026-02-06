@@ -6,6 +6,7 @@ from uuid import UUID
 from taxos.access.token.entity import AccessToken
 from taxos.access.token.generate.command import GenerateAccessToken
 from taxos.access.token.tools import get_token_file
+from taxos.tenant.entity import Tenant, TenantRef
 from taxos.tenant.load.query import LoadTenant
 from taxos.tools import json as json_utils
 
@@ -28,16 +29,17 @@ def delete_old_token(tenant_guid: UUID, new_token_count: int):
 def handle(command: GenerateAccessToken) -> AccessToken:
   logger.info(f"Handling {command}")
 
-  tenant = LoadTenant(ref=command.tenant_ref).execute()
+  tenant = command.tenant.hydrate()
+
   new_token_count = tenant.token_count + 1
 
   token_hash = generate_token_hash(tenant.guid, new_token_count)
 
-  access_token = AccessToken(key=token_hash, tenant_ref=command.tenant_ref)
+  access_token = AccessToken(key=token_hash, tenant=tenant)
   token_file = get_token_file(token_hash)
 
   os.makedirs(token_file.parent, exist_ok=True)
-  token_file.write_text(json_utils.dumps({"tenant_ref": command.tenant_ref.guid.hex}, indent=2))
+  token_file.write_text(json_utils.dumps({"tenant": tenant.guid.hex}, indent=2))
 
   tenant.token_count = new_token_count
   tenant.state_file.write_text(json_utils.dumps(tenant, indent=2))
@@ -45,5 +47,5 @@ def handle(command: GenerateAccessToken) -> AccessToken:
   if new_token_count > 1:
     delete_old_token(tenant.guid, new_token_count)
 
-  logger.info(f"Generated new access token for tenant {command.tenant_ref.guid}")
+  logger.info(f"Generated new access token for tenant {command.tenant.guid}")
   return access_token

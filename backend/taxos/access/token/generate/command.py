@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 
-from taxos.tenant.entity import TenantRef
+from taxos.tenant.entity import Tenant, TenantRef
 
 
 @dataclass
 class GenerateAccessToken:
-  tenant_ref: TenantRef
+  tenant: Tenant | TenantRef
 
   def execute(self):
     from taxos.access.token.generate.handler import handle

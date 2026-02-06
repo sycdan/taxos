@@ -8,7 +8,14 @@
 - [x] Create AccessToken entity
 - [x] Create AuthenticateTenant action
 - [x] Create GenerateAccessToken action
-- [ ] Update ConnectRPC API to check access tokens in headers
+## Update ConnectRPC API to check access tokens in headers
+
+- [x] Add @require_auth decorator to all endpoints
+- [x] Extract token from Authorization header (Bearer format)
+- [x] Call AuthenticateTenant to validate token
+- [x] Return 401 for invalid/missing tokens
+- [x] Store tenant in request context
+- [x] Create dev/tenant_setup action for testing
 - [ ] Test tenant creation and token generation
 
 ## Move Buckets/Receipts Under Tenants

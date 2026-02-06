@@ -1,11 +1,13 @@
 import json
 import logging
 from datetime import datetime, timezone
+from functools import wraps
 
 from flask import Flask, Response, request
 from flask_cors import CORS
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.timestamp_pb2 import Timestamp
+from taxos.access.authenticate_tenant.command import AuthenticateTenant
 from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.delete.command import DeleteBucket
 from taxos.bucket.entity import BucketRef
@@ -20,6 +22,38 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
+
+
+def require_auth(f):
+  """Decorator to require authentication via access token in headers."""
+
+  @wraps(f)
+  def decorated_function(*args, **kwargs):
+    # Get token from Authorization header (format: "Bearer <token_hash>")
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+      logger.warning("Missing or invalid Authorization header")
+      return Response(
+        json.dumps({"error": "Missing or invalid Authorization header"}),
+        status=401,
+        content_type="application/json",
+      )
+
+    token_hash = auth_header[7:]  # Remove "Bearer " prefix
+
+    try:
+      tenant = AuthenticateTenant(token_hash).execute()
+      request.tenant = tenant
+      return f(*args, **kwargs)
+    except Exception as e:
+      logger.warning(f"Authentication failed: {e}")
+      return Response(
+        json.dumps({"error": "Invalid or expired access token"}),
+        status=401,
+        content_type="application/json",
+      )
+
+  return decorated_function
 
 
 def _parse_timestamp(value) -> datetime:
@@ -52,6 +86,7 @@ def _parse_allocations(values: list[dict]) -> list[dict]:
 
 
 @app.route("/taxos.v1.TaxosApi/ListBuckets", methods=["POST"])
+@require_auth
 def list_buckets():
   logger.info("ListBuckets called via ConnectRPC")
   try:
@@ -77,6 +112,7 @@ def list_buckets():
 
 
 @app.route("/taxos.v1.TaxosApi/CreateBucket", methods=["POST"])
+@require_auth
 def create_bucket():
   logger.info("CreateBucket called via ConnectRPC")
   try:
@@ -96,6 +132,7 @@ def create_bucket():
 
 
 @app.route("/taxos.v1.TaxosApi/CreateReceipt", methods=["POST"])
+@require_auth
 def create_receipt():
   logger.info("CreateReceipt called via ConnectRPC")
   try:
@@ -147,6 +184,7 @@ def create_receipt():
 
 
 @app.route("/taxos.v1.TaxosApi/GetBucket", methods=["POST"])
+@require_auth
 def get_bucket():
   logger.info("GetBucket called via ConnectRPC")
   try:
@@ -167,6 +205,7 @@ def get_bucket():
 
 
 @app.route("/taxos.v1.TaxosApi/UpdateBucket", methods=["POST"])
+@require_auth
 def update_bucket():
   logger.info("UpdateBucket called via ConnectRPC")
   try:
@@ -188,6 +227,7 @@ def update_bucket():
 
 # DeleteBucket RPC adapter
 @app.route("/taxos.v1.TaxosApi/DeleteBucket", methods=["POST"])
+@require_auth
 def delete_bucket():
   logger.info("DeleteBucket called via ConnectRPC")
   try:

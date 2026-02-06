@@ -24,6 +24,9 @@ class Tenant:
     if not isinstance(self.guid, UUID):
       self.guid = UUID(self.guid)
 
+  def hydrate(self) -> "Tenant":
+    return self
+
 
 @dataclass
 class TenantRef:
