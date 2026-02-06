@@ -5,4 +5,4 @@ from dataclasses import dataclass
 class Serve:
   "Start a development server."
 
-  no_watch: bool = False
+  no_debug: bool = False

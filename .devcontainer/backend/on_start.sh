@@ -8,4 +8,4 @@ fi
 tmux kill-window -t server 2>/dev/null || true
 
 # Create a fresh server window
-tmux new-window -n server "PYTHONPATH=backend python -m debugpy --listen 5678 backend/api/connect_http_server.py"
+tmux new-window -n server "scaf /workspaces/taxos --call dev/serve"
