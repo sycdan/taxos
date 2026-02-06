@@ -1,5 +1,5 @@
 # Add project-specific aliases to the shell:
-eval "$(scaf .)"
+eval "$(scaf backend)"
 # Add scaf's user aliases to the shell:
 eval "$(scaf)"
 # Echo all scaf aliases:
