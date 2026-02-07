@@ -6,6 +6,7 @@ from urllib.request import Request, urlopen
 
 from google.protobuf.timestamp_pb2 import Timestamp
 from taxos.access.token.generate.command import GenerateAccessToken
+from taxos.access.token.revoke.command import RevokeToken
 from taxos.tenant.create.command import CreateTenant
 from taxos.tenant.delete.command import DeleteTenant
 from taxos.tenant.entity import TenantRef
@@ -105,10 +106,9 @@ def handle(command: TestApi):
   tenant_ref = TenantRef(tenant.guid.hex)
   access_token = GenerateAccessToken(tenant=tenant_ref).execute()
   print(f"✓ Generated access token: {access_token.key}")
-
-  print("\nStarting API tests...")
-  test(command.port, access_token.key)
-
-  print("Deleting test tenant...")
-  DeleteTenant(ref=tenant_ref).execute()
-  print("✓ Deleted test tenant.")
+  try:
+    print("\nStarting API tests...")
+    test(command.port, access_token.key)
+  finally:
+    RevokeToken(hash=access_token.key).execute()
+    DeleteTenant(ref=tenant_ref).execute()
