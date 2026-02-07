@@ -8,7 +8,7 @@ from taxos.tools import guid, json
 logger = logging.getLogger(__name__)
 
 
-def handle(command: CreateReceipt) -> Receipt:
+def handle(command: CreateReceipt, tenant_guid) -> Receipt:
   logger.info(f"Handling {command}")
   receipt = Receipt(
     guid=guid.uuid7(),
@@ -20,6 +20,7 @@ def handle(command: CreateReceipt) -> Receipt:
     ref=command.ref,
     notes=command.notes,
     hash=command.hash,
+    tenant_guid=tenant_guid,
   )
 
   if receipt.state_file.exists() and receipt.state_file.read_text().strip():

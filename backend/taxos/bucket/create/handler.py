@@ -8,9 +8,9 @@ from taxos.tools import guid, json
 logger = logging.getLogger(__name__)
 
 
-def handle(command: CreateBucket) -> Bucket:
+def handle(command: CreateBucket, tenant_guid) -> Bucket:
   logger.info(f"Handling {command}")
-  bucket = Bucket(guid.uuid7(), command.name)  # type: ignore
+  bucket = Bucket(guid.uuid7(), command.name, tenant_guid)  # type: ignore
 
   if bucket.state_file.exists() and bucket.state_file.read_text().strip():
     raise RuntimeError(f"Bucket {bucket.name} already exists.")

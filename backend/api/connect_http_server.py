@@ -43,7 +43,7 @@ def require_auth(f):
 
     try:
       tenant = AuthenticateTenant(token_hash).execute()
-      request.tenant = tenant
+      request.tenant = tenant  # type: ignore
       return f(*args, **kwargs)
     except Exception as e:
       logger.warning(f"Authentication failed: {e}")
@@ -90,7 +90,7 @@ def _parse_allocations(values: list[dict]) -> list[dict]:
 def list_buckets():
   logger.info("ListBuckets called via ConnectRPC")
   try:
-    repo = ListBuckets().execute()
+    repo = ListBuckets().execute(request.tenant.guid)
     buckets = [
       models.BucketSummary(
         bucket=models.Bucket(
@@ -117,7 +117,7 @@ def create_bucket():
   logger.info("CreateBucket called via ConnectRPC")
   try:
     request_data = request.get_json()
-    bucket = CreateBucket(request_data.get("name", "")).execute()
+    bucket = CreateBucket(request_data.get("name", "")).execute(request.tenant.guid)
 
     response = models.Bucket(
       guid=str(bucket.guid),
@@ -149,9 +149,8 @@ def create_receipt():
       allocations=allocations,
       ref=request_data.get("ref") or "",
       notes=request_data.get("notes") or "",
-      file=request_data.get("file") or None,
       hash=request_data.get("hash") or None,
-    ).execute()
+    ).execute(request.tenant.guid)
 
     response_date = _parse_timestamp(receipt.date)
     ts = Timestamp()
@@ -172,7 +171,6 @@ def create_receipt():
       ],
       ref=receipt.ref or "",
       notes=receipt.notes or "",
-      file=receipt.file or "",
       hash=receipt.hash or "",
     )
     response_dict = MessageToDict(response, preserving_proto_field_name=True)
@@ -190,7 +188,7 @@ def get_bucket():
   try:
     request_data = request.get_json()
     bucket_ref = BucketRef(guid=request_data.get("guid", ""))
-    bucket = LoadBucket(ref=bucket_ref).execute()
+    bucket = LoadBucket(ref=bucket_ref).execute(request.tenant.guid)
 
     response = models.Bucket(
       guid=str(bucket.guid),
@@ -211,7 +209,7 @@ def update_bucket():
   try:
     request_data = request.get_json()
     bucket_ref = BucketRef(guid=request_data.get("guid", ""))
-    bucket = UpdateBucket(ref=bucket_ref, name=request_data.get("name", "")).execute()
+    bucket = UpdateBucket(ref=bucket_ref, name=request_data.get("name", "")).execute(request.tenant.guid)
 
     response = models.Bucket(
       guid=str(bucket.guid),
@@ -233,7 +231,7 @@ def delete_bucket():
   try:
     request_data = request.get_json()
     bucket_ref = BucketRef(guid=request_data.get("guid", ""))
-    success = DeleteBucket(ref=bucket_ref).execute()
+    success = DeleteBucket(ref=bucket_ref).execute(request.tenant.guid)
 
     response = models.DeleteBucketResponse(success=success)
     response_dict = MessageToDict(response, preserving_proto_field_name=True)

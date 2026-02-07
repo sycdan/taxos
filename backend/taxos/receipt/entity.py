@@ -13,6 +13,7 @@ class Receipt:
   total: float
   date: str  # ISO8601 with offset
   timezone: str
+  tenant_guid: UUID
   allocations: list[dict] = field(default_factory=list)
   ref: str = None
   notes: str = None
@@ -20,7 +21,7 @@ class Receipt:
 
   @cached_property
   def content_folder(self) -> Path:
-    return get_content_folder(self.guid)
+    return get_content_folder(self.tenant_guid, self.guid)
 
   @cached_property
   def state_file(self) -> Path:
@@ -29,6 +30,8 @@ class Receipt:
   def __post_init__(self):
     if not isinstance(self.guid, UUID):
       self.guid = UUID(self.guid)
+    if not isinstance(self.tenant_guid, UUID):
+      self.tenant_guid = UUID(self.tenant_guid)
 
 
 @dataclass

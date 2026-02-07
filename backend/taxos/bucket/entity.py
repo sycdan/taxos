@@ -10,10 +10,11 @@ from taxos.bucket.tools import get_content_folder
 class Bucket:
   guid: UUID
   name: str
+  tenant_guid: UUID
 
   @cached_property
   def content_folder(self) -> Path:
-    return get_content_folder(self.guid)
+    return get_content_folder(self.tenant_guid, self.guid)
 
   @cached_property
   def state_file(self) -> Path:
@@ -22,6 +23,8 @@ class Bucket:
   def __post_init__(self):
     if not isinstance(self.guid, UUID):
       self.guid = UUID(self.guid)
+    if not isinstance(self.tenant_guid, UUID):
+      self.tenant_guid = UUID(self.tenant_guid)
 
 
 @dataclass

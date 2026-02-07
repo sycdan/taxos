@@ -7,7 +7,7 @@ from taxos.bucket.entity import Bucket, BucketRef
 class LoadBucket:
   ref: BucketRef
 
-  def execute(self) -> Bucket:
+  def execute(self, tenant_guid=None) -> Bucket:
     from taxos.bucket.load.handler import handle
 
-    return handle(self)
+    return handle(self, tenant_guid)

@@ -20,7 +20,7 @@ class CreateReceipt:
     if self.allocations is None:
       self.allocations = []
 
-  def execute(self):
+  def execute(self, tenant_guid=None):
     from taxos.receipt.create.handler import handle
 
-    return handle(self)
+    return handle(self, tenant_guid)

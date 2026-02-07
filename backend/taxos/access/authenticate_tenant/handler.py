@@ -3,7 +3,6 @@ import json
 from taxos.access.authenticate_tenant.command import AuthenticateTenant
 from taxos.access.token.tools import get_token_file
 from taxos.tenant.entity import Tenant, TenantRef
-from taxos.tenant.load.query import LoadTenant
 
 
 def handle(command: AuthenticateTenant) -> Tenant:

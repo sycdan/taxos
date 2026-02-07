@@ -15,14 +15,14 @@ from backend.taxos import DATA_DIR, ROOT_DIR
 from dev.test_api.command import TestApi
 
 
-def call_connect(port: int, method: str, payload: dict, token: str = ""):
+def call_connect(port: int, method: str, payload: dict, token: str = "", timeout: int = 30):
   url = f"http://localhost:{port}/taxos.v1.TaxosApi/{method}"
   data = json.dumps(payload).encode("utf-8")
   headers = {"Content-Type": "application/json"}
   if token:
     headers["Authorization"] = f"Bearer {token}"
   request = Request(url, data=data, headers=headers)
-  with urlopen(request, timeout=10) as response:
+  with urlopen(request, timeout=timeout) as response:
     return json.loads(response.read().decode("utf-8"))
 
 
