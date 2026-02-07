@@ -9,6 +9,9 @@ from taxos.tools.guid import parse_guid
 
 @dataclass
 class Tenant:
+  class DoesNotExist(RuntimeError):
+    pass
+
   guid: UUID
   name: str
   token_count: int = field(default=0, metadata={"help": "Number of access tokens issued to this tenant."})
@@ -25,7 +28,7 @@ class Tenant:
     if not isinstance(self.guid, UUID):
       self.guid = UUID(self.guid)
 
-  def hydrate(self) -> "Tenant":
+  def hydrate(self):
     return self
 
 
