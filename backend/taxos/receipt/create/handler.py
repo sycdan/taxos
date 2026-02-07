@@ -26,6 +26,6 @@ def handle(command: CreateReceipt, tenant_guid) -> Receipt:
   if receipt.state_file.exists() and receipt.state_file.read_text().strip():
     raise RuntimeError(f"Receipt {receipt.guid} already exists.")
 
-  os.makedirs(receipt.content_folder, exist_ok=True)
+  os.makedirs(receipt.content_dir, exist_ok=True)
   receipt.state_file.write_text(json.dumps(receipt, indent=2))
   return receipt

@@ -1,14 +1,14 @@
 from pathlib import Path
 from uuid import UUID
 
-from taxos.tenant.tools import get_content_folder as get_tenant_folder
+from taxos.tenant.tools import get_receipts_dir
 
 
-def get_content_folder(tenant_guid: UUID, receipt_guid: UUID) -> Path:
-  tenant_folder = get_tenant_folder(tenant_guid)
-  return tenant_folder / "receipts" / f"receipt_{receipt_guid.hex}"
+def get_content_dir(tenant_guid: UUID, receipt_guid: UUID) -> Path:
+  receipts_dir = get_receipts_dir(tenant_guid)
+  return receipts_dir / receipt_guid.hex
 
 
 def get_state_file(tenant_guid: UUID, receipt_guid: UUID) -> Path:
-  content_folder = get_content_folder(tenant_guid, receipt_guid)
-  return content_folder / "state.json"
+  content_dir = get_content_dir(tenant_guid, receipt_guid)
+  return content_dir / "state.json"

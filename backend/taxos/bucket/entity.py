@@ -3,7 +3,7 @@ from functools import cached_property
 from pathlib import Path
 from uuid import UUID
 
-from taxos.bucket.tools import get_content_folder
+from taxos.bucket.tools import get_content_dir
 
 
 @dataclass
@@ -13,12 +13,12 @@ class Bucket:
   tenant_guid: UUID
 
   @cached_property
-  def content_folder(self) -> Path:
-    return get_content_folder(self.tenant_guid, self.guid)
+  def content_dir(self) -> Path:
+    return get_content_dir(self.tenant_guid, self.guid)
 
   @cached_property
   def state_file(self) -> Path:
-    return self.content_folder / "state.json"
+    return self.content_dir / "state.json"
 
   def __post_init__(self):
     if not isinstance(self.guid, UUID):

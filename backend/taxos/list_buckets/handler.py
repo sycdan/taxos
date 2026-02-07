@@ -13,14 +13,17 @@ def handle(query: ListBuckets, tenant_guid):
   logger.info(f"Handling {query}")
   repo = BucketRepo()
   buckets_dir = get_buckets_dir(tenant_guid)
-  
+
   if not buckets_dir.exists():
     logger.info(f"No buckets directory found for tenant {tenant_guid}")
     return repo
-    
-  for content_folder in buckets_dir.iterdir():
-    logger.debug(f"Checking folder: {content_folder}")
-    if guid := parse_guid(content_folder):
+
+  for content_dir in buckets_dir.iterdir():
+    if not content_dir.is_dir():
+      logger.debug(f"Skipping non-directory item: {content_dir}")
+      continue
+    logger.debug(f"Checking dir: {content_dir}")
+    if guid := parse_guid(content_dir):
       logger.info(f"Found bucket with GUID: {guid}")
       if bucket := LoadBucket(ref=BucketRef(guid=guid)).execute(tenant_guid):
         repo.add(bucket)

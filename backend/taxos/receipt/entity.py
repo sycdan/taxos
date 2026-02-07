@@ -3,7 +3,7 @@ from functools import cached_property
 from pathlib import Path
 from uuid import UUID
 
-from taxos.receipt.tools import get_content_folder
+from taxos.receipt.tools import get_content_dir, get_state_file
 
 
 @dataclass
@@ -20,12 +20,12 @@ class Receipt:
   hash: str = None
 
   @cached_property
-  def content_folder(self) -> Path:
-    return get_content_folder(self.tenant_guid, self.guid)
+  def content_dir(self) -> Path:
+    return get_content_dir(self.tenant_guid, self.guid)
 
   @cached_property
   def state_file(self) -> Path:
-    return self.content_folder / "state.json"
+    return get_state_file(self.tenant_guid, self.guid)
 
   def __post_init__(self):
     if not isinstance(self.guid, UUID):

@@ -3,7 +3,7 @@ from functools import cached_property
 from pathlib import Path
 from uuid import UUID
 
-from taxos.tenant.tools import get_content_folder, get_state_file
+from taxos.tenant.tools import get_content_dir, get_state_file
 
 
 @dataclass
@@ -13,8 +13,8 @@ class Tenant:
   token_count: int = field(default=0, metadata={"help": "Number of access tokens issued to this tenant."})
 
   @cached_property
-  def content_folder(self) -> Path:
-    return get_content_folder(self.guid)
+  def content_dir(self) -> Path:
+    return get_content_dir(self.guid)
 
   @cached_property
   def state_file(self) -> Path:

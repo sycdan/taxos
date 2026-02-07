@@ -15,6 +15,6 @@ def handle(command: CreateBucket, tenant_guid) -> Bucket:
   if bucket.state_file.exists() and bucket.state_file.read_text().strip():
     raise RuntimeError(f"Bucket {bucket.name} already exists.")
 
-  os.makedirs(bucket.content_folder, exist_ok=True)
+  os.makedirs(bucket.content_dir, exist_ok=True)
   bucket.state_file.write_text(json.dumps(bucket, indent=2))
   return bucket
