@@ -15,8 +15,12 @@ def parse_guid(folder: Path | str) -> UUID | None:
   logger.debug(f"{folder=}")
   if not isinstance(folder, Path):
     folder = Path(folder)
+  name = folder.name
   try:
-    return UUID(folder.name.split("_")[1])
+    try:
+      return UUID(name)
+    except ValueError:
+      return UUID(name.split("_")[1])
   except (IndexError, ValueError):
-    logger.warning(f"Failed to parse GUID from folder name: {folder.name}")
+    logger.warning(f"Failed to parse GUID from folder name: {name}")
     return None
