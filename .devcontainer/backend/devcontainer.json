@@ -1,8 +1,15 @@
 {
   "name": "Taxos Backend Development Environment",
   "dockerComposeFile": [
-    "../../docker-compose.yml"
+    "../../docker-compose.yml",
+    "docker-compose.override.yml"
   ],
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12"
+    },
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
   "service": "backend",
   "shutdownAction": "none",
   "workspaceFolder": "/workspaces/taxos",
@@ -23,7 +30,6 @@
       ]
     }
   },
-  "features": {},
   "postCreateCommand": "bash .devcontainer/backend/on_create.sh",
   "postStartCommand": "bash .devcontainer/backend/on_start.sh",
   "postAttachCommand": "bash .devcontainer/backend/on_attach.sh"
