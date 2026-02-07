@@ -36,6 +36,13 @@ export const client = createClient(
   })
 );
 
+// Helper to convert Date to Timestamp
+export const dateToTimestamp = (date: Date) => {
+  const seconds = BigInt(Math.floor(date.getTime() / 1000));
+  const nanos = (date.getTime() % 1000) * 1_000_000;
+  return { seconds, nanos };
+};
+
 export const setToken = (token: string) => {
   localStorage.setItem("taxos_token", token);
   // Create a new client to pick up the new token

@@ -34,13 +34,13 @@ We need the grpc server to return all unallocated receipts for the tenant when t
 ### Frontend Changes
 
 #### 5. Add API client method
-- [ ] Add `listUnallocatedReceipts` method to `frontend/src/api/client.ts`
-- [ ] Include date range parameters matching other list methods
+- [x] Add `listUnallocatedReceipts` method to `frontend/src/api/client.ts`
+- [x] Include date range parameters matching other list methods
 
 #### 6. Update context logic
-- [ ] Modify `TaxosContext.tsx` to call backend for unallocated receipts
-- [ ] Replace current client-side filtering logic
-- [ ] Ensure proper error handling and loading states
+- [x] Modify `TaxosContext.tsx` to call backend for unallocated receipts
+- [x] Replace current client-side filtering logic
+- [x] Ensure proper error handling and loading states
 
 ### Testing
 

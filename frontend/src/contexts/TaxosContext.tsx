@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Timestamp } from '@bufbuild/protobuf';
 import type { Bucket, Receipt } from '../types';
 import { UNALLOCATED_BUCKET_ID } from '../types';
-import { client, getToken } from '../api/client';
+import { client, getToken, dateToTimestamp } from '../api/client';
 
 const slugify = (text: string) => {
   return text
@@ -29,6 +29,7 @@ interface TaxosContextType {
   getBucketTotal: (bucketId: string, startDate?: Date, endDate?: Date) => number;
   getBucketCount: (bucketId: string, startDate?: Date, endDate?: Date) => number;
   refreshBuckets: () => Promise<void>;
+  getUnallocatedReceipts: (startDate: Date, endDate: Date) => Promise<Receipt[]>;
 }
 
 const TaxosContext = createContext<TaxosContextType | undefined>(undefined);
@@ -42,6 +43,16 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(!!getToken());
+
+  // Helper to convert Timestamp to ISO string
+  const timestampToIso = (ts?: Timestamp) => {
+    if (!ts) return new Date().toISOString();
+    const asAny = ts as any;
+    if (typeof asAny.toDate === 'function') return asAny.toDate().toISOString();
+    const seconds = Number(asAny.seconds ?? 0);
+    const nanos = Number(asAny.nanos ?? 0);
+    return new Date(seconds * 1000 + nanos / 1_000_000).toISOString();
+  };
 
   // Keep receipts in localStorage in sync
   useEffect(() => {
@@ -158,7 +169,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const toTimestamp = (iso: string) => {
       const date = new Date(iso);
-      const seconds = Math.floor(date.getTime() / 1000);
+      const seconds = BigInt(Math.floor(date.getTime() / 1000));
       const nanos = (date.getTime() % 1000) * 1_000_000;
       return new Timestamp({ seconds, nanos });
     };
@@ -270,6 +281,42 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }).length;
   };
 
+  const getUnallocatedReceipts = async (startDate: Date, endDate: Date): Promise<Receipt[]> => {
+    try {
+      const response = await client.listUnallocatedReceipts({
+        startDate: dateToTimestamp(startDate) as any,
+        endDate: dateToTimestamp(endDate) as any,
+      });
+
+      const unallocatedReceipts: Receipt[] = response.receipts.map(r => ({
+        id: r.guid,
+        vendor: r.vendor,
+        total: r.total,
+        date: timestampToIso(r.date),
+        timezone: r.timezone,
+        allocations: r.allocations.map(a => ({
+          bucketId: a.bucketGuid,
+          amount: a.amount,
+        })),
+        ref: r.ref || undefined,
+        notes: r.notes || undefined,
+        file: r.file || undefined,
+        hash: r.hash || undefined,
+      }));
+
+      return unallocatedReceipts;
+    } catch (error) {
+      console.error('Failed to load unallocated receipts:', error);
+      // Fallback to client-side filtering
+      return receipts.filter(r => {
+        const rDate = new Date(r.date);
+        if (rDate < startDate || rDate > endDate) return false;
+        const totalAllocated = r.allocations.reduce((sum, a) => sum + a.amount, 0);
+        return totalAllocated < r.total || (r.total === 0 && r.allocations.length === 0);
+      }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+  };
+
   return (
     <TaxosContext.Provider value={{
       buckets,
@@ -285,7 +332,8 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       deleteReceipt,
       getBucketTotal,
       getBucketCount,
-      refreshBuckets
+      refreshBuckets,
+      getUnallocatedReceipts,
     }}>
       {children}
     </TaxosContext.Provider>

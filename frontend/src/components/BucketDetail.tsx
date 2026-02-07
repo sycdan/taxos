@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Receipt as ReceiptIcon, Calendar, Hash, Edit2, Trash2, Check, X } from 'lucide-react';
 import type { Bucket, Receipt } from '../types';
 import { UNALLOCATED_BUCKET_ID } from '../types';
 import { format } from 'date-fns';
+import { useTaxos } from '../contexts/TaxosContext';
 
 interface BucketDetailProps {
   bucketId: string;
@@ -30,8 +31,26 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
   onEditReceipt,
   isNameTaken
 }) => {
+  const { getUnallocatedReceipts } = useTaxos();
   const [isEditing, setIsEditing] = React.useState(false);
   const [editName, setEditName] = React.useState('');
+  const [unallocatedReceipts, setUnallocatedReceipts] = useState<Receipt[]>([]);
+
+  // Fetch unallocated receipts when bucket changes or date range changes
+  useEffect(() => {
+    if (bucketId === UNALLOCATED_BUCKET_ID) {
+      const fetchUnallocated = async () => {
+        try {
+          const data = await getUnallocatedReceipts(startDate, endDate);
+          setUnallocatedReceipts(data);
+        } catch (error) {
+          console.error('Failed to fetch unallocated receipts:', error);
+          setUnallocatedReceipts([]);
+        }
+      };
+      void fetchUnallocated();
+    }
+  }, [bucketId, startDate, endDate, getUnallocatedReceipts]);
   const bucketName = useMemo(() => {
     if (bucketId === UNALLOCATED_BUCKET_ID) return 'Unallocated';
     return buckets.find(b => b.id === bucketId)?.name || 'Unknown Bucket';
@@ -56,6 +75,12 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
   };
 
   const filteredReceipts = useMemo(() => {
+    // Use backend data for unallocated bucket
+    if (bucketId === UNALLOCATED_BUCKET_ID) {
+      return unallocatedReceipts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+
+    // Use client-side filtering for regular buckets
     return receipts.filter(r => {
       const rDate = new Date(r.date);
       if (rDate < startDate || rDate > endDate) return false;
@@ -63,15 +88,9 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
       const hasAlloc = r.allocations.some(a => a.bucketId === bucketId);
       if (hasAlloc) return true;
 
-      // If unallocated bucket, check if there's a remainder or it's empty
-      if (bucketId === UNALLOCATED_BUCKET_ID) {
-        const totalAllocated = r.allocations.reduce((sum, a) => sum + a.amount, 0);
-        return totalAllocated < r.total || (r.total === 0 && r.allocations.length === 0);
-      }
-
       return false;
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [receipts, bucketId, startDate, endDate]);
+  }, [receipts, bucketId, startDate, endDate, unallocatedReceipts]);
 
   const bucketTotal = useMemo(() => {
     return filteredReceipts.reduce((sum, r) => {
