@@ -20,19 +20,22 @@
 
 ## Move Buckets/Receipts Under Tenants
 
-- [ ] Update bucket storage paths to be under tenants
-- [ ] Update receipt storage paths to be under tenants
-- [ ] Update all bucket handlers to accept tenant context
-- [ ] Update all receipt handlers to accept tenant context
-- [ ] Update ListBuckets to filter by tenant
-- [ ] Test CRUD operations still work
+- [x] Update bucket storage paths to be under tenants
+- [x] Update receipt storage paths to be under tenants
+- [x] Update all bucket handlers to accept tenant context
+- [x] Update all receipt handlers to accept tenant context
+- [x] Update ListBuckets to filter by tenant
+- [x] Test CRUD operations still work
 
 ## Frontend Integration
 
-- [ ] Add access token input to frontend
-- [ ] Store token in localStorage
-- [ ] Send token in API request headers
-- [ ] Handle 401 responses
+- [x] Add access token input to frontend
+- [x] Store token in localStorage
+- [x] Send token in API request headers
+- [x] Handle 401 responses
+- [x] Add logout button to UI
+
+## ✅ COMPLETE - All tenant support functionality is now fully implemented!
 
 ## Architecture Notes
 

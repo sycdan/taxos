@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Plus, LayoutDashboard, ArrowLeft } from "lucide-react";
+import { Plus, LayoutDashboard, ArrowLeft, LogOut } from "lucide-react";
 import Dashboard from "./components/Dashboard";
 import BucketDetail from "./components/BucketDetail";
 import ReceiptModal from "./components/ReceiptModal";
+import LoginModal from "./components/LoginModal";
 import { useTaxos } from "./contexts/TaxosContext";
+import { clearToken } from "./api/client";
 import {
   format,
   startOfMonth,
@@ -31,6 +33,7 @@ const App: React.FC = () => {
     updateBucket,
     deleteBucket,
     isNameTaken,
+    authenticated,
   } = useTaxos();
   const [currentBucketId, setCurrentBucketId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,6 +44,7 @@ const App: React.FC = () => {
     undefined,
   );
   const [showEmpty, setShowEmpty] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(!authenticated);
 
   const [filterConfig, setFilterConfig] = useState<FilterConfig>(() => {
     const saved = localStorage.getItem("taxos_filter_config");
@@ -55,6 +59,11 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem("taxos_filter_config", JSON.stringify(filterConfig));
   }, [filterConfig]);
+
+  // Handle authentication state changes
+  useEffect(() => {
+    setShowLoginModal(!authenticated);
+  }, [authenticated]);
 
   // Derive start/end dates for the rest of the app
   const dateRange = (() => {
@@ -146,12 +155,21 @@ const App: React.FC = () => {
     setCurrentBucketId(null);
   };
 
+  if (!authenticated) {
+    return (
+      <LoginModal
+        isOpen={showLoginModal && !authenticated}
+        onLogin={(token) => setShowLoginModal(false)}
+      />
+    );
+  }
+
   return (
     <div className="app-layout">
       <aside className="sidebar">
         <div className="logo mb-12">TAXOS</div>
 
-        <nav className="flex flex-col gap-2">
+        <nav className="flex flex-col gap-2 flex-1">
           <button
             className={`btn ${!currentBucketId ? "btn-primary" : "btn-ghost"} justify-start w-full`}
             onClick={navigateToDashboard}
@@ -159,6 +177,16 @@ const App: React.FC = () => {
             <LayoutDashboard size={20} />
             <span>Receipts</span>
           </button>
+
+          {authenticated && (
+            <button
+              className="btn btn-ghost justify-start w-full mt-auto text-red-600 hover:text-red-700"
+              onClick={clearToken}
+            >
+              <LogOut size={20} />
+              <span>Logout</span>
+            </button>
+          )}
         </nav>
       </aside>
 

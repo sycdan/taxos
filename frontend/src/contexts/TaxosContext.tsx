@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Timestamp } from '@bufbuild/protobuf';
 import type { Bucket, Receipt } from '../types';
 import { UNALLOCATED_BUCKET_ID } from '../types';
-import { client } from '../api/client';
+import { client, getToken } from '../api/client';
 
 const slugify = (text: string) => {
   return text
@@ -18,6 +18,7 @@ interface TaxosContextType {
   buckets: Bucket[];
   receipts: Receipt[];
   loading: boolean;
+  authenticated: boolean;
   isNameTaken: (name: string, excludeId?: string) => boolean;
   addBucket: (name: string) => Promise<boolean>;
   updateBucket: (id: string, name: string) => Promise<boolean>;
@@ -40,6 +41,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return saved ? JSON.parse(saved) : [];
   });
   const [loading, setLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState(!!getToken());
 
   // Keep receipts in localStorage in sync
   useEffect(() => {
@@ -49,6 +51,10 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const refreshBuckets = async () => {
     try {
       setLoading(true);
+      if (!authenticated) {
+        setLoading(false);
+        return;
+      }
       const response = await client.listBuckets({});
       const apiBuckets: Bucket[] = response.buckets.map(bucketSummary => ({
         id: bucketSummary.bucket!.guid,
@@ -65,10 +71,14 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  // Load buckets on mount
+  // Load buckets on mount if authenticated
   useEffect(() => {
-    refreshBuckets();
-  }, []);
+    if (authenticated) {
+      refreshBuckets();
+    } else {
+      setLoading(false);
+    }
+  }, [authenticated]);
 
   // Keep localStorage as backup
   useEffect(() => {
@@ -265,6 +275,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       buckets,
       receipts,
       loading,
+      authenticated,
       isNameTaken,
       addBucket,
       updateBucket,

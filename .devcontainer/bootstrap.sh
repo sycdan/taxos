@@ -18,4 +18,4 @@ curl -sSL \
   && chmod +x ~/.local/bin/grpcurl
 
 git clone https://github.com/sycdan/dotfiles.git ~/dotfiles
-bash dotfiles/install.sh
+bash ~/dotfiles/install.sh
