@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 from uuid import UUID
 
 from uuid_extensions import uuid7str
@@ -11,16 +10,13 @@ def uuid7() -> UUID:
   return UUID(uuid7str())
 
 
-def parse_guid(folder: Path | str) -> UUID | None:
-  logger.debug(f"{folder=}")
-  if not isinstance(folder, Path):
-    folder = Path(folder)
-  name = folder.name
+def parse_guid(key: str) -> UUID | None:
+  logger.debug(f"Parsing guid from {key=}")
   try:
     try:
-      return UUID(name)
+      return UUID(key)
     except ValueError:
-      return UUID(name.split("_")[1])
+      return UUID(key.split("_")[1])
   except (IndexError, ValueError):
-    logger.warning(f"Failed to parse GUID from folder name: {name}")
+    logger.warning(f"Failed to parse GUID from {key=}")
     return None

@@ -4,6 +4,7 @@ from pathlib import Path
 from uuid import UUID
 
 from taxos.tenant.tools import get_content_dir, get_state_file
+from taxos.tools.guid import parse_guid
 
 
 @dataclass
@@ -34,9 +35,9 @@ class TenantRef:
   guid: UUID = field(init=False)
 
   def __post_init__(self):
-    try:
-      self.guid = UUID(self.key)
-    except Exception:
+    if guid := parse_guid(self.key):
+      self.guid = guid
+    else:
       raise ValueError("key must be a valid UUID")
 
   def __hash__(self) -> int:

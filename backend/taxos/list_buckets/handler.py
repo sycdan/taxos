@@ -23,7 +23,7 @@ def handle(query: ListBuckets, tenant_guid):
       logger.debug(f"Skipping non-directory item: {content_dir}")
       continue
     logger.debug(f"Checking dir: {content_dir}")
-    if guid := parse_guid(content_dir):
+    if guid := parse_guid(content_dir.name):
       logger.info(f"Found bucket with GUID: {guid}")
       if bucket := LoadBucket(ref=BucketRef(guid=guid)).execute(tenant_guid):
         repo.add(bucket)
