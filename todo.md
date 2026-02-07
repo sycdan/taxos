@@ -7,10 +7,10 @@ We need the grpc server to return all unallocated receipts for the tenant when t
 ### Protocol Buffers
 
 #### 1. Update proto definitions
-- [ ] Add service method to TaxosApi service
-- [ ] Add request message with optional date filtering
-- [ ] Add response message returning list of receipts
-- [ ] Regenerate Python gRPC stubs (dev.gen-proto)
+- [x] Add service method to TaxosApi service
+- [x] Add request message with optional date filtering
+- [x] Add response message returning list of receipts
+- [x] Regenerate Python gRPC stubs (dev.gen-proto)
 
 ### Backend Changes
 

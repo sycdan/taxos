@@ -14,6 +14,8 @@ service TaxosApi {
   rpc GetBucket(GetBucketRequest) returns (Bucket);
   // List all buckets
   rpc ListBuckets(ListBucketsRequest) returns (ListBucketsResponse);
+  // List all unallocated receipts
+  rpc ListUnallocatedReceipts(ListUnallocatedReceiptsRequest) returns (ListUnallocatedReceiptsResponse);
   // Update a bucket's details
   rpc UpdateBucket(UpdateBucketRequest) returns (Bucket);
   // Delete a bucket by GUID
@@ -72,6 +74,15 @@ message ListBucketsRequest {
 
 message ListBucketsResponse {
   repeated BucketSummary buckets = 1;
+}
+
+message ListUnallocatedReceiptsRequest {
+  google.protobuf.Timestamp start_date = 1;
+  google.protobuf.Timestamp end_date   = 2;
+}
+
+message ListUnallocatedReceiptsResponse {
+  repeated Receipt receipts = 1;
 }
 
 message BucketSummary {
