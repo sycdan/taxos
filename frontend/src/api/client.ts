@@ -1,4 +1,4 @@
-import { createPromiseClient, type Interceptor, Code } from "@connectrpc/connect";
+import { createClient, type Interceptor, Code } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { TaxosApi } from "./v1/taxos_service_connect";
 
@@ -15,7 +15,7 @@ const tokenInterceptor: Interceptor = (next) => async (req) => {
   if (token) {
     req.header.set("Authorization", `Bearer ${token}`);
   }
-  
+
   try {
     return await next(req);
   } catch (error: unknown) {
@@ -28,17 +28,13 @@ const tokenInterceptor: Interceptor = (next) => async (req) => {
   }
 };
 
-const createClient = () => {
-  return createPromiseClient(
-    TaxosApi,
-    createConnectTransport({
-      baseUrl,
-      interceptors: [tokenInterceptor],
-    })
-  );
-};
-
-export const client = createClient();
+export const client = createClient(
+  TaxosApi,
+  createConnectTransport({
+    baseUrl,
+    interceptors: [tokenInterceptor],
+  })
+);
 
 export const setToken = (token: string) => {
   localStorage.setItem("taxos_token", token);
