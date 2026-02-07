@@ -19,6 +19,19 @@ class Receipt:
   notes: str = None
   hash: str = None
 
+  @property
+  def is_unallocated(self) -> bool:
+    """
+    A receipt is considered unallocated if:
+    - it has no allocations
+    - the sum of allocations is less than the total total
+    """
+    if not self.allocations:
+      return True
+
+    total_allocated = sum(allocation.get("amount", 0) for allocation in self.allocations)
+    return total_allocated < self.total
+
   @cached_property
   def content_dir(self) -> Path:
     return get_content_dir(self.tenant_guid, self.guid)

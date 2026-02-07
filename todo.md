@@ -15,21 +15,21 @@ We need the grpc server to return all unallocated receipts for the tenant when t
 ### Backend Changes
 
 #### 2. Add new gRPC service method
-- [ ] Add `ListUnallocatedReceipts` method to `taxos_service.proto`
-- [ ] Define `ListUnallocatedReceiptsRequest` and `ListUnallocatedReceiptsResponse` messages
-- [ ] Include date filtering (start_date, end_date) like other list operations
+- [x] Add `ListUnallocatedReceipts` method to `taxos_service.proto`
+- [x] Define `ListUnallocatedReceiptsRequest` and `ListUnallocatedReceiptsResponse` messages
+- [x] Include date filtering (start_date, end_date) like other list operations
 
 #### 3. Implement backend handler
-- [ ] Create `list_unallocated_receipts/` module in `backend/taxos/tenant/`
-- [ ] Create `query.py` with `ListUnallocatedReceipts` dataclass
-- [ ] Logic: Load all receipts in a new `unallocted.json` file in the tenant's receipts dir; when a receipt is saved add to the unallocated file if not fully allocated, or remove it if it exists and is fully allocated
-- [ ] Return receipts sorted by date (newest first)
+- [x] Create `list_unallocated_receipts/` module in `backend/taxos/`
+- [x] Create `query.py` with `ListUnallocatedReceipts` dataclass
+- [x] Logic: Load all receipts from tenant's receipts dir; filter for unallocated receipts (no allocations or sum of allocations < total)
+- [x] Return receipts sorted by date (newest first)
 
 #### 4. Add gRPC endpoint
-- [ ] Add handler method in `connect_http_server.py`
-- [ ] Route: `POST /taxos.v1.TaxosApi/ListUnallocatedReceipts`
-- [ ] Include authentication via `@require_auth` decorator
-- [ ] Handle date filtering
+- [x] Add handler method in `connect_http_server.py`
+- [x] Route: `POST /taxos.v1.TaxosApi/ListUnallocatedReceipts`
+- [x] Include authentication via `@require_auth` decorator
+- [x] Handle date filtering
 
 ### Frontend Changes
 
