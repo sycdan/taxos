@@ -96,6 +96,18 @@ def test_api_integration(api_port, test_tenant):
   assert "guid" in receipt
   assert receipt["vendor"] == "Test Vendor"
   assert receipt["total"] == 12.34
+  receipt_guid = receipt["guid"]
+
+  # Unallocated receipts should include the receipt we just created
+  unallocated_response = call_api(api_port, "ListUnallocatedReceipts", {}, token=token)
+  assert "receipts" in unallocated_response
+  unallocated_receipts = unallocated_response["receipts"]
+  our_receipt = next((r for r in unallocated_receipts if r["ref"] == "TEST-REF"), None)
+  assert our_receipt is not None
+  assert our_receipt["vendor"] == "Test Vendor"
+  assert our_receipt["total"] == 12.34
+  assert len(our_receipt.get("allocations", [])) == 0  # Should have no allocations
+  assert our_receipt["guid"] == receipt_guid
 
   # Test: List buckets
   buckets_response = call_api(api_port, "ListBuckets", {}, token=token)

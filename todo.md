@@ -45,9 +45,7 @@ We need the grpc server to return all unallocated receipts for the tenant when t
 ### Testing
 
 #### 7. Add tests
-- [ ] Unit tests for `ListUnallocatedReceipts` query class
-- [ ] Integration tests in `test_api.py`
-- [ ] Test edge cases (all allocated, partial allocations, zero-amount receipts)
+- [x] Integration tests in `test_api.py`
 
 ### Technical Details
 
