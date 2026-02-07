@@ -9,7 +9,7 @@ class ListUnallocatedReceipts:
   start_date: Optional[datetime] = None
   end_date: Optional[datetime] = None
 
-  def execute(self, tenant_guid=None):
+  def execute(self):
     from taxos.list_unallocated_receipts.handler import handle
 
-    return handle(self, tenant_guid)
+    return handle(self)
