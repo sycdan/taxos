@@ -5,7 +5,7 @@ from dataclasses import dataclass
 class ListBuckets:
   """Find all buckets."""
 
-  def execute(self, tenant_guid=None):
+  def execute(self):
     from taxos.list_buckets.handler import handle
 
-    return handle(self, tenant_guid)
+    return handle(self)

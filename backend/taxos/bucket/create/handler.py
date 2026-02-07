@@ -3,18 +3,24 @@ import os
 
 from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.entity import Bucket
+from taxos.bucket.tools import get_state_file
+from taxos.context.tools import require_tenant
 from taxos.tools import guid, json
 
 logger = logging.getLogger(__name__)
 
 
-def handle(command: CreateBucket, tenant_guid) -> Bucket:
-  logger.info(f"Handling {command}")
-  bucket = Bucket(guid.uuid7(), command.name, tenant_guid)  # type: ignore
+def handle(command: CreateBucket) -> Bucket:
+  logger.debug(f"{command=}")
+  tenant = require_tenant()
 
-  if bucket.state_file.exists() and bucket.state_file.read_text().strip():
+  bucket = Bucket(guid.uuid7(), command.name)
+
+  state_file = get_state_file(bucket.guid, tenant.guid)
+  if state_file.exists() and state_file.stat().st_size > 0:
     raise RuntimeError(f"Bucket {bucket.name} already exists.")
 
-  os.makedirs(bucket.content_dir, exist_ok=True)
-  bucket.state_file.write_text(json.dumps(bucket, indent=2))
+  os.makedirs(state_file.parent, exist_ok=True)
+  with state_file.open("w") as f:
+    json.dump(bucket, f)
   return bucket

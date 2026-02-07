@@ -8,7 +8,7 @@ class UpdateBucket:
   ref: BucketRef
   name: str
 
-  def execute(self, tenant_guid=None):
+  def execute(self):
     from taxos.bucket.update.handler import handle
 
-    return handle(self, tenant_guid)
+    return handle(self)

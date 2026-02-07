@@ -1,41 +1,39 @@
 from dataclasses import dataclass, field
-from functools import cached_property
-from pathlib import Path
 from uuid import UUID
 
-from taxos.bucket.tools import get_content_dir
+from taxos.tools.guid import parse_guid
 
 
 @dataclass
 class Bucket:
+  class DoesNotExist(RuntimeError):
+    pass
+
   guid: UUID
   name: str
-  tenant_guid: UUID
-
-  @cached_property
-  def content_dir(self) -> Path:
-    return get_content_dir(self.tenant_guid, self.guid)
-
-  @cached_property
-  def state_file(self) -> Path:
-    return self.content_dir / "state.json"
 
   def __post_init__(self):
     if not isinstance(self.guid, UUID):
       self.guid = UUID(self.guid)
-    if not isinstance(self.tenant_guid, UUID):
-      self.tenant_guid = UUID(self.tenant_guid)
 
 
 @dataclass
 class BucketRef:
-  guid: UUID
+  key: str = field(
+    metadata={"help": "A plain-text reference to a bucket within the current tenant."},
+  )
+  guid: UUID = field(
+    init=False,
+    metadata={"help": "A unique identifier for a bucket."},
+  )
 
   def __post_init__(self):
-    if not self.guid:
-      raise ValueError("guid must be provided for BucketRef.")
-    if not isinstance(self.guid, UUID):
-      self.guid = UUID(self.guid)
+    if not (key := self.key.strip()):
+      raise ValueError("BucketRef key cannot be empty or whitespace.")
+    if guid := parse_guid(key):
+      self.guid = guid
+    else:
+      raise ValueError("key must contain a valid GUID.")
 
   def __hash__(self) -> int:
     return hash(self.guid)
@@ -54,7 +52,7 @@ class BucketRepo:
     """idempotent"""
     if not isinstance(bucket, Bucket):
       raise ValueError("BucketRepo.add requires a Bucket instance.")
-    ref = BucketRef(bucket.guid)
+    ref = BucketRef(bucket.guid.hex)
     self.index[ref] = bucket
 
   def get(self, ref: BucketRef) -> Bucket | None:

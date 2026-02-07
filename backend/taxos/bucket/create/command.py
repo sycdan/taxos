@@ -9,7 +9,7 @@ class CreateBucket:
     if not self.name or not self.name.strip():
       raise ValueError("Bucket name cannot be empty or whitespace.")
 
-  def execute(self, tenant_guid=None):
+  def execute(self):
     from taxos.bucket.create.handler import handle
 
-    return handle(self, tenant_guid)
+    return handle(self)

@@ -100,7 +100,7 @@ def test_api_integration(api_port, test_tenant):
 
   # Unallocated receipts should include the receipt we just created
   unallocated_response = call_api(api_port, "ListUnallocatedReceipts", {}, token=token)
-  assert "receipts" in unallocated_response
+  assert len(unallocated_response) > 0
   unallocated_receipts = unallocated_response["receipts"]
   our_receipt = next((r for r in unallocated_receipts if r["ref"] == "TEST-REF"), None)
   assert our_receipt is not None

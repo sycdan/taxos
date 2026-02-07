@@ -9,6 +9,11 @@ def get_content_dir(tenant_guid: UUID, receipt_guid: UUID) -> Path:
   return receipts_dir / receipt_guid.hex
 
 
-def get_state_file(tenant_guid: UUID, receipt_guid: UUID) -> Path:
+def get_state_file(receipt_guid: UUID, tenant_guid: UUID) -> Path:
   content_dir = get_content_dir(tenant_guid, receipt_guid)
   return content_dir / "state.json"
+
+
+def get_unallocated_file(tenant_guid: UUID) -> Path:
+  content_dir = get_receipts_dir(tenant_guid)
+  return content_dir / "unallocated.json"

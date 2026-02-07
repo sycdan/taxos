@@ -10,9 +10,11 @@ from google.protobuf.timestamp_pb2 import Timestamp
 from taxos.access.authenticate_tenant.command import AuthenticateTenant
 from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.delete.command import DeleteBucket
-from taxos.bucket.entity import BucketRef
+from taxos.bucket.entity import Bucket, BucketRef
 from taxos.bucket.load.query import LoadBucket
 from taxos.bucket.update.command import UpdateBucket
+from taxos.context.entity import Context
+from taxos.context.tools import set_context
 from taxos.list_buckets.query import ListBuckets
 from taxos.list_unallocated_receipts.query import ListUnallocatedReceipts
 from taxos.receipt.create.command import CreateReceipt
@@ -44,7 +46,8 @@ def require_auth(f):
 
     try:
       tenant = AuthenticateTenant(token_hash).execute()
-      request.tenant = tenant  # type: ignore
+      context = Context(tenant=tenant)
+      set_context(context)
       return f(*args, **kwargs)
     except Exception as e:
       logger.warning(f"Authentication failed: {e}")
@@ -91,7 +94,7 @@ def _parse_allocations(values: list[dict]) -> list[dict]:
 def list_buckets():
   logger.info("ListBuckets called via ConnectRPC")
   try:
-    repo = ListBuckets().execute(request.tenant.guid)
+    repo = ListBuckets().execute()
     buckets = [
       models.BucketSummary(
         bucket=models.Bucket(
@@ -118,7 +121,7 @@ def create_bucket():
   logger.info("CreateBucket called via ConnectRPC")
   try:
     request_data = request.get_json()
-    bucket = CreateBucket(request_data.get("name", "")).execute(request.tenant.guid)
+    bucket = CreateBucket(request_data.get("name", "")).execute()
 
     response = models.Bucket(
       guid=str(bucket.guid),
@@ -151,7 +154,7 @@ def create_receipt():
       ref=request_data.get("ref") or "",
       notes=request_data.get("notes") or "",
       hash=request_data.get("hash") or None,
-    ).execute(request.tenant.guid)
+    ).execute()
 
     response_date = _parse_timestamp(receipt.date)
     ts = Timestamp()
@@ -170,7 +173,7 @@ def create_receipt():
         )
         for a in receipt.allocations
       ],
-      ref=receipt.ref or "",
+      ref=receipt.vendor_ref or "",
       notes=receipt.notes or "",
       hash=receipt.hash or "",
     )
@@ -189,7 +192,7 @@ def get_bucket():
   try:
     request_data = request.get_json()
     bucket_ref = BucketRef(guid=request_data.get("guid", ""))
-    bucket = LoadBucket(ref=bucket_ref).execute(request.tenant.guid)
+    bucket = LoadBucket(ref=bucket_ref).execute()
 
     response = models.Bucket(
       guid=str(bucket.guid),
@@ -209,8 +212,12 @@ def update_bucket():
   logger.info("UpdateBucket called via ConnectRPC")
   try:
     request_data = request.get_json()
-    bucket_ref = BucketRef(guid=request_data.get("guid", ""))
-    bucket = UpdateBucket(ref=bucket_ref, name=request_data.get("name", "")).execute(request.tenant.guid)
+    bucket_ref = BucketRef(request_data.get("guid", ""))
+
+    try:
+      bucket = UpdateBucket(ref=bucket_ref, name=request_data.get("name", "")).execute()
+    except Bucket.DoesNotExist:
+      return Response(json.dumps({"error": "Bucket not found"}), status=404, content_type="application/json")
 
     response = models.Bucket(
       guid=str(bucket.guid),
@@ -230,7 +237,7 @@ def list_unallocated_receipts():
   logger.info("ListUnallocatedReceipts called via ConnectRPC")
   try:
     request_data = request.get_json() or {}
-    
+
     # Parse date filters from request
     start_date = None
     end_date = None
@@ -239,10 +246,7 @@ def list_unallocated_receipts():
     if end_date_value := request_data.get("end_date"):
       end_date = _parse_timestamp(end_date_value)
 
-    receipts = ListUnallocatedReceipts(
-      start_date=start_date,
-      end_date=end_date
-    ).execute(request.tenant.guid)
+    receipts = ListUnallocatedReceipts(start_date=start_date, end_date=end_date).execute()
 
     # Convert receipts to protobuf format
     receipt_messages = []
@@ -289,7 +293,7 @@ def delete_bucket():
   try:
     request_data = request.get_json()
     bucket_ref = BucketRef(guid=request_data.get("guid", ""))
-    success = DeleteBucket(ref=bucket_ref).execute(request.tenant.guid)
+    success = DeleteBucket(ref=bucket_ref).execute()
 
     response = models.DeleteBucketResponse(success=success)
     response_dict = MessageToDict(response, preserving_proto_field_name=True)

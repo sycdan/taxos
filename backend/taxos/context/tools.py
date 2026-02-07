@@ -2,7 +2,6 @@ import contextvars
 import logging
 from typing import Optional
 
-from dev.image import command
 from taxos import DATA_DIR
 from taxos.context.entity import Context
 from taxos.tenant.entity import Tenant, TenantRef

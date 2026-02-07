@@ -1,19 +1,17 @@
-import json
-
 from taxos.bucket.entity import Bucket
 from taxos.bucket.load.query import LoadBucket
 from taxos.bucket.tools import get_state_file
+from taxos.context.tools import require_tenant
+from taxos.tools import json
 
 
-def handle(command: LoadBucket, tenant_guid):
+def handle(command: LoadBucket):
+  tenant = require_tenant()
   guid = command.ref.guid
-  state_file = get_state_file(tenant_guid, guid)
 
-  if not state_file.exists():
-    raise RuntimeError(f"Bucket {guid} does not exist.")
+  state_file = get_state_file(guid, tenant.guid)
+  if state_file.exists():
+    state = json.load(state_file)
+    return Bucket(guid, state.get("name", guid))
 
-  state = {}
-  if text := state_file.read_text().strip():
-    state.update(json.loads(text))
-
-  return Bucket(guid, state.get("name", guid), tenant_guid)
+  raise Bucket.DoesNotExist(guid)

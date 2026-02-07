@@ -13,4 +13,6 @@ def handle(command: AuthenticateTenant) -> Tenant:
 
   token_data = json.loads(token_file.read_text())
   tenant_ref = TenantRef(token_data.get("tenant", ""))
-  return tenant_ref.hydrate()
+  if tenant := tenant_ref.hydrate():
+    return tenant
+  raise RuntimeError(f"Tenant not found for token: {command.token}")

@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 def handle(command: IndexUnallocatedReceipts) -> list[Receipt]:
-  tenant = command.tenant.hydrate() or require_tenant()
+  tenant = require_tenant(command.tenant)
+
   logger.info(f"Indexing unallocated receipts for tenant {tenant.guid}")
   index = {}  # by month
   unallocated_receipts: list[Receipt] = []

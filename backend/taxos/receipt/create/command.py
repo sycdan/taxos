@@ -10,7 +10,7 @@ class CreateReceipt:
   allocations: list[dict] = field(default_factory=list)
   ref: str = ""
   notes: str = ""
-  hash: str | None = None
+  hash: str = ""
 
   def __post_init__(self):
     if not self.vendor or not self.vendor.strip():
@@ -20,7 +20,7 @@ class CreateReceipt:
     if self.allocations is None:
       self.allocations = []
 
-  def execute(self, tenant_guid=None):
+  def execute(self):
     from taxos.receipt.create.handler import handle
 
-    return handle(self, tenant_guid)
+    return handle(self)

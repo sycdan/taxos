@@ -7,7 +7,7 @@ from taxos.bucket.entity import BucketRef
 class DeleteBucket:
   ref: BucketRef
 
-  def execute(self, tenant_guid=None):
+  def execute(self):
     from taxos.bucket.delete.handler import handle
 
-    return handle(self, tenant_guid)
+    return handle(self)
