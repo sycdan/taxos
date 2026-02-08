@@ -10,6 +10,9 @@
     },
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
   },
+  "containerEnv": {
+    "PYTHONPATH": "/workspaces/taxos/backend"
+  },
   "service": "backend",
   "shutdownAction": "none",
   "workspaceFolder": "/workspaces/taxos",
@@ -17,9 +20,6 @@
     "source=${localEnv:USERPROFILE}/.config/git,target=/home/vscode/.config/git,type=bind,consistency=cached",
     "source=${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
   ],
-  "containerEnv": {
-    "PYTHONPATH": "/workspaces/taxos/backend"
-  },
   "customizations": {
     "vscode": {
       "extensions": [

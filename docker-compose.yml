@@ -6,14 +6,6 @@ services:
     command: sleep infinity
     ports:
       - "50051:50051"
-    develop:
-      watch:
-        - action: sync+restart
-          path: ./backend/api
-          target: /app/api
-        - action: sync+restart
-          path: ./backend/taxos
-          target: /app/taxos
 
   frontend:
     image: mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm
@@ -26,10 +18,3 @@ services:
     environment:
       - VITE_GRPC_API_URL=http://localhost:50051
       - CHOKIDAR_USEPOLLING=true
-    develop:
-      watch:
-        - action: sync
-          path: ./frontend/src
-          target: /app/src
-        - action: rebuild
-          path: ./frontend/package.json
