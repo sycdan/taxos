@@ -6,6 +6,7 @@ import pytest
 from google.protobuf.timestamp_pb2 import Timestamp
 from taxos.access.token.generate.command import GenerateAccessToken
 from taxos.access.token.revoke.command import RevokeToken
+from taxos.index_unallocated_receipts.command import IndexUnallocatedReceipts
 from taxos.tenant.create.command import CreateTenant
 from taxos.tenant.delete.command import DeleteTenant
 from taxos.tenant.entity import TenantRef
@@ -52,6 +53,7 @@ def call_api(port: int, method: str, payload: dict, token: str = "", timeout: in
 @pytest.mark.integration
 def test_api_integration(api_port, test_tenant):
   """Full API integration test including tenant authentication"""
+  tenant = test_tenant["tenant"]
   token = test_tenant["token"]
 
   # Test: Create bucket
@@ -97,6 +99,8 @@ def test_api_integration(api_port, test_tenant):
   assert receipt["vendor"] == "Test Vendor"
   assert receipt["total"] == 12.34
   receipt_guid = receipt["guid"]
+
+  IndexUnallocatedReceipts(tenant, receipt_guid).execute()
 
   # Unallocated receipts should include the receipt we just created
   unallocated_response = call_api(api_port, "ListUnallocatedReceipts", {}, token=token)

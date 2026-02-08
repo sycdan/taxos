@@ -12,6 +12,12 @@ class IndexUnallocatedReceipts:
   tenant: Union[Tenant, TenantRef]
   receipt: Union[ReceiptRef, None] = None
 
+  def __post_init__(self):
+    if not isinstance(self.tenant, (Tenant, TenantRef)):
+      raise ValueError("tenant must be a Tenant or TenantRef instance.")
+    if self.receipt and not isinstance(self.receipt, ReceiptRef):
+      self.receipt = ReceiptRef(self.receipt)
+
   def execute(self):
     from taxos.index_unallocated_receipts.handler import handle
 
