@@ -153,7 +153,7 @@ def create_receipt():
       allocations=allocations,
       ref=request_data.get("ref") or "",
       notes=request_data.get("notes") or "",
-      hash=request_data.get("hash") or None,
+      hash=request_data.get("hash") or "",
     ).execute()
 
     response_date = _parse_timestamp(receipt.date)
@@ -191,7 +191,7 @@ def get_bucket():
   logger.info("GetBucket called via ConnectRPC")
   try:
     request_data = request.get_json()
-    bucket_ref = BucketRef(guid=request_data.get("guid", ""))
+    bucket_ref = BucketRef(request_data.get("guid", ""))
     bucket = LoadBucket(ref=bucket_ref).execute()
 
     response = models.Bucket(
@@ -269,7 +269,7 @@ def list_unallocated_receipts():
           )
           for a in receipt.allocations
         ],
-        ref=receipt.ref or "",
+        ref=receipt.vendor_ref or "",
         notes=receipt.notes or "",
         hash=receipt.hash or "",
       )
@@ -292,7 +292,7 @@ def delete_bucket():
   logger.info("DeleteBucket called via ConnectRPC")
   try:
     request_data = request.get_json()
-    bucket_ref = BucketRef(guid=request_data.get("guid", ""))
+    bucket_ref = BucketRef(request_data.get("guid", ""))
     success = DeleteBucket(ref=bucket_ref).execute()
 
     response = models.DeleteBucketResponse(success=success)
