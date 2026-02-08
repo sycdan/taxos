@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class TestApi:
-  "Ensure the gRPC API server is working."
+class Test:
+  "Ensure the domain logic is working."
 
   no_integration: bool = False

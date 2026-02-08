@@ -1,12 +1,11 @@
 import shutil
 
 from taxos.tenant.delete.command import DeleteTenant
-from taxos.tenant.load.query import LoadTenant
 
 
 def handle(command: DeleteTenant):
   try:
-    tenant = LoadTenant(ref=command.ref).execute()
+    tenant = command.tenant.hydrate()
     if tenant.content_dir.exists():
       shutil.rmtree(tenant.content_dir)
       return True

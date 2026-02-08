@@ -2,11 +2,11 @@ import logging
 import os
 
 from taxos.context.tools import require_tenant
-from taxos.index_unallocated_receipts.command import IndexUnallocatedReceipts
 from taxos.receipt.entity import Receipt, ReceiptRef
 from taxos.receipt.tools import get_unallocated_file
 from taxos.tenant.tools import get_receipts_dir
 from taxos.tools import json
+from taxos.unallocated_receipts.update.command import UpdateUnallocatedReceipts
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def _process(receipt_ref: ReceiptRef, unallocated_receipts: dict[str, set[str]])
     unallocated_receipts.setdefault(month, set()).add(receipt.guid.hex)
 
 
-def handle(command: IndexUnallocatedReceipts) -> dict[str, set[str]]:
+def handle(command: UpdateUnallocatedReceipts) -> dict[str, set[str]]:
   unallocated_receipts: dict[str, set[str]] = {}  # month -> guids
   tenant = require_tenant(command.tenant)
 

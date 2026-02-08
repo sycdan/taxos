@@ -16,8 +16,8 @@ from taxos.bucket.update.command import UpdateBucket
 from taxos.context.entity import Context
 from taxos.context.tools import set_context
 from taxos.list_buckets.query import ListBuckets
-from taxos.list_unallocated_receipts.query import ListUnallocatedReceipts
 from taxos.receipt.create.command import CreateReceipt
+from taxos.tenant.unallocated_receipts.list.query import ListUnallocatedReceipts
 
 from api.v1 import taxos_service_pb2 as models
 

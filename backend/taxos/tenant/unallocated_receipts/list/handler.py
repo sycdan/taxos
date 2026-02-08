@@ -3,10 +3,10 @@ from datetime import datetime
 from uuid import UUID
 
 from taxos.context.tools import require_tenant
-from taxos.list_unallocated_receipts.query import ListUnallocatedReceipts
 from taxos.receipt.entity import Receipt, ReceiptRef
 from taxos.receipt.tools import get_state_file, get_unallocated_file
 from taxos.tenant.tools import get_receipts_dir
+from taxos.tenant.unallocated_receipts.list.query import ListUnallocatedReceipts
 from taxos.tools import json
 from taxos.tools.guid import parse_guid
 

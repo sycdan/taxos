@@ -1,5 +1,4 @@
 import logging
-import os
 
 from taxos.context.tools import require_tenant
 from taxos.receipt.create.command import CreateReceipt
@@ -32,6 +31,5 @@ def handle(command: CreateReceipt) -> Receipt:
     notes=command.notes,
     hash=command.hash,
   )
-
 
   return SaveReceipt(receipt).execute()

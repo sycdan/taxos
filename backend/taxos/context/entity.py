@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from taxos.access.token.entity import AccessToken
 from taxos.tenant.entity import Tenant
 
 
@@ -8,3 +9,4 @@ class Context:
   """Context for executing commands and queries, containing tenant information."""
 
   tenant: Tenant | None = None
+  access_token: AccessToken | None = None

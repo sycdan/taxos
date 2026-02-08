@@ -6,7 +6,7 @@ from taxos.tenant.entity import Tenant, TenantRef
 
 
 @dataclass
-class IndexUnallocatedReceipts:
+class UpdateUnallocatedReceipts:
   """Index all unallocated receipts for a tenant, or just the one given."""
 
   tenant: Union[Tenant, TenantRef]
@@ -19,6 +19,6 @@ class IndexUnallocatedReceipts:
       self.receipt = ReceiptRef(self.receipt)
 
   def execute(self):
-    from taxos.index_unallocated_receipts.handler import handle
+    from taxos.unallocated_receipts.update.handler import handle
 
     return handle(self)

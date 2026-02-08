@@ -49,6 +49,7 @@ def call_api(port: int, method: str, payload: dict, token: str = "", timeout: in
     return json.loads(response.read().decode("utf-8"))
 
 
+@pytest.mark.skip("switching to domain tests")
 @pytest.mark.integration
 def test_api_integration(api_port, test_tenant):
   """Full API integration test including tenant authentication"""
@@ -131,6 +132,7 @@ def test_api_integration(api_port, test_tenant):
   assert not any(b["bucket"]["guid"] == bucket_guid for b in buckets)
 
 
+@pytest.mark.skip("switching to domain tests")
 @pytest.mark.integration
 def test_api_authentication(api_port):
   """Test that API properly rejects requests without valid token"""
