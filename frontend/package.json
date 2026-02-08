@@ -8,7 +8,10 @@
 		"dev:docker": "npm run dev",
 		"build": "tsc -b && vite build",
 		"lint": "eslint .",
-		"preview": "vite preview"
+		"preview": "vite preview",
+		"test:integration": "vitest run --config vitest.config.integration.ts",
+		"test:integration:watch": "vitest --config vitest.config.integration.ts",
+		"test:integration:ui": "vitest --ui --config vitest.config.integration.ts"
 	},
 	"dependencies": {
 		"@bufbuild/protobuf": "^1.10.1",
@@ -23,17 +26,21 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.39.1",
+		"@playwright/test": "^1.40.0",
 		"@types/node": "^24.10.9",
 		"@types/react": "^19.2.5",
 		"@types/react-dom": "^19.2.3",
 		"@types/uuid": "^10.0.0",
 		"@vitejs/plugin-react": "^5.1.1",
+		"@vitest/ui": "^2.0.0",
 		"eslint": "^9.39.1",
 		"eslint-plugin-react-hooks": "^7.0.1",
 		"eslint-plugin-react-refresh": "^0.4.24",
 		"globals": "^16.5.0",
+		"playwright": "^1.40.0",
 		"typescript": "~5.9.3",
 		"typescript-eslint": "^8.46.4",
-		"vite": "^7.2.4"
+		"vite": "^7.2.4",
+		"vitest": "^2.0.0"
 	}
 }
