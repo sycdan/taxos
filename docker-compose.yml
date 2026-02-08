@@ -20,7 +20,7 @@ services:
     volumes:
       - .:/workspaces/taxos
     working_dir: /workspaces/taxos/frontend
-    command: npm run dev
+    command: sleep infinity
     ports:
       - "5173:5173"
     environment:
