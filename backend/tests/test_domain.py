@@ -41,7 +41,12 @@ def scaf(action: str, *args):
 def test_api_integration(test_context):
   """Full API integration test including tenant authentication"""
   tenant = test_context.tenant
+  assert tenant is not None, "Tenant should be set in context"
+  assert tenant.name == "Test Tenant", f"Expected tenant name 'Test Tenant', got '{tenant.name}'"
+  token = test_context.access_token
+  assert token is not None, "Access token should be set in context"
 
+  # Create a bucket
   if result := scaf(
     "taxos/bucket/create",
     f"Test Bucket {datetime.now().isoformat()}",
@@ -50,6 +55,7 @@ def test_api_integration(test_context):
     created_bucket: Bucket = result
     assert created_bucket.name.startswith("Test Bucket")
 
+  # Update the bucket and make sure we get the updated name back, and the same guid
   if result := scaf(
     "taxos/bucket/update",
     created_bucket.guid.hex,
@@ -59,6 +65,12 @@ def test_api_integration(test_context):
     updated_bucket: Bucket = result
     assert updated_bucket.guid == created_bucket.guid
     assert updated_bucket.name.startswith("Updated Test Bucket")
+
+  # The bucket should be listed in the tenant's buckets
+  if result := scaf("taxos/tenant/list_buckets"):
+    assert isinstance(result, list), f"Expected list of buckets, got {type(result)}"
+    bucket_list: list[Bucket] = result
+    assert any(b.guid == created_bucket.guid for b in bucket_list), "Created bucket not found in list"
 
   # Test: Create receipt
   now = Timestamp()
