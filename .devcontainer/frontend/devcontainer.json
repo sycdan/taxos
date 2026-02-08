@@ -1,10 +1,17 @@
 {
   "name": "Taxos Frontend Development Environment",
   "dockerComposeFile": [
-    "../../docker-compose.yml"
+    "../../docker-compose.yml",
+    "docker-compose.override.yml"
   ],
   "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12"
+    },
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+  "containerEnv": {
+    "PYTHONPATH": "/workspaces/taxos"
   },
   "service": "frontend",
   "shutdownAction": "none",
