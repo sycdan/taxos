@@ -159,7 +159,7 @@ const App: React.FC = () => {
     return (
       <LoginModal
         isOpen={showLoginModal && !authenticated}
-        onLogin={(token) => setShowLoginModal(false)}
+        onLogin={() => setShowLoginModal(false)}
       />
     );
   }

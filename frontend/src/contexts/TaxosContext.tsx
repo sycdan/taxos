@@ -42,7 +42,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return saved ? JSON.parse(saved) : [];
   });
   const [loading, setLoading] = useState(true);
-  const [authenticated, setAuthenticated] = useState(!!getToken());
+  const [authenticated] = useState(!!getToken());
 
   // Helper to convert Timestamp to ISO string
   const timestampToIso = (ts?: Timestamp) => {
@@ -196,7 +196,6 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           })),
           ref: receipt.ref || '',
           notes: receipt.notes || '',
-          file: receipt.file || '',
           hash: receipt.hash || '',
         });
 
