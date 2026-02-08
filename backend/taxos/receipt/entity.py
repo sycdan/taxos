@@ -1,10 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from functools import cached_property
-from pathlib import Path
 from uuid import UUID
 
-from taxos.tools.guid import parse_guid, uuid7
+from taxos.tools.guid import parse_guid
 
 
 @dataclass
@@ -12,7 +10,7 @@ class Receipt:
   class DoesNotExist(RuntimeError):
     pass
 
-  state_file: Path = field(repr=False)
+  guid: UUID
   vendor: str
   total: float
   date: datetime
@@ -21,14 +19,6 @@ class Receipt:
   vendor_ref: str = ""
   notes: str = ""
   hash: str = ""
-
-  @cached_property
-  def guid(self) -> UUID:
-    return parse_guid(self.state_file.parent.name) or uuid7()
-
-  @property
-  def content_dir(self) -> Path:
-    return self.state_file.parent
 
   @property
   def is_unallocated(self) -> bool:
@@ -59,7 +49,7 @@ class ReceiptRef:
   guid: UUID = field(init=False)
 
   def __post_init__(self):
-    if not (key := self.key.strip()):
+    if not (key := str(self.key).strip()):
       raise ValueError("receipt reference key cannot be empty")
     if guid := parse_guid(key):
       self.guid = guid

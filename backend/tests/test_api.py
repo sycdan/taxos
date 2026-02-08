@@ -7,8 +7,7 @@ from google.protobuf.timestamp_pb2 import Timestamp
 from taxos.access.token.generate.command import GenerateAccessToken
 from taxos.access.token.revoke.command import RevokeToken
 from taxos.context.entity import Context
-from taxos.context.tools import set_context, with_context
-from taxos.index_unallocated_receipts.command import IndexUnallocatedReceipts
+from taxos.context.tools import set_context
 from taxos.tenant.create.command import CreateTenant
 from taxos.tenant.delete.command import DeleteTenant
 from taxos.tenant.entity import TenantRef
@@ -99,8 +98,6 @@ def test_api_integration(api_port, test_tenant):
   assert receipt["vendor"] == "Test Vendor"
   assert receipt["total"] == 12.34
   receipt_guid = receipt["guid"]
-
-  IndexUnallocatedReceipts(tenant, receipt_guid).execute()
 
   # Unallocated receipts should include the receipt we just created
   unallocated_response = call_api(api_port, "ListUnallocatedReceipts", {}, token=token)

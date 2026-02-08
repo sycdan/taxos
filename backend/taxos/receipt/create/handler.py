@@ -4,18 +4,25 @@ import os
 from taxos.context.tools import require_tenant
 from taxos.receipt.create.command import CreateReceipt
 from taxos.receipt.entity import Receipt
+from taxos.receipt.save.command import SaveReceipt
 from taxos.receipt.tools import get_state_file
-from taxos.tools import guid, json
+from taxos.tools import guid
 from taxos.tools.time import parse_datetime
 
 logger = logging.getLogger(__name__)
 
 
 def handle(command: CreateReceipt) -> Receipt:
+  logger.debug(f"{command=}")
   tenant = require_tenant()
-  logger.info(f"Handling {command}")
+  receipt_guid = guid.uuid7()
+
+  state_file = get_state_file(receipt_guid, tenant.guid)
+  if state_file.exists() and state_file.stat().st_size > 0:
+    raise RuntimeError(f"Receipt {receipt_guid} already exists.")
+
   receipt = Receipt(
-    state_file=get_state_file(guid.uuid7(), tenant.guid),
+    receipt_guid,
     vendor=command.vendor,
     total=command.total,
     date=parse_datetime(command.date, command.timezone),
@@ -26,10 +33,5 @@ def handle(command: CreateReceipt) -> Receipt:
     hash=command.hash,
   )
 
-  if receipt.state_file.exists() and receipt.state_file.stat().st_size > 0:
-    raise RuntimeError(f"Receipt {receipt.guid} already exists.")
 
-  os.makedirs(receipt.state_file.parent, exist_ok=True)
-  with receipt.state_file.open("w") as f:
-    json.dump(receipt, f)
-  return receipt
+  return SaveReceipt(receipt).execute()
