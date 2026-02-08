@@ -1,17 +1,25 @@
 import dataclasses
 import json
+from datetime import datetime
 from pathlib import Path
+from uuid import UUID
 
 
 class _CustomJSONEncoder(json.JSONEncoder):
   def default(self, obj):
     if dataclasses.is_dataclass(obj):
       return dataclasses.asdict(obj)  # type: ignore
-
-    try:
-      return super().default(obj)
-    except TypeError:
+    if isinstance(obj, set):
+      return list(obj)
+    if isinstance(obj, bytes):
+      return obj.decode("utf-8")
+    if isinstance(obj, Path):
+      return obj.as_posix()
+    if isinstance(obj, UUID):
       return str(obj)
+    if isinstance(obj, datetime):
+      return obj.isoformat()
+    return super().default(obj)
 
 
 def dumps(*args, **kwargs) -> str:

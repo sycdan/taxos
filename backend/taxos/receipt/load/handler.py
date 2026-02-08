@@ -22,7 +22,7 @@ def parse_receipt(state_file: Path) -> Receipt | None:
     return None
 
   receipt = Receipt(
-    guid=UUID(state["guid"]),
+    state_file,
     vendor=state["vendor"],
     total=state["total"],
     date=state["date"],

@@ -16,5 +16,6 @@ def handle(command: CreateTenant) -> Tenant:
     raise RuntimeError(f"Tenant {tenant.name} already exists.")
 
   os.makedirs(tenant.content_dir, exist_ok=True)
-  json.dump(tenant, tenant.state_file)
+  with tenant.state_file.open("w") as f:
+    json.dump(tenant, f)
   return tenant

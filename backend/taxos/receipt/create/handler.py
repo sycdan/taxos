@@ -29,6 +29,7 @@ def handle(command: CreateReceipt) -> Receipt:
   if receipt.state_file.exists() and receipt.state_file.stat().st_size > 0:
     raise RuntimeError(f"Receipt {receipt.guid} already exists.")
 
-  os.makedirs(receipt.content_dir, exist_ok=True)
-  json.dump(receipt, receipt.state_file)
+  os.makedirs(receipt.state_file.parent, exist_ok=True)
+  with receipt.state_file.open("w") as f:
+    json.dump(receipt, f)
   return receipt
