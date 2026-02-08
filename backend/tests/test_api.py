@@ -6,6 +6,8 @@ import pytest
 from google.protobuf.timestamp_pb2 import Timestamp
 from taxos.access.token.generate.command import GenerateAccessToken
 from taxos.access.token.revoke.command import RevokeToken
+from taxos.context.entity import Context
+from taxos.context.tools import set_context, with_context
 from taxos.index_unallocated_receipts.command import IndexUnallocatedReceipts
 from taxos.tenant.create.command import CreateTenant
 from taxos.tenant.delete.command import DeleteTenant
@@ -21,12 +23,10 @@ def api_port():
 @pytest.fixture
 def test_tenant():
   """Create a test tenant and generate access token, cleanup after test"""
-  # Create tenant
   tenant = CreateTenant(name="Test Tenant").execute()
   tenant_ref = TenantRef(tenant.guid.hex)
-
-  # Generate access token
   access_token = GenerateAccessToken(tenant=tenant_ref).execute()
+  set_context(Context(tenant))
 
   yield {"tenant": tenant, "tenant_ref": tenant_ref, "token": access_token.key}
 
