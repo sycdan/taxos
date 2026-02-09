@@ -12,12 +12,13 @@ from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.delete.command import DeleteBucket
 from taxos.bucket.entity import Bucket, BucketRef
 from taxos.bucket.load.query import LoadBucket
+from taxos.bucket.repo.load.query import LoadBucketRepo
 from taxos.bucket.update.command import UpdateBucket
 from taxos.context.entity import Context
 from taxos.context.tools import set_context
-from taxos.list_buckets.query import ListBuckets
 from taxos.receipt.create.command import CreateReceipt
-from taxos.tenant.unallocated_receipt.list.query import ListUnallocatedReceipts
+from taxos.tenant.unallocated_receipt.repo.entity import UnallocatedReceiptRepo
+from taxos.tenant.unallocated_receipt.repo.load.query import LoadUnallocatedReceiptRepo
 
 from api.v1 import taxos_service_pb2 as models
 
@@ -94,7 +95,7 @@ def _parse_allocations(values: list[dict]) -> list[dict]:
 def list_buckets():
   logger.info("ListBuckets called via ConnectRPC")
   try:
-    repo = ListBuckets().execute()
+    repo = LoadBucketRepo().execute()
     buckets = [
       models.BucketSummary(
         bucket=models.Bucket(
@@ -168,8 +169,8 @@ def create_receipt():
       total=receipt.total,
       allocations=[
         models.ReceiptAllocation(
-          bucket_guid=a.get("bucket_guid", ""),
-          amount=float(a.get("amount", 0)),
+          bucket_guid=a[0],
+          amount=a[1],
         )
         for a in receipt.allocations
       ],
@@ -246,11 +247,12 @@ def list_unallocated_receipts():
     if end_date_value := request_data.get("end_date"):
       end_date = _parse_timestamp(end_date_value)
 
-    receipts = ListUnallocatedReceipts(start_date=start_date, end_date=end_date).execute()
+    repo: UnallocatedReceiptRepo = LoadUnallocatedReceiptRepo(start_date=start_date, end_date=end_date).execute()
 
     # Convert receipts to protobuf format
     receipt_messages = []
-    for receipt in receipts:
+    for unallocated_receipt in repo.unallocated_receipts:
+      receipt = unallocated_receipt.receipt.hydrate()
       # Convert date to timestamp
       response_date = _parse_timestamp(receipt.date)
       ts = Timestamp()
@@ -264,8 +266,8 @@ def list_unallocated_receipts():
         total=receipt.total,
         allocations=[
           models.ReceiptAllocation(
-            bucket_guid=a.get("bucket_guid", ""),
-            amount=float(a.get("amount", 0)),
+            bucket_guid=a[0],
+            amount=a[1],
           )
           for a in receipt.allocations
         ],

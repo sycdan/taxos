@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
+from taxos.tenant.unallocated_receipt.repo.entity import UnallocatedReceiptRepo
+
 
 @dataclass
 class LoadUnallocatedReceiptRepo:
@@ -14,7 +16,7 @@ class LoadUnallocatedReceiptRepo:
     if self.end_date and not isinstance(self.end_date, datetime):
       self.end_date = datetime.fromisoformat(self.end_date)
 
-  def execute(self):
+  def execute(self) -> UnallocatedReceiptRepo:
     from taxos.tenant.unallocated_receipt.repo.load.handler import handle
 
     return handle(self)

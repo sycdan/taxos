@@ -6,6 +6,7 @@ from scaf.cli import call
 from taxos.access.token.generate.command import GenerateAccessToken
 from taxos.access.token.revoke.command import RevokeToken
 from taxos.bucket.entity import Bucket
+from taxos.bucket.repo.entity import BucketRepo
 from taxos.context.entity import Context
 from taxos.context.tools import set_context
 from taxos.receipt.entity import Receipt
@@ -63,9 +64,9 @@ def ensure_bucket_updated(original_bucket: Bucket) -> Bucket:
 
 
 def ensure_bucket_exists(bucket: Bucket):
-  result = scaf("taxos/tenant/list_buckets")
-  assert isinstance(result, list), f"Expected list of buckets, got {type(result)}"
-  bucket_list: list[Bucket] = result
+  result = scaf("taxos/bucket/repo/load")
+  assert isinstance(result, BucketRepo), f"Expected BucketRepo, got {type(result)}"
+  bucket_list: list[Bucket] = list(result.index.values())
   assert any(b.guid == bucket.guid for b in bucket_list), "Created bucket not found in list"
 
 
