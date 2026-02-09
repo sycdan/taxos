@@ -7,11 +7,11 @@ logger = logging.getLogger(__name__)
 
 
 def handle(command: RevokeToken):
-  logger.debug(f"Handling {command}")
+  logger.debug(f"{command=}")
   token = get_token_file(command.hash)
   if token.exists():
     logger.info(f"Revoking access token with hash {command.hash}")
     token.unlink()
     return True
-  logger.info("Access token with hash {command.hash} not found")
+  logger.info(f"Access token with hash {command.hash} not found")
   return False

@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, tzinfo
+from zoneinfo import ZoneInfo
 
 
 def parse_datetime(value: str, zone: str = "UTC") -> datetime:
@@ -10,6 +11,6 @@ def parse_datetime(value: str, zone: str = "UTC") -> datetime:
     dt = datetime.fromisoformat(value)
     if dt.tzinfo is None:
       dt = dt.replace(tzinfo=timezone.utc)
-    return dt
+    return dt.astimezone(ZoneInfo(zone))
   except ValueError as e:
     raise ValueError(f"Invalid datetime format: {value}") from e

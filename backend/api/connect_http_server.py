@@ -17,7 +17,7 @@ from taxos.context.entity import Context
 from taxos.context.tools import set_context
 from taxos.list_buckets.query import ListBuckets
 from taxos.receipt.create.command import CreateReceipt
-from taxos.tenant.unallocated_receipts.list.query import ListUnallocatedReceipts
+from taxos.tenant.unallocated_receipt.list.query import ListUnallocatedReceipts
 
 from api.v1 import taxos_service_pb2 as models
 
@@ -151,7 +151,7 @@ def create_receipt():
       date=date.isoformat(),
       timezone=request_data.get("timezone", ""),
       allocations=allocations,
-      ref=request_data.get("ref") or "",
+      vendor_ref=request_data.get("ref") or "",
       notes=request_data.get("notes") or "",
       hash=request_data.get("hash") or "",
     ).execute()

@@ -1,9 +1,9 @@
 import os
 
 from taxos.context.tools import require_tenant
-from taxos.index_unallocated_receipts.command import IndexUnallocatedReceipts
 from taxos.receipt.save.command import SaveReceipt
 from taxos.receipt.tools import get_state_file
+from taxos.tenant.unallocated_receipt.repo.update.query import UpdateUnallocatedReceiptRepo
 from taxos.tools import json
 
 
@@ -14,5 +14,5 @@ def handle(command: SaveReceipt):
   os.makedirs(state_file.parent, exist_ok=True)
   with state_file.open("w") as f:
     json.dump(receipt, f)
-  IndexUnallocatedReceipts(tenant, receipt.guid).execute()
+  UpdateUnallocatedReceiptRepo(receipt).execute()
   return receipt

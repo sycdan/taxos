@@ -26,8 +26,8 @@ def handle(command: CreateReceipt) -> Receipt:
     total=command.total,
     date=parse_datetime(command.date, command.timezone),
     timezone=command.timezone,
-    allocations=command.allocations or [],
-    vendor_ref=command.ref,
+    allocations=command.allocations or [],  # type: ignore
+    vendor_ref=command.vendor_ref,
     notes=command.notes,
     hash=command.hash,
   )

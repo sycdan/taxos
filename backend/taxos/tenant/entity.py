@@ -38,7 +38,9 @@ class TenantRef:
   guid: UUID = field(init=False)
 
   def __post_init__(self):
-    if guid := parse_guid(self.key):
+    if not (key := str(self.key).strip()):
+      raise ValueError("key cannot be empty or whitespace.")
+    if guid := parse_guid(key):
       self.guid = guid
     else:
       raise ValueError("key must be a valid UUID")

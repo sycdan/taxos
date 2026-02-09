@@ -8,7 +8,7 @@ class CreateReceipt:
   date: str
   timezone: str
   allocations: list[dict] = field(default_factory=list)
-  ref: str = ""
+  vendor_ref: str = ""
   notes: str = ""
   hash: str = ""
 

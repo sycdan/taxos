@@ -15,29 +15,21 @@ class Receipt:
   total: float
   date: datetime
   timezone: str
-  allocations: list[dict] = field(default_factory=list)
+  allocations: list[tuple[str, float]] = field(
+    default_factory=list, metadata={"help": "List of (bucket_ref, amount) pairs."}
+  )
   vendor_ref: str = ""
   notes: str = ""
   hash: str = ""
-
-  @property
-  def is_unallocated(self) -> bool:
-    """
-    A receipt is considered unallocated if:
-    - it has no allocations
-    - the sum of its allocations is less than its total
-    """
-    if not self.allocations:
-      return True
-
-    total_allocated = sum(allocation.get("amount", 0) for allocation in self.allocations)
-    return total_allocated < self.total
 
   def __post_init__(self):
     if not isinstance(self.guid, UUID):
       self.guid = UUID(self.guid)
     if isinstance(self.date, str):
       self.date = datetime.fromisoformat(self.date)
+
+  def __hash__(self) -> int:
+    return hash(self.guid)
 
   def hydrate(self):
     return self
@@ -58,6 +50,9 @@ class ReceiptRef:
 
   def __hash__(self) -> int:
     return hash(self.guid)
+
+  def __str__(self) -> str:
+    return f"receipt_{self.guid.hex}"
 
   def hydrate(self) -> Receipt:
     from taxos.receipt.load.query import LoadReceipt
