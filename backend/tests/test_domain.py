@@ -13,6 +13,7 @@ from taxos.receipt.entity import Receipt
 from taxos.tenant.create.command import CreateTenant
 from taxos.tenant.delete.command import DeleteTenant
 from taxos.tenant.entity import TenantRef
+from taxos.tenant.unallocated_receipt.repo.entity import UnallocatedReceiptRepo
 
 from dev import BACKEND_ROOT
 
@@ -70,6 +71,45 @@ def ensure_bucket_exists(bucket: Bucket):
   assert any(b.guid == bucket.guid for b in bucket_list), "Created bucket not found in list"
 
 
+def ensure_unallocated_receipt_repo() -> UnallocatedReceiptRepo:
+  result = scaf("taxos/tenant/unallocated_receipt/repo/load")
+  assert isinstance(result, UnallocatedReceiptRepo), f"Expected UnallocatedReceiptRepo, got {type(result)}"
+  return result
+
+
+def ensure_no_unallocated_receipts():
+  repo = ensure_unallocated_receipt_repo()
+  assert not repo.unallocated_receipts, "Unallocated receipts should be empty"
+
+
+def ensure_unallocated_receipt(receipt: Receipt, unallocated_amount: float = 0):
+  repo = ensure_unallocated_receipt_repo()
+  unallocated_receipt = repo.index_by_guid.get(receipt.guid)
+  assert unallocated_receipt is not None, "Receipt should be unallocated"
+  assert unallocated_receipt.unallocated_amount == unallocated_amount, "Unallocated amount should equal receipt total"
+
+
+def ensure_receipt_created(vendor: str, total: float, vendor_ref: str = "TEST-REF") -> Receipt:
+  now = Timestamp()
+  now.GetCurrentTime()
+  result = scaf(
+    "taxos/receipt/create",
+    vendor,
+    str(total),
+    now.ToJsonString(),
+    "America/New_York",
+    f"--vendor-ref={vendor_ref}",
+    "--notes=Test receipt",
+    "--hash=test-hash",
+  )
+  assert isinstance(result, Receipt), f"Expected Receipt instance, got {type(result)}"
+  receipt: Receipt = result
+  assert receipt.vendor == vendor
+  assert receipt.total == total
+  assert receipt.vendor_ref == vendor_ref
+  return receipt
+
+
 def ensure_bucket_deleted(bucket: Bucket):
   result = scaf("taxos/bucket/delete", bucket.guid.hex)
   assert result is True, f"Expected True from bucket delete, got {result}"
@@ -93,34 +133,9 @@ def test_happy_path(test_context):
   assert updated_bucket.guid == created_bucket.guid, "Bucket GUID should not change on update"
 
   ensure_bucket_exists(updated_bucket)
+  ensure_no_unallocated_receipts()
 
-  if result := scaf("taxos/tenant/unallocated_receipt/repo/load"):
-    assert not result.unallocated_receipts, "Unallocated receipts should be empty"
-
-  # Create receipt
-  now = Timestamp()
-  now.GetCurrentTime()
-  if result := scaf(
-    "taxos/receipt/create",
-    "Test Vendor",
-    "12.34",
-    now.ToJsonString(),
-    "America/New_York",
-    "--vendor-ref=TEST-REF",
-    "--notes=Test receipt",
-    "--hash=test-hash",
-  ):
-    assert isinstance(result, Receipt), f"Expected Receipt instance, got {type(result)}"
-    receipt: Receipt = result
-    assert receipt.vendor == "Test Vendor"
-    assert receipt.total == 12.34
-    assert receipt.vendor_ref == "TEST-REF"
-    receipt_guid = receipt.guid
-
-  if result := scaf("taxos/tenant/unallocated_receipt/repo/load"):
-    assert receipt_guid in result.index_by_guid, "Unallocated receipts should contain new receipt"
-    assert result.index_by_guid[receipt_guid].unallocated_amount == 12.34, (
-      "Unallocated amount should equal receipt total"
-    )
+  receipt = ensure_receipt_created("THE AWESOME STORE!", 12.34)
+  ensure_unallocated_receipt(receipt, 12.34)
 
   ensure_bucket_deleted(created_bucket)
