@@ -21,4 +21,8 @@ def handle(command: CheckUnallocatedReceipt) -> UnallocatedReceipt | None:
 
   unallocated_amount = calculate_unallocated_amount(receipt)
   if unallocated_amount:
-    return UnallocatedReceipt(receipt, unallocated_amount)
+    return UnallocatedReceipt(
+      receipt,
+      receipt.date.replace(day=1),
+      unallocated_amount,
+    )

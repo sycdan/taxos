@@ -1,5 +1,4 @@
 from datetime import datetime
-from uuid import UUID
 
 import pytest
 from google.protobuf.timestamp_pb2 import Timestamp

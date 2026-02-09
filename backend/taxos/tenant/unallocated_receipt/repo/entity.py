@@ -13,8 +13,7 @@ class UnallocatedReceiptRepo:
   index_by_guid: dict[UUID, UnallocatedReceipt] = field(default_factory=dict, init=False, repr=False)
 
   def add(self, unallocated_receipt: UnallocatedReceipt):
-    receipt = unallocated_receipt.receipt.hydrate()
-    month = receipt.date.replace(day=1)
+    month = unallocated_receipt.month
     self.index_by_month.setdefault(month, set()).add(unallocated_receipt)
     self.index_by_guid[unallocated_receipt.receipt.guid] = unallocated_receipt
     self.unallocated_receipts.add(unallocated_receipt)
