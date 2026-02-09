@@ -1,19 +1,16 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 
 def parse_datetime(value: datetime | str, zone: str = "UTC") -> datetime:
-  """
-  Parses a datetime string in ISO 8601 format, with optional timezone information.
-  If the string does not contain timezone information, it is assumed to be in UTC.
-  """
   try:
-    if isinstance(value, datetime):
-      dt = value
+    tz = ZoneInfo(zone.strip())
+    if isinstance(value, str):
+      dt = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
     else:
-      dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+      dt = value
     if dt.tzinfo is None:
-      dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(ZoneInfo(zone))
+      dt = dt.replace(tzinfo=tz)
+    return dt.astimezone(tz)
   except ValueError as e:
     raise ValueError(f"Invalid datetime format: {value}") from e
