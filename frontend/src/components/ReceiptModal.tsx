@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import type { Bucket, Receipt, ReceiptAllocation } from "../types";
 import { format } from "date-fns";
+import UploadProgressWidget from "./UploadProgressWidget";
+import { uploadReceiptFile } from "../api/client";
 
 interface ReceiptModalProps {
 	isOpen: boolean;
@@ -21,6 +23,9 @@ interface ReceiptModalProps {
 	buckets: Bucket[];
 	initialFile?: string;
 	editingReceipt?: Receipt;
+	// File upload props
+	uploadingFile?: { file: File; hash: string }; // File being uploaded
+	onFileUploadComplete?: (hash: string, filename: string) => void;
 }
 
 const SEGMENT_COLORS = [
@@ -40,6 +45,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 	buckets,
 	initialFile,
 	editingReceipt,
+	uploadingFile,
+	onFileUploadComplete,
 }) => {
 	const [vendor, setVendor] = useState("");
 	const [total, setTotal] = useState<number>(0);
@@ -51,7 +58,15 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 		new Set(),
 	);
 
+	// File upload state
+	const [isUploading, setIsUploading] = useState(false);
+	const [uploadProgress, setUploadProgress] = useState(0);
+	const [uploadedFileHash, setUploadedFileHash] = useState<string>("");
+	const [uploadedFileName, setUploadedFileName] = useState<string>("");
+	const [uploadError, setUploadError] = useState<string>("");
+
 	const vendorRef = useRef<HTMLInputElement>(null);
+	const lastUploadedHashRef = useRef<string>("");
 
 	// Reset form when opening
 	useEffect(() => {
@@ -79,6 +94,13 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 				setNotes("");
 				setAllocations([]);
 				setManualAllocations(new Set());
+				// Reset upload state when opening fresh modal
+				setUploadedFileHash("");
+				setUploadedFileName("");
+				setUploadError("");
+				setIsUploading(false);
+				setUploadProgress(0);
+				lastUploadedHashRef.current = "";
 			}
 			setTimeout(() => vendorRef.current?.focus(), 100);
 		}
@@ -199,10 +221,44 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 			allocations,
 			ref: ref || undefined,
 			notes: notes || undefined,
-			file: initialFile || editingReceipt?.file,
+			file: uploadedFileName || initialFile || editingReceipt?.file,
+			hash: uploadedFileHash || editingReceipt?.hash,
 		} as any);
 		onClose();
 	};
+
+	// Handle file upload when uploadingFile prop changes
+	useEffect(() => {
+		if (uploadingFile && isOpen && uploadingFile.hash !== lastUploadedHashRef.current) {
+			const uploadFile = async () => {
+				setUploadError("");
+				setIsUploading(true);
+				setUploadProgress(0);
+
+				try {
+					const result = await uploadReceiptFile(uploadingFile.file, uploadingFile.hash, setUploadProgress);
+
+					setUploadedFileHash(uploadingFile.hash);
+					setUploadedFileName(uploadingFile.file.name);
+					setIsUploading(false);
+					lastUploadedHashRef.current = uploadingFile.hash;
+
+					// Set initial values based on uploaded file
+					if (!vendor) {
+						setVendor(uploadingFile.file.name.split('.')[0] || "");
+					}
+
+					onFileUploadComplete?.(uploadingFile.hash, uploadingFile.file.name);
+				} catch (error) {
+					setIsUploading(false);
+					setUploadProgress(0);
+					setUploadError(error instanceof Error ? error.message : "Upload failed");
+				}
+			};
+
+			uploadFile();
+		}
+	}, [uploadingFile, isOpen]);
 
 	if (!isOpen) return null;
 
@@ -255,6 +311,18 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 				</div>
 
 				<div className="space-y-6">
+					{/* Upload Progress Widget */}
+					{(isUploading || uploadError || (uploadedFileHash && uploadedFileName)) && (
+						<div className="mb-6">
+							<UploadProgressWidget
+								isUploading={isUploading}
+								uploadProgress={uploadProgress}
+								fileName={uploadedFileName || uploadingFile?.file.name}
+								error={uploadError}
+							/>
+						</div>
+					)}
+
 					{/* Top Fields Structure */}
 					<div className="grid grid-cols-2 gap-6">
 						{/* Left Column: Vendor & Reference */}
@@ -512,20 +580,17 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 				</div>
 
 				<div className="mt-10 flex gap-4">
-					{editingReceipt ? (
+					{editingReceipt && (
 						<button
 							className="btn btn-ghost flex-1 py-3 text-error hover:bg-error/10"
 							onClick={handleDelete}
 						>
 							Delete Receipt
 						</button>
-					) : (
-						<button className="btn btn-ghost flex-1 py-3" onClick={onClose}>
-							Cancel
-						</button>
 					)}
 					<button
-						className="btn btn-primary flex-1 justify-center py-3 text-base"
+						className={`btn btn-primary justify-center py-3 text-base ${editingReceipt ? 'flex-1' : 'w-full'
+							}`}
 						onClick={handleSave}
 						disabled={!vendor || total <= 0 || isOverAllocated}
 					>

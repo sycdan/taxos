@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, LayoutDashboard, ArrowLeft, LogOut } from "lucide-react";
+import { Plus, LayoutDashboard, ArrowLeft, LogOut, Upload } from "lucide-react";
 import Dashboard from "./components/Dashboard";
 import BucketDetail from "./components/BucketDetail";
 import ReceiptModal from "./components/ReceiptModal";
@@ -45,6 +45,7 @@ const App: React.FC = () => {
   );
   const [showEmpty, setShowEmpty] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(!authenticated);
+  const [uploadingFile, setUploadingFile] = useState<{ file: File; hash: string } | undefined>();
 
   const [filterConfig, setFilterConfig] = useState<FilterConfig>(() => {
     const saved = localStorage.getItem("taxos_filter_config");
@@ -120,30 +121,29 @@ const App: React.FC = () => {
     setFilterConfig((prev: FilterConfig): FilterConfig => ({ ...prev, value }));
   };
 
-  const calculateHash = async (file: File): Promise<string> => {
-    const buffer = await file.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+  // Calculate file hash
+  const calculateFileHash = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
-  const handleUpload = async (file: File) => {
-    const hash = await calculateHash(file);
-    addReceipt({
-      vendor: file.name.split(".")[0] || "Unknown",
-      total: 0,
-      date: new Date().toISOString(),
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      allocations: [],
-      file: file.name,
-      hash,
-    });
+  const handleFileUpload = async (file: File) => {
+    try {
+      const hash = await calculateFileHash(file);
+      setUploadingFile({ file, hash });
+      setIsModalOpen(true);
+    } catch (error) {
+      console.error('Failed to process file:', error);
+    }
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setUploadedFile(undefined);
     setEditingReceipt(undefined);
+    setUploadingFile(undefined);
   };
 
   const handleEditReceipt = (receipt: Receipt) => {
@@ -235,13 +235,36 @@ const App: React.FC = () => {
               />
             </div>
 
-            <button
-              className="btn btn-primary"
-              onClick={() => setIsModalOpen(true)}
-            >
-              <Plus size={20} />
-              <span>Add Receipt</span>
-            </button>
+            <div className="flex gap-2">
+              <button
+                className="btn btn-primary"
+                onClick={() => setIsModalOpen(true)}
+              >
+                <Plus size={20} />
+                <span>Add Receipt</span>
+              </button>
+
+              <input
+                type="file"
+                id="file-upload"
+                className="hidden"
+                accept="image/*,application/pdf"
+                onChange={(e) => {
+                  const files = e.target.files;
+                  if (files && files.length > 0) {
+                    handleFileUpload(files[0]);
+                  }
+                  e.target.value = ''; // Reset input
+                }}
+              />
+              <button
+                className="btn btn-secondary"
+                onClick={() => document.getElementById('file-upload')?.click()}
+              >
+                <Upload size={20} />
+                <span>Upload File</span>
+              </button>
+            </div>
           </div>
         </header>
 
@@ -265,7 +288,7 @@ const App: React.FC = () => {
           ) : (
             <Dashboard
               onSelectBucket={setCurrentBucketId}
-              onUpload={handleUpload}
+              onUpload={handleFileUpload}
               showEmpty={showEmpty}
               setShowEmpty={setShowEmpty}
               startDate={dateRange.start}
@@ -290,6 +313,11 @@ const App: React.FC = () => {
           buckets={buckets}
           initialFile={uploadedFile}
           editingReceipt={editingReceipt}
+          uploadingFile={uploadingFile}
+          onFileUploadComplete={(hash: string, filename: string) => {
+            // File upload completed, keep modal open for user to complete receipt info
+            console.log(`File uploaded: ${filename} with hash ${hash}`);
+          }}
         />
       </div>
     </div>

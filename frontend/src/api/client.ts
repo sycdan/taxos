@@ -49,6 +49,44 @@ export const setToken = (token: string) => {
   window.location.reload();
 };
 
+// Upload a receipt file
+export const uploadReceiptFile = async (
+  file: File,
+  hash: string,
+  onProgress?: (progress: number) => void
+) => {
+  try {
+    // Convert file to Uint8Array for protobuf bytes field
+    const fileBuffer = await file.arrayBuffer();
+    const fileBytes = new Uint8Array(fileBuffer);
+
+    // Simulate progress for the encoding step
+    onProgress?.(25);
+
+    const response = await client.uploadReceiptFile({
+      fileHash: hash,
+      filename: file.name,
+      fileData: fileBytes,
+    });
+
+    onProgress?.(100);
+
+    return {
+      alreadyExists: response.alreadyExists,
+      fileInfo: response.fileInfo ? {
+        fileHash: response.fileInfo.fileHash,
+        filename: response.fileInfo.filename,
+        filePath: response.fileInfo.filePath,
+        fileSize: Number(response.fileInfo.fileSize),
+        uploadedAt: response.fileInfo.uploadedAt,
+      } : undefined,
+    };
+  } catch (error) {
+    onProgress?.(0);
+    throw error;
+  }
+};
+
 export const getToken = () => localStorage.getItem("taxos_token");
 
 export const clearToken = () => {

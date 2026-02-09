@@ -150,6 +150,18 @@ body {
   transform: scale(1.02);
 }
 
+.btn-secondary {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.btn-secondary:hover {
+  background: var(--primary);
+  color: white;
+  transform: scale(1.02);
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
