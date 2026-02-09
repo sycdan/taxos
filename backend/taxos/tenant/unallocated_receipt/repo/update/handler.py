@@ -25,8 +25,11 @@ def save_repo(repo: UnallocatedReceiptRepo):
     month_key = month.strftime("%Y-%m")
     state.setdefault(month_key, []).extend([ur.receipt.guid.hex for ur in unallocated_receipts])
 
-  with unallocated_file.open("w") as f:
+  # Write to temp file first, then atomically rename to avoid race conditions
+  temp_file = unallocated_file.with_suffix(".tmp")
+  with temp_file.open("w") as f:
     json.dump(state, f)
+  temp_file.replace(unallocated_file)
 
 
 def handle(query: UpdateUnallocatedReceiptRepo) -> bool:

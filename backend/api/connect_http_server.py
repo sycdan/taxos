@@ -22,6 +22,7 @@ from taxos.context.tools import set_context
 from taxos.receipt.create.command import CreateReceipt
 from taxos.receipt.delete.command import DeleteReceipt
 from taxos.receipt.entity import ReceiptRef
+from taxos.receipt.update.command import UpdateReceipt
 from taxos.tenant.unallocated_receipt.repo.entity import UnallocatedReceiptRepo
 from taxos.tenant.unallocated_receipt.repo.load.query import LoadUnallocatedReceiptRepo
 
@@ -308,6 +309,58 @@ def delete_bucket():
     return Response(json.dumps(response_dict), content_type="application/json")
   except Exception as e:
     logger.error(f"Failed to delete bucket: {e}")
+    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+
+
+@app.route("/taxos.v1.TaxosApi/UpdateReceipt", methods=["POST"])
+@require_auth
+def update_receipt():
+  logger.info("UpdateReceipt called via ConnectRPC")
+  try:
+    request_data = request.get_json() or {}
+    receipt_ref = ReceiptRef(request_data.get("guid", ""))
+    date_value = request_data.get("date")
+    date = _parse_timestamp(date_value)
+    allocations = _parse_allocations(request_data.get("allocations", []))
+
+    receipt = UpdateReceipt(
+      ref=receipt_ref,
+      vendor=request_data.get("vendor", ""),
+      total=float(request_data.get("total", 0)),
+      date=date,
+      timezone=request_data.get("timezone", ""),
+      allocations=allocations,
+      vendor_ref=request_data.get("ref") or "",
+      notes=request_data.get("notes") or "",
+      hash=request_data.get("hash") or "",
+    ).execute()
+
+    response_date = _parse_timestamp(receipt.date)
+    ts = Timestamp()
+    ts.FromDatetime(response_date)
+
+    response = models.Receipt(
+      guid=str(receipt.guid),
+      vendor=receipt.vendor,
+      date=ts,
+      timezone=receipt.timezone,
+      total=receipt.total,
+      allocations=[
+        models.ReceiptAllocation(
+          bucket_guid=a[0],
+          amount=a[1],
+        )
+        for a in receipt.allocations
+      ],
+      ref=receipt.vendor_ref or "",
+      notes=receipt.notes or "",
+      hash=receipt.hash or "",
+    )
+    response_dict = MessageToDict(response, preserving_proto_field_name=True)
+
+    return Response(json.dumps(response_dict), content_type="application/json")
+  except Exception as e:
+    logger.error(f"Failed to update receipt: {e}")
     return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
 
 

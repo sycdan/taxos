@@ -20,6 +20,8 @@ service TaxosApi {
   rpc ListUnallocatedReceipts(ListUnallocatedReceiptsRequest) returns (ListUnallocatedReceiptsResponse);
   // Update a bucket's details
   rpc UpdateBucket(UpdateBucketRequest) returns (Bucket);
+  // Update a receipt's details
+  rpc UpdateReceipt(UpdateReceiptRequest) returns (Receipt);
   // Delete a bucket by GUID
   rpc DeleteBucket(DeleteBucketRequest) returns (DeleteBucketResponse);
   // Delete a receipt by GUID
@@ -97,6 +99,18 @@ message BucketSummary {
 message UpdateBucketRequest {
   string guid = 1;
   string name = 2;
+}
+
+message UpdateReceiptRequest {
+  string                    guid        = 1;
+  string                    vendor      = 2;
+  google.protobuf.Timestamp date        = 3;
+  string                    timezone    = 4;
+  double                    total       = 5;
+  repeated ReceiptAllocation allocations = 6;
+  string                    ref         = 7;
+  string                    notes       = 8;
+  string                    hash        = 9;
 }
 
 message DeleteBucketRequest {

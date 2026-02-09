@@ -231,8 +231,62 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     void createRemote();
   };
 
-  const updateReceipt = (receipt: Receipt) => {
+  const updateReceipt = async (receipt: Receipt) => {
+    const toTimestamp = (iso: string) => {
+      const date = new Date(iso);
+      const seconds = BigInt(Math.floor(date.getTime() / 1000));
+      const nanos = (date.getTime() % 1000) * 1_000_000;
+      return new Timestamp({ seconds, nanos });
+    };
+
+    const timestampToIso = (ts?: Timestamp) => {
+      if (!ts) return new Date().toISOString();
+      const asAny = ts as any;
+      if (typeof asAny.toDate === 'function') return asAny.toDate().toISOString();
+      const seconds = Number(asAny.seconds ?? 0);
+      const nanos = Number(asAny.nanos ?? 0);
+      return new Date(seconds * 1000 + nanos / 1_000_000).toISOString();
+    };
+
+    // Optimistically update local state
     setReceipts(prev => prev.map(r => r.id === receipt.id ? receipt : r));
+
+    try {
+      const response = await client.updateReceipt({
+        guid: receipt.id,
+        vendor: receipt.vendor,
+        total: receipt.total,
+        date: toTimestamp(receipt.date),
+        timezone: receipt.timezone,
+        allocations: receipt.allocations.map(a => ({
+          bucketGuid: a.bucketId,
+          amount: a.amount,
+        })),
+        ref: receipt.ref || '',
+        notes: receipt.notes || '',
+        hash: receipt.hash || '',
+      });
+
+      const updatedReceipt: Receipt = {
+        id: response.guid,
+        vendor: response.vendor,
+        total: response.total,
+        date: timestampToIso(response.date),
+        timezone: response.timezone,
+        allocations: response.allocations.map(a => ({
+          bucketId: a.bucketGuid,
+          amount: a.amount,
+        })),
+        ref: response.ref || '',
+        notes: response.notes || '',
+        hash: response.hash || '',
+      };
+
+      setReceipts(prev => prev.map(r => r.id === updatedReceipt.id ? updatedReceipt : r));
+    } catch (error) {
+      console.error('Failed to update receipt:', error);
+      // Already updated local state optimistically
+    }
   };
 
   const deleteReceipt = async (id: string) => {

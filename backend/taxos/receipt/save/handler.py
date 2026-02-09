@@ -12,7 +12,12 @@ def handle(command: SaveReceipt):
   receipt = command.receipt
   state_file = get_state_file(receipt.guid, tenant.guid)
   os.makedirs(state_file.parent, exist_ok=True)
-  with state_file.open("w") as f:
+  
+  # Write to temp file first, then atomically rename to avoid race conditions
+  temp_file = state_file.with_suffix(".tmp")
+  with temp_file.open("w") as f:
     json.dump(receipt, f)
+  temp_file.replace(state_file)
+  
   UpdateUnallocatedReceiptRepo(receipt).execute()
   return receipt
