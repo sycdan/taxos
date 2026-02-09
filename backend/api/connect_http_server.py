@@ -1,5 +1,8 @@
+import hashlib
 import json
 import logging
+import os
+import zipfile
 from datetime import datetime, timezone
 from functools import wraps
 
@@ -303,6 +306,122 @@ def delete_bucket():
     return Response(json.dumps(response_dict), content_type="application/json")
   except Exception as e:
     logger.error(f"Failed to delete bucket: {e}")
+    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+
+
+def _get_upload_directory():
+  """Get the uploads directory path."""
+  return os.path.join(os.path.dirname(__file__), "..", "data", "uploads")
+
+
+def _calculate_file_hash(file_data: bytes) -> str:
+  """Calculate SHA-256 hash of file data."""
+  return hashlib.sha256(file_data).hexdigest()
+
+
+def _get_file_path(file_hash: str) -> str:
+  """Get the file path for a given hash."""
+  upload_dir = _get_upload_directory()
+  return os.path.join(upload_dir, f"{file_hash}.zip")
+
+
+def _file_exists(file_hash: str) -> bool:
+  """Check if a file with the given hash already exists."""
+  return os.path.exists(_get_file_path(file_hash))
+
+
+def _save_file_as_zip(file_data: bytes, filename: str, file_hash: str) -> tuple[str, int]:
+  """Save file data as a zip file with the hash as the filename."""
+  zip_path = _get_file_path(file_hash)
+
+  # Ensure upload directory exists
+  os.makedirs(_get_upload_directory(), exist_ok=True)
+
+  with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+    zipf.writestr(filename, file_data)
+
+  return zip_path, os.path.getsize(zip_path)
+
+
+@app.route("/taxos.v1.TaxosApi/UploadReceiptFile", methods=["POST"])
+@require_auth
+def upload_receipt_file():
+  logger.info("UploadReceiptFile called via ConnectRPC")
+  try:
+    request_data = request.get_json()
+    # Handle both camelCase (from protobuf JS) and snake_case
+    client_hash = request_data.get("fileHash") or request_data.get("file_hash", "")
+    filename = request_data.get("filename", "")
+
+    # Handle base64 encoded file data (typical for JSON APIs)
+    import base64
+
+    file_data_b64 = request_data.get("fileData") or request_data.get("file_data", "")
+
+    if not client_hash:
+      return Response(json.dumps({"error": "file_hash is required"}), status=400, content_type="application/json")
+
+    if not filename:
+      return Response(json.dumps({"error": "filename is required"}), status=400, content_type="application/json")
+
+    # Check if file already exists
+    if _file_exists(client_hash):
+      logger.info(f"File with hash {client_hash} already exists, returning existing info")
+      zip_path = _get_file_path(client_hash)
+      file_size = os.path.getsize(zip_path)
+
+      # Get upload timestamp from file modification time
+      upload_timestamp = datetime.fromtimestamp(os.path.getmtime(zip_path), tz=timezone.utc)
+      ts = Timestamp()
+      ts.FromDatetime(upload_timestamp)
+
+      file_info = models.UploadReceiptFileInfo(
+        file_hash=client_hash, filename=filename, file_path=zip_path, file_size=file_size, uploaded_at=ts
+      )
+
+      response = models.UploadReceiptFileResponse(already_exists=True, file_info=file_info)
+      response_dict = MessageToDict(response, preserving_proto_field_name=True)
+      return Response(json.dumps(response_dict), content_type="application/json")
+
+    # Decode file data
+    if not file_data_b64:
+      return Response(
+        json.dumps({"error": "file_data is required for new uploads"}), status=400, content_type="application/json"
+      )
+
+    try:
+      file_data = base64.b64decode(file_data_b64)
+    except Exception as e:
+      return Response(
+        json.dumps({"error": f"Invalid base64 file_data: {e}"}), status=400, content_type="application/json"
+      )
+
+    # Validate hash
+    calculated_hash = _calculate_file_hash(file_data)
+    if calculated_hash != client_hash:
+      logger.warning(f"Hash mismatch: client={client_hash}, calculated={calculated_hash}")
+      return Response(json.dumps({"error": "File hash validation failed"}), status=400, content_type="application/json")
+
+    # Save file as zip
+    zip_path, file_size = _save_file_as_zip(file_data, filename, client_hash)
+    logger.info(f"Saved file {filename} with hash {client_hash} as {zip_path}")
+
+    # Create response
+    upload_timestamp = datetime.now(timezone.utc)
+    ts = Timestamp()
+    ts.FromDatetime(upload_timestamp)
+
+    file_info = models.UploadReceiptFileInfo(
+      file_hash=client_hash, filename=filename, file_path=zip_path, file_size=file_size, uploaded_at=ts
+    )
+
+    response = models.UploadReceiptFileResponse(already_exists=False, file_info=file_info)
+    response_dict = MessageToDict(response, preserving_proto_field_name=True)
+
+    return Response(json.dumps(response_dict), content_type="application/json")
+
+  except Exception as e:
+    logger.error(f"Failed to upload file: {e}")
     return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
 
 

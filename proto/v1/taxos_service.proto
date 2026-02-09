@@ -10,6 +10,8 @@ service TaxosApi {
   rpc CreateBucket(CreateBucketRequest) returns (Bucket);
   // Create a new receipt
   rpc CreateReceipt(CreateReceiptRequest) returns (Receipt);
+  // Upload a receipt file
+  rpc UploadReceiptFile(UploadReceiptFileRequest) returns (UploadReceiptFileResponse);
   // Retrieve a bucket by GUID
   rpc GetBucket(GetBucketRequest) returns (Bucket);
   // List all buckets
@@ -97,6 +99,25 @@ message UpdateBucketRequest {
 
 message DeleteBucketRequest {
   string guid = 1;
+}
+
+message UploadReceiptFileRequest {
+  string file_hash = 1;      // SHA-256 hash of the file provided by client
+  string filename  = 2;      // Original filename
+  bytes  file_data = 3;      // File content (for new uploads)
+}
+
+message UploadReceiptFileInfo {
+  string file_hash     = 1;  // SHA-256 hash of the uploaded file
+  string filename      = 2;  // Original filename
+  string file_path     = 3;  // Server-side storage path
+  int64  file_size     = 4;  // File size in bytes
+  google.protobuf.Timestamp uploaded_at = 5; // Upload timestamp
+}
+
+message UploadReceiptFileResponse {
+  bool   already_exists = 1; // True if file with this hash already existed
+  UploadReceiptFileInfo file_info = 2; // Information about the uploaded/existing file
 }
 
 message DeleteBucketResponse {
