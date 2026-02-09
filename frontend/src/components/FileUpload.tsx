@@ -1,10 +1,9 @@
 import React, { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Upload, FileImage, AlertCircle, CheckCircle } from "lucide-react";
+import { Upload, CheckCircle } from "lucide-react";
 
 interface FileUploadProps {
   onFileSelect: (file: File, hash: string) => void;
-  onUploadComplete?: (hash: string, filename: string) => void;
   onUploadError?: (error: string) => void;
   acceptedTypes?: string[];
   isUploading?: boolean;
@@ -23,7 +22,6 @@ const calculateSHA256 = async (file: File): Promise<string> => {
 
 const FileUpload: React.FC<FileUploadProps> = ({
   onFileSelect,
-  onUploadComplete,
   onUploadError,
   acceptedTypes = ['image/*', 'application/pdf'],
   isUploading = false,

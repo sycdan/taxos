@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Upload, CheckCircle, AlertCircle } from "lucide-react";
+import { CheckCircle, AlertCircle } from "lucide-react";
 
 interface UploadProgressWidgetProps {
   isUploading: boolean;

@@ -211,7 +211,6 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           })),
           ref: response.ref || undefined,
           notes: response.notes || undefined,
-          file: response.file || undefined,
           hash: response.hash || undefined,
         };
 
@@ -360,7 +359,6 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         })),
         ref: r.ref || undefined,
         notes: r.notes || undefined,
-        file: r.file || undefined,
         hash: r.hash || undefined,
       }));
 
