@@ -20,6 +20,8 @@ from taxos.bucket.update.command import UpdateBucket
 from taxos.context.entity import Context
 from taxos.context.tools import set_context
 from taxos.receipt.create.command import CreateReceipt
+from taxos.receipt.delete.command import DeleteReceipt
+from taxos.receipt.entity import ReceiptRef
 from taxos.tenant.unallocated_receipt.repo.entity import UnallocatedReceiptRepo
 from taxos.tenant.unallocated_receipt.repo.load.query import LoadUnallocatedReceiptRepo
 
@@ -306,6 +308,24 @@ def delete_bucket():
     return Response(json.dumps(response_dict), content_type="application/json")
   except Exception as e:
     logger.error(f"Failed to delete bucket: {e}")
+    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+
+
+@app.route("/taxos.v1.TaxosApi/DeleteReceipt", methods=["POST"])
+@require_auth
+def delete_receipt():
+  logger.info("DeleteReceipt called via ConnectRPC")
+  try:
+    request_data = request.get_json()
+    receipt_ref = ReceiptRef(request_data.get("guid", ""))
+    success = DeleteReceipt(ref=receipt_ref).execute()
+
+    response = models.DeleteReceiptResponse(success=success)
+    response_dict = MessageToDict(response, preserving_proto_field_name=True)
+
+    return Response(json.dumps(response_dict), content_type="application/json")
+  except Exception as e:
+    logger.error(f"Failed to delete receipt: {e}")
     return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
 
 

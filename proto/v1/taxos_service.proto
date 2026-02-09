@@ -22,6 +22,8 @@ service TaxosApi {
   rpc UpdateBucket(UpdateBucketRequest) returns (Bucket);
   // Delete a bucket by GUID
   rpc DeleteBucket(DeleteBucketRequest) returns (DeleteBucketResponse);
+  // Delete a receipt by GUID
+  rpc DeleteReceipt(DeleteReceiptRequest) returns (DeleteReceiptResponse);
 }
 
 message Bucket {
@@ -121,5 +123,13 @@ message UploadReceiptFileResponse {
 }
 
 message DeleteBucketResponse {
+  bool success = 1;
+}
+
+message DeleteReceiptRequest {
+  string guid = 1;
+}
+
+message DeleteReceiptResponse {
   bool success = 1;
 }

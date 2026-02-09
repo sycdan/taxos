@@ -110,6 +110,13 @@ def ensure_receipt_created(vendor: str, total: float, vendor_ref: str = "TEST-RE
   return receipt
 
 
+def ensure_receipt_deleted(receipt: Receipt):
+  result = scaf("taxos/receipt/delete", receipt.guid.hex)
+  assert result is True, f"Expected True from receipt delete, got {result}"
+  repo = ensure_unallocated_receipt_repo()
+  assert receipt.guid not in repo.index_by_guid, "Deleted receipt should not be in unallocated repo"
+
+
 def ensure_bucket_deleted(bucket: Bucket):
   result = scaf("taxos/bucket/delete", bucket.guid.hex)
   assert result is True, f"Expected True from bucket delete, got {result}"
@@ -137,5 +144,7 @@ def test_happy_path(test_context):
 
   receipt = ensure_receipt_created("THE AWESOME STORE!", 12.34)
   ensure_unallocated_receipt(receipt, 12.34)
+
+  ensure_receipt_deleted(receipt)
 
   ensure_bucket_deleted(created_bucket)

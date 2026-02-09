@@ -235,8 +235,15 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setReceipts(prev => prev.map(r => r.id === receipt.id ? receipt : r));
   };
 
-  const deleteReceipt = (id: string) => {
-    setReceipts(prev => prev.filter(r => r.id !== id));
+  const deleteReceipt = async (id: string) => {
+    try {
+      await client.deleteReceipt({ guid: id });
+      setReceipts(prev => prev.filter(r => r.id !== id));
+    } catch (error) {
+      console.error('Failed to delete receipt:', error);
+      // Fallback to local deletion
+      setReceipts(prev => prev.filter(r => r.id !== id));
+    }
   };
 
   const getBucketTotal = (bucketId: string, startDate?: Date, endDate?: Date) => {
