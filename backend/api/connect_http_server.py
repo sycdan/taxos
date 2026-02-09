@@ -498,6 +498,47 @@ def upload_receipt_file():
     return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
 
 
+@app.route("/taxos.v1.TaxosApi/DownloadReceiptFile", methods=["POST"])
+@require_auth
+def download_receipt_file():
+  logger.info("DownloadReceiptFile called via ConnectRPC")
+  try:
+    request_data = request.get_json()
+    # Handle both camelCase (from protobuf JS) and snake_case
+    file_hash = request_data.get("fileHash") or request_data.get("file_hash", "")
+
+    if not file_hash:
+      return Response(json.dumps({"error": "file_hash is required"}), status=400, content_type="application/json")
+
+    # Check if file exists
+    if not _file_exists(file_hash):
+      logger.warning(f"File with hash {file_hash} not found")
+      return Response(json.dumps({"error": "File not found"}), status=404, content_type="application/json")
+
+    # Read file from zip
+    zip_path = _get_file_path(file_hash)
+    with zipfile.ZipFile(zip_path, "r") as zipf:
+      # Get the first (and should be only) file in the zip
+      filenames = zipf.namelist()
+      if not filenames:
+        return Response(json.dumps({"error": "Zip file is empty"}), status=500, content_type="application/json")
+
+      filename = filenames[0]
+      file_data = zipf.read(filename)
+
+    file_size = len(file_data)
+
+    response = models.DownloadReceiptFileResponse(filename=filename, file_data=file_data, file_size=file_size)
+    response_dict = MessageToDict(response, preserving_proto_field_name=True)
+
+    logger.info(f"Downloaded file {filename} with hash {file_hash} ({file_size} bytes)")
+    return Response(json.dumps(response_dict), content_type="application/json")
+
+  except Exception as e:
+    logger.error(f"Failed to download file: {e}")
+    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+
+
 if __name__ == "__main__":
   logging.basicConfig(level=logging.INFO)
   logger.info("Starting ConnectRPC HTTP server on port 50051...")

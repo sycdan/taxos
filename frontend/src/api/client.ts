@@ -87,6 +87,35 @@ export const uploadReceiptFile = async (
   }
 };
 
+// Download a receipt file
+export const downloadReceiptFile = async (fileHash: string) => {
+  try {
+    const response = await client.downloadReceiptFile({
+      fileHash: fileHash,
+    });
+
+    // fileData is already a Uint8Array from protobuf
+    const blob = new Blob([response.fileData]);
+
+    // Create download link
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = response.filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    return {
+      filename: response.filename,
+      fileSize: Number(response.fileSize),
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const getToken = () => localStorage.getItem("taxos_token");
 
 export const clearToken = () => {

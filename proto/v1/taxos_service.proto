@@ -12,6 +12,8 @@ service TaxosApi {
   rpc CreateReceipt(CreateReceiptRequest) returns (Receipt);
   // Upload a receipt file
   rpc UploadReceiptFile(UploadReceiptFileRequest) returns (UploadReceiptFileResponse);
+  // Download a receipt file
+  rpc DownloadReceiptFile(DownloadReceiptFileRequest) returns (DownloadReceiptFileResponse);
   // Retrieve a bucket by GUID
   rpc GetBucket(GetBucketRequest) returns (Bucket);
   // List all buckets
@@ -134,6 +136,16 @@ message UploadReceiptFileInfo {
 message UploadReceiptFileResponse {
   bool   already_exists = 1; // True if file with this hash already existed
   UploadReceiptFileInfo file_info = 2; // Information about the uploaded/existing file
+}
+
+message DownloadReceiptFileRequest {
+  string file_hash = 1;      // SHA-256 hash of the file to download
+}
+
+message DownloadReceiptFileResponse {
+  string filename  = 1;      // Original filename
+  bytes  file_data = 2;      // File content
+  int64  file_size = 3;      // File size in bytes
 }
 
 message DeleteBucketResponse {

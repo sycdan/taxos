@@ -9,11 +9,12 @@ import {
 	Trash2,
 	Lock,
 	Unlock,
+	Download,
 } from "lucide-react";
 import type { Bucket, Receipt, ReceiptAllocation } from "../types";
 import { format } from "date-fns";
 import UploadProgressWidget from "./UploadProgressWidget";
-import { uploadReceiptFile } from "../api/client";
+import { uploadReceiptFile, downloadReceiptFile } from "../api/client";
 
 interface ReceiptModalProps {
 	isOpen: boolean;
@@ -64,6 +65,10 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 	const [uploadedFileHash, setUploadedFileHash] = useState<string>("");
 	const [uploadedFileName, setUploadedFileName] = useState<string>("");
 	const [uploadError, setUploadError] = useState<string>("");
+
+	// File download state
+	const [isDownloading, setIsDownloading] = useState(false);
+	const [downloadError, setDownloadError] = useState<string>("");
 
 	const vendorRef = useRef<HTMLInputElement>(null);
 	const lastUploadedHashRef = useRef<string>("");
@@ -211,6 +216,25 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 		}
 	};
 
+	const handleDownload = async () => {
+		const fileHash = editingReceipt?.hash;
+		if (!fileHash) {
+			setDownloadError("No file available for download");
+			return;
+		}
+
+		setIsDownloading(true);
+		setDownloadError("");
+
+		try {
+			await downloadReceiptFile(fileHash);
+		} catch (error) {
+			setDownloadError(error instanceof Error ? error.message : "Download failed");
+		} finally {
+			setIsDownloading(false);
+		}
+	};
+
 	const handleSave = () => {
 		onSave({
 			...(editingReceipt ? { id: editingReceipt.id } : {}),
@@ -236,7 +260,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 				setUploadProgress(0);
 
 				try {
-					const result = await uploadReceiptFile(uploadingFile.file, uploadingFile.hash, setUploadProgress);
+					await uploadReceiptFile(uploadingFile.file, uploadingFile.hash, setUploadProgress);
 
 					setUploadedFileHash(uploadingFile.hash);
 					setUploadedFileName(uploadingFile.file.name);
@@ -320,6 +344,30 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 								fileName={uploadedFileName || uploadingFile?.file.name}
 								error={uploadError}
 							/>
+						</div>
+					)}
+
+					{/* Download File Section (when editing with an existing file) */}
+					{editingReceipt?.hash && (
+						<div className="mb-6">
+							<label className="label-caps">Attached File</label>
+							<div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
+								<div className="flex-1">
+									<p className="text-sm font-semibold">{editingReceipt.file || "Receipt file"}</p>
+									<p className="text-xs text-muted">Hash: {editingReceipt.hash.substring(0, 12)}...</p>
+								</div>
+								<button
+									className="btn btn-ghost flex items-center gap-2 px-4 py-2"
+									onClick={handleDownload}
+									disabled={isDownloading}
+								>
+									<Download size={16} />
+									{isDownloading ? "Downloading..." : "Download"}
+								</button>
+							</div>
+							{downloadError && (
+								<p className="text-xs text-error mt-2">{downloadError}</p>
+							)}
 						</div>
 					)}
 
