@@ -149,7 +149,7 @@ def create_receipt():
     receipt = CreateReceipt(
       vendor=request_data.get("vendor", ""),
       total=float(request_data.get("total", 0)),
-      date=date.isoformat(),
+      date=date,
       timezone=request_data.get("timezone", ""),
       allocations=allocations,
       vendor_ref=request_data.get("ref") or "",
