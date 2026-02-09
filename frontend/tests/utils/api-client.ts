@@ -1,5 +1,5 @@
 export class TaxosApiClient {
-  private token: string = '77e96aa7035ffea5e9750a705ed919104274ad7ac924d10a2d7b23c1b8b7c60c'
+  private token: string = '65d2d4bb66af87ec6fc9dd5d9436e9b259eddb90724a9b22d089b4971e44cb53'
 
   constructor(private baseUrl: string = 'http://backend:50051') { }
 
@@ -80,11 +80,11 @@ export class TaxosApiClient {
     return response.json()
   }
 
-async createReceipt(total: number, vendor: string, notes?: string) {
+  async createReceipt(total: number, vendor: string, notes?: string) {
     const response = await fetch(`${this.baseUrl}/taxos.v1.TaxosApi/CreateReceipt`, {
       method: 'POST',
       headers: this.headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         total: total,
         vendor: vendor,
         date: new Date().toISOString(),
