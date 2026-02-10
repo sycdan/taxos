@@ -1,13 +1,33 @@
 import dataclasses
 import json
+import logging
 import os
 import uuid
 from datetime import datetime
 from pathlib import Path
 from uuid import UUID
 
+logger = logging.getLogger(__name__)
 
-class _CustomJSONEncoder(json.JSONEncoder):
+
+def collapse_refs(obj, is_child=False):
+  if isinstance(obj, list):
+    for idx, item in enumerate(obj):
+      obj[idx] = collapse_refs(item, is_child)
+    return obj
+
+  if isinstance(obj, dict):
+    if "guid" in obj and is_child:
+      return obj["guid"]
+    for key in list(obj.keys()):
+      obj[key] = collapse_refs(obj[key], True)
+    return obj
+
+  logger.debug(f"Returning primitive value: {obj}")
+  return obj
+
+
+class DomainEncoder(json.JSONEncoder):
   def default(self, obj):
     if dataclasses.is_dataclass(obj):
       return dataclasses.asdict(obj)  # type: ignore
@@ -25,13 +45,19 @@ class _CustomJSONEncoder(json.JSONEncoder):
 
 
 def dumps(*args, **kwargs) -> str:
-  kwargs.setdefault("indent", 2)
-  return json.dumps(*args, **kwargs, cls=_CustomJSONEncoder)
+  domain_encoded = json.dumps(*args, **kwargs, cls=DomainEncoder)
+  logger.debug(f"Domain encoded object: {domain_encoded}")
+  serliazied = json.loads(domain_encoded)
+  logger.debug(f"Serialized object: {serliazied}")
+  flattened = collapse_refs(serliazied)
+  logger.debug(f"Flattened object: {flattened}")
+  return json.dumps(flattened, indent=2)
 
 
-def dump(*args, **kwargs) -> None:
+def dump(obj, fp, *args, **kwargs) -> None:
   kwargs.setdefault("indent", 2)
-  return json.dump(*args, **kwargs, cls=_CustomJSONEncoder)
+  text = dumps(obj, *args, **kwargs)
+  return json.dump(text, fp, *args, **kwargs)
 
 
 def safe_dump(obj, file: Path, *args, **kwargs) -> None:

@@ -11,3 +11,5 @@ class LoadBucket:
     from taxos.bucket.load.handler import handle
 
     return handle(self)
+
+

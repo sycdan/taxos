@@ -1,9 +1,9 @@
 import logging
 import shutil
 
-from taxos.context.tools import require_tenant
+from taxos.context.tools import require_receipt, require_tenant
 from taxos.receipt.delete.command import DeleteReceipt
-from taxos.receipt.entity import Receipt, require_receipt
+from taxos.receipt.entity import Receipt
 from taxos.receipt.repo.update.command import UpdateReceiptRepo
 from taxos.receipt.tools import get_state_file
 

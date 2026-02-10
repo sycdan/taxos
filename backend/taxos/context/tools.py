@@ -3,7 +3,11 @@ import logging
 from typing import Optional
 
 from taxos import DATA_DIR
+from taxos.bucket.entity import Bucket, BucketRef
+from taxos.bucket.load.query import LoadBucket
 from taxos.context.entity import Context
+from taxos.receipt.entity import Receipt, ReceiptRef
+from taxos.receipt.load.query import LoadReceipt
 from taxos.tenant.entity import Tenant, TenantRef
 from taxos.tools import json
 
@@ -86,3 +90,19 @@ def with_context(context: Context):
     return wrapper
 
   return decorator
+
+
+def require_bucket(ref) -> Bucket:
+  if isinstance(ref, Bucket):
+    return ref
+
+  return LoadBucket(BucketRef(ref)).execute()
+
+
+def require_receipt(value) -> Receipt:
+  """Hydrates a ReceiptRef to a Receipt, or returns the Receipt if already hydrated.
+  Raises Receipt.DoesNotExist."""
+
+  if isinstance(value, Receipt):
+    return value
+  return LoadReceipt(ReceiptRef(value)).execute()

@@ -41,8 +41,3 @@ class BucketRef:
 
   def __hash__(self) -> int:
     return hash(self.guid)
-
-  def hydrate(self) -> Bucket:
-    from taxos.bucket.load.query import LoadBucket
-
-    return LoadBucket(ref=self).execute()

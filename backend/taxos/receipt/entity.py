@@ -52,13 +52,3 @@ class ReceiptRef:
 
   def __str__(self) -> str:
     return f"receipt_{self.guid.hex}"
-
-
-def require_receipt(ref: Receipt | ReceiptRef) -> Receipt:
-  """Hydrates a ReceiptRef to a Receipt, or returns the Receipt if already hydrated.
-  Raises Receipt.DoesNotExist."""
-  from taxos.receipt.load.query import LoadReceipt
-
-  if isinstance(ref, Receipt):
-    return ref
-  return LoadReceipt(ref).execute()

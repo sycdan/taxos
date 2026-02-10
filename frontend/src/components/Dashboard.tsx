@@ -25,7 +25,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   onAddBucket,
   isNameTaken
 }) => {
-  const { bucketSummaries, refreshBuckets } = useTaxos();
+  const { bucketSummaries, unallocatedSummary, refreshBuckets } = useTaxos();
   const [isDragging, setIsDragging] = React.useState(false);
   const [isAddingBucket, setIsAddingBucket] = React.useState(false);
   const [newBucketName, setNewBucketName] = React.useState('');
@@ -104,7 +104,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const bucketTotals = useMemo(() => {
-    // Add unallocated as a pseudo-bucket (summaries from API don't include it)
+    // Add unallocated as a pseudo-bucket using cached summary
     return [
       ...bucketSummaries.map(summary => ({
         id: summary.bucket.id,
@@ -112,10 +112,15 @@ const Dashboard: React.FC<DashboardProps> = ({
         total: summary.totalAmount,
         count: summary.receiptCount
       })),
-      // Unallocated bucket - will be populated via API when clicked
-      { id: UNALLOCATED_BUCKET_ID, name: 'Unallocated', total: 0, count: 0 }
+      // Unallocated bucket - use cached summary from context
+      { 
+        id: UNALLOCATED_BUCKET_ID, 
+        name: 'Unallocated', 
+        total: unallocatedSummary.totalAmount, 
+        count: unallocatedSummary.receiptCount 
+      }
     ];
-  }, [bucketSummaries]);
+  }, [bucketSummaries, unallocatedSummary]);
 
   const filteredBuckets = useMemo(() => {
     if (showEmpty) return bucketTotals;

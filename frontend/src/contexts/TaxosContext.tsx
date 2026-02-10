@@ -16,6 +16,7 @@ const slugify = (text: string) => {
 interface TaxosContextType {
   buckets: Bucket[];
   bucketSummaries: BucketSummary[];
+  unallocatedSummary: { totalAmount: number; receiptCount: number };
   receipts: Record<string, Receipt>;
   loading: boolean;
   authenticated: boolean;
@@ -36,6 +37,10 @@ const TaxosContext = createContext<TaxosContextType | undefined>(undefined);
 export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [buckets, setBuckets] = useState<Bucket[]>([]);
   const [bucketSummaries, setBucketSummaries] = useState<BucketSummary[]>([]);
+  const [unallocatedSummary, setUnallocatedSummary] = useState<{ totalAmount: number; receiptCount: number }>(() => {
+    const saved = localStorage.getItem('taxos_unallocated_summary');
+    return saved ? JSON.parse(saved) : { totalAmount: 0, receiptCount: 0 };
+  });
   const [receipts, setReceipts] = useState<Record<string, Receipt>>(() => {
     // Load receipts from localStorage as guid-indexed dict
     const saved = localStorage.getItem('taxos_receipts');
@@ -67,6 +72,11 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     localStorage.setItem('taxos_receipts', JSON.stringify(receipts));
   }, [receipts]);
+
+  // Keep unallocated summary in localStorage in sync
+  useEffect(() => {
+    localStorage.setItem('taxos_unallocated_summary', JSON.stringify(unallocatedSummary));
+  }, [unallocatedSummary]);
 
   const refreshBuckets = useCallback(async (startDate?: Date, endDate?: Date) => {
     // Only refresh if dates have actually changed or it's the initial load
@@ -109,6 +119,22 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       setBuckets(apiBuckets);
       setBucketSummaries(apiSummaries);
+
+      // Fetch unallocated summary with the same date filter
+      try {
+        const unallocatedResponse = await client.listReceipts({
+          // No bucket_guid = unallocated receipts
+          startDate: startDate ? dateToTimestamp(startDate) as any : undefined,
+          endDate: endDate ? dateToTimestamp(endDate) as any : undefined,
+        });
+
+        const totalAmount = unallocatedResponse.receipts.reduce((sum, r) => sum + r.total, 0);
+        const receiptCount = unallocatedResponse.receipts.length;
+        setUnallocatedSummary({ totalAmount, receiptCount });
+      } catch (error) {
+        console.error('Failed to load unallocated summary:', error);
+        // Keep existing cached value on error
+      }
     } catch (error) {
       console.error('Failed to load buckets:', error);
       // Don't immediately retry on error - just use fallback
@@ -120,14 +146,19 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [authenticated, currentDateFilter, buckets.length]); // Include currentDateFilter and buckets.length
 
-  // Load buckets on mount if authenticated
+  // Don't load buckets on mount - let Dashboard call refreshBuckets with date filter
   useEffect(() => {
-    if (authenticated) {
-      void refreshBuckets();
+    if (!authenticated) {
+      setLoading(false);
     } else {
+      // Load from localStorage on mount
+      const saved = localStorage.getItem('taxos_buckets');
+      if (saved) {
+        setBuckets(JSON.parse(saved));
+      }
       setLoading(false);
     }
-  }, [authenticated]); // Remove refreshBuckets from dependency array to prevent infinite loop
+  }, [authenticated]);
 
   // Keep localStorage as backup
   useEffect(() => {
@@ -445,6 +476,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     <TaxosContext.Provider value={{
       buckets,
       bucketSummaries,
+      unallocatedSummary,
       receipts,
       loading,
       authenticated,

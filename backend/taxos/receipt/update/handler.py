@@ -2,8 +2,8 @@ import logging
 import os
 
 from taxos.allocation.entity import Allocation
-from taxos.context.tools import require_tenant
-from taxos.receipt.entity import Receipt, require_receipt
+from taxos.context.tools import require_receipt, require_tenant
+from taxos.receipt.entity import Receipt
 from taxos.receipt.repo.update.command import UpdateReceiptRepo
 from taxos.receipt.tools import get_state_file
 from taxos.receipt.update.command import UpdateReceipt

@@ -20,11 +20,12 @@ def parse_allocations(data) -> set[Allocation]:
   logger.debug("Parsing allocations data: %s", data)
 
   for pair in data:
-    if not isinstance(pair, list) or len(pair) != 2:
+    if not isinstance(pair, dict) or len(pair) != 2:
       logger.warning("Invalid allocation pair in receipt state file: %s", pair)
       continue
 
-    bucket_ref_key, amount = pair
+    bucket_ref_key = pair.get("bucket", pair.get("bucket_guid", pair.get("bucket_ref", "")))
+    amount = pair.get("amount")
     try:
       bucket_ref = BucketRef(bucket_ref_key)
     except ValueError as e:

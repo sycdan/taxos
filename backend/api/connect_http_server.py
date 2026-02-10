@@ -8,7 +8,7 @@ from functools import wraps
 
 from flask import Flask, Response, request
 from flask_cors import CORS
-from google.protobuf.json_format import MessageToDict
+from google.protobuf.json_format import MessageToDict, Parse
 from google.protobuf.timestamp_pb2 import Timestamp
 from taxos.access.authenticate_tenant.command import AuthenticateTenant
 from taxos.bucket.create.command import CreateBucket
@@ -25,6 +25,7 @@ from taxos.receipt.entity import ReceiptRef
 from taxos.receipt.repo.entity import ReceiptRepo
 from taxos.receipt.repo.load.query import LoadReceiptRepo
 from taxos.receipt.update.command import UpdateReceipt
+from taxos.tools import json as domain_json
 
 from api.v1 import taxos_service_pb2 as models
 
@@ -115,27 +116,23 @@ def list_buckets():
     repo = LoadBucketRepo().execute()
     buckets = []
 
-    for bucket in repo.index.values():
+    for domain_bucket in repo.index.values():
       # Load receipts for this bucket to calculate totals
       receipt_repo = LoadReceiptRepo(
         start_date=start_date,
         end_date=end_date,
         timezone=timezone,
-        bucket=str(bucket.guid),
+        bucket=domain_bucket,
       ).execute()
 
-      # Calculate total amount allocated to this bucket
       total_amount = sum(
-        sum(a.amount for a in receipt.allocations if a.bucket.guid == bucket.guid) for receipt in receipt_repo.receipts
+        sum(a.amount for a in r.allocations if a.bucket.guid == domain_bucket.guid) for r in receipt_repo.receipts
       )
       receipt_count = len(receipt_repo.receipts)
-
+      bucket = Parse(domain_json.dumps(domain_bucket), models.Bucket())
       buckets.append(
         models.BucketSummary(
-          bucket=models.Bucket(
-            guid=str(bucket.guid),
-            name=bucket.name,
-          ),
+          bucket=bucket,
           total_amount=total_amount,
           receipt_count=receipt_count,
         )
@@ -273,13 +270,13 @@ def list_receipts():
   logger.info("ListReceipts called via ConnectRPC")
   try:
     request_data = request.get_json() or {}
-    bucket_guid = request_data.get("bucket_guid") or request_data.get("bucketGuid")
+    bucket_guid = request_data.get("bucket_guid") or request_data.get("bucket")
 
     start_date = None
     end_date = None
-    if start_date_value := request_data.get("start_date"):
+    if start_date_value := request_data.get("start_date") or request_data.get("startDate"):
       start_date = _parse_timestamp(start_date_value)
-    if end_date_value := request_data.get("end_date"):
+    if end_date_value := request_data.get("end_date") or request_data.get("endDate"):
       end_date = _parse_timestamp(end_date_value)
     timezone = request_data.get("timezone") or "UTC"
 
@@ -305,6 +302,8 @@ def list_receipts():
       response_date = _parse_timestamp(receipt.date)
       ts = Timestamp()
       ts.FromDatetime(response_date)
+
+      serialized = json.loads(domain_json.dumps(receipt))
 
       receipt_message = models.Receipt(
         guid=str(receipt.guid),
@@ -414,7 +413,7 @@ def delete_receipt():
   try:
     request_data = request.get_json()
     receipt_ref = ReceiptRef(request_data.get("guid", ""))
-    success = DeleteReceipt(ref=receipt_ref).execute()
+    success = DeleteReceipt(receipt=receipt_ref).execute()
 
     response = models.DeleteReceiptResponse(success=success)
     response_dict = MessageToDict(response, preserving_proto_field_name=True)

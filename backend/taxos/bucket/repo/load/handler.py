@@ -1,10 +1,10 @@
 import logging
 
-from taxos.bucket.entity import Bucket, BucketRef
+from taxos.bucket.entity import Bucket
 from taxos.bucket.repo.entity import BucketRepo
 from taxos.bucket.repo.load.query import LoadBucketRepo
 from taxos.bucket.tools import get_buckets_dir
-from taxos.context.tools import require_tenant
+from taxos.context.tools import require_bucket, require_tenant
 from taxos.tools.guid import parse_guid
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ def handle(query: LoadBucketRepo) -> BucketRepo:
     if guid := parse_guid(content_dir.name):
       logger.info(f"Found bucket with GUID: {guid}")
       try:
-        if bucket := BucketRef(guid.hex).hydrate():
+        if bucket := require_bucket(guid.hex):
           repo.add(bucket)
       except Bucket.DoesNotExist:
         logger.warning(f"Bucket with GUID {guid} does not exist, skipping.")

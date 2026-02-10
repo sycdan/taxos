@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Union
 from zoneinfo import ZoneInfo
 
-from taxos.bucket.entity import BucketRef
+from taxos.bucket.entity import Bucket, BucketRef
 from taxos.receipt.repo.entity import ReceiptRepo
 from taxos.tools.time import parse_datetime
 
@@ -13,7 +13,7 @@ class LoadReceiptRepo:
   start_date: Union[datetime, str, None] = None
   end_date: Union[datetime, str, None] = None
   timezone: Union[ZoneInfo, str, None] = None
-  bucket: Union[BucketRef, str, None] = field(
+  bucket: Union[Bucket, BucketRef, str, None] = field(
     default=None,
     metadata={
       "help": "If set, load receipts allocated to this bucket. If None, load unallocated.",
@@ -33,7 +33,7 @@ class LoadReceiptRepo:
       self.start_date = parse_datetime(self.start_date, self.timezone)
     if self.end_date and not isinstance(self.end_date, datetime):
       self.end_date = parse_datetime(self.end_date, self.timezone)
-    if self.bucket and not isinstance(self.bucket, BucketRef):
+    if self.bucket and not isinstance(self.bucket, (Bucket, BucketRef)):
       self.bucket = BucketRef(self.bucket)
 
   def execute(self) -> ReceiptRepo:

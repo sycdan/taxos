@@ -1,6 +1,7 @@
 import logging
 
-from taxos.receipt.entity import Receipt, require_receipt
+from taxos.context.tools import require_receipt
+from taxos.receipt.entity import Receipt
 from taxos.tenant.unallocated_receipt.check.command import CheckUnallocatedReceipt
 from taxos.tenant.unallocated_receipt.entity import UnallocatedReceipt
 

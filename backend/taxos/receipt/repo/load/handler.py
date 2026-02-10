@@ -1,8 +1,8 @@
 import logging
 
 from taxos.bucket.entity import Bucket
-from taxos.context.tools import require_tenant
-from taxos.receipt.entity import Receipt, require_receipt
+from taxos.context.tools import require_bucket, require_receipt, require_tenant
+from taxos.receipt.entity import Receipt
 from taxos.receipt.repo.entity import ReceiptRepo
 from taxos.receipt.repo.load.query import LoadReceiptRepo
 from taxos.receipt.tools import get_repo_file
@@ -32,7 +32,7 @@ def handle(query: LoadReceiptRepo) -> ReceiptRepo:
   tenant = require_tenant()
 
   if query.bucket:
-    bucket = query.bucket.hydrate()
+    bucket = require_bucket(query.bucket)
   else:
     bucket = None
 
