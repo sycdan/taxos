@@ -1,50 +1,46 @@
 import logging
 import os
-from datetime import date
-from uuid import UUID
 
 from taxos.context.tools import require_tenant
-from taxos.receipt.entity import Receipt, ReceiptRef
-from taxos.receipt.tools import get_unallocated_file
-from taxos.tenant.unallocated_receipt.check.command import CheckUnallocatedReceipt
-from taxos.tenant.unallocated_receipt.repo.entity import UnallocatedReceiptRepo
-from taxos.tenant.unallocated_receipt.repo.load.query import LoadUnallocatedReceiptRepo
-from taxos.tenant.unallocated_receipt.repo.update.query import UpdateUnallocatedReceiptRepo
+from taxos.receipt.entity import Receipt, require_receipt
+from taxos.receipt.repo.entity import ReceiptRepo
+from taxos.receipt.repo.load.query import LoadReceiptRepo
+from taxos.receipt.repo.update.command import UpdateReceiptRepo
+from taxos.receipt.tools import get_repo_file
 from taxos.tools import json
 
 logger = logging.getLogger(__name__)
 
 
-def save_repo(repo: UnallocatedReceiptRepo):
+def save_repo(repo: ReceiptRepo):
   tenant = require_tenant()
-  unallocated_file = get_unallocated_file(tenant.guid)
-  os.makedirs(unallocated_file.parent, exist_ok=True)
+  repo_file = get_repo_file(tenant.guid)
+  os.makedirs(repo_file.parent, exist_ok=True)
   state = {}
 
-  for month, unallocated_receipts in repo.index_by_month.items():
-    month_key = month.strftime("%Y-%m")
-    state.setdefault(month_key, []).extend([ur.receipt.guid.hex for ur in unallocated_receipts])
+  for month, receipts in repo.index_by_month.items():
+    month = month.strftime("%Y-%m")
+    state.setdefault(month, []).extend([r.guid.hex for r in receipts])
 
-  # Write to temp file first, then atomically rename to avoid race conditions
-  temp_file = unallocated_file.with_suffix(".tmp")
-  with temp_file.open("w") as f:
-    json.dump(state, f)
-  temp_file.replace(unallocated_file)
+  json.safe_dump(state, repo_file)
 
 
-def handle(query: UpdateUnallocatedReceiptRepo) -> bool:
-  """Returns True if the receipt is unallocated and was added to the repo, False otherwise."""
-  repo: UnallocatedReceiptRepo = LoadUnallocatedReceiptRepo().execute()
-  receipt = query.receipt.hydrate()
-  added = False
+def handle(command: UpdateReceiptRepo) -> bool:
+  """Returns True if the repo was updated, False otherwise."""
+  try:
+    receipt = require_receipt(command.receipt)
+  except Receipt.DoesNotExist:
+    logger.warning(f"Receipt not found for repo update: {command.receipt}")
+    return False
 
-  if unallocated_receipt := CheckUnallocatedReceipt(receipt).execute():
-    logger.info(f"Receipt is unallocated, adding to unallocated repo: {receipt.guid}")
-    repo.add(unallocated_receipt)
-    added = True
-  else:
-    logger.info(f"Receipt is fully allocated, removing from unallocated repo if present: {receipt.guid}")
-    repo.remove(receipt)
-
-  save_repo(repo)
-  return added
+  try:
+    repo: ReceiptRepo = LoadReceiptRepo().execute()
+    if command.remove:
+      repo.remove(receipt)
+    else:
+      repo.add(receipt)
+    save_repo(repo)
+    return True
+  except Exception as e:
+    logger.error(f"Failed to update receipt repo: {e}")
+  return False
