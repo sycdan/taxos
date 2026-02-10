@@ -27,7 +27,7 @@ from taxos.receipt.repo.load.query import LoadReceiptRepo
 from taxos.receipt.update.command import UpdateReceipt
 from taxos.tools import json as domain_json
 
-from api.v1 import taxos_service_pb2 as models
+from api.v1 import taxos_service_pb2 as messages
 
 logger = logging.getLogger(__name__)
 
@@ -102,9 +102,9 @@ def _parse_allocations(values: list[dict]) -> list[dict]:
 def list_buckets():
   logger.info("ListBuckets called via ConnectRPC")
   try:
+    bucket_summaries: list[messages.BucketSummary] = []
     request_data = request.get_json() or {}
 
-    # Parse date filters from request
     start_date = None
     end_date = None
     if start_date_value := request_data.get("start_date"):
@@ -114,34 +114,31 @@ def list_buckets():
     timezone = request_data.get("timezone", "")
 
     repo = LoadBucketRepo().execute()
-    buckets = []
-
-    for domain_bucket in repo.index.values():
-      # Load receipts for this bucket to calculate totals
+    for bucket in repo.index.values():
       receipt_repo = LoadReceiptRepo(
         start_date=start_date,
         end_date=end_date,
         timezone=timezone,
-        bucket=domain_bucket,
+        bucket=bucket,
       ).execute()
 
       total_amount = sum(
-        sum(a.amount for a in r.allocations if a.bucket.guid == domain_bucket.guid) for r in receipt_repo.receipts
+        sum(a.amount for a in r.allocations if a.bucket.guid == bucket.guid) for r in receipt_repo.receipts
       )
       receipt_count = len(receipt_repo.receipts)
-      bucket = Parse(domain_json.dumps(domain_bucket), models.Bucket())
-      buckets.append(
-        models.BucketSummary(
-          bucket=bucket,
+      bucket_message = Parse(domain_json.dumps(bucket), messages.Bucket())
+      bucket_summaries.append(
+        messages.BucketSummary(
+          bucket=bucket_message,
           total_amount=total_amount,
           receipt_count=receipt_count,
         )
       )
 
-    response = models.ListBucketsResponse(buckets=buckets)
+    response = messages.ListBucketsResponse(buckets=bucket_summaries)
     response_dict = MessageToDict(response, preserving_proto_field_name=True)
 
-    logger.info(f"Returning {len(buckets)} buckets")
+    logger.info(f"Returning {len(bucket_summaries)} buckets")
     return Response(json.dumps(response_dict), content_type="application/json")
   except Exception as e:
     logger.error(f"Failed to list buckets: {e}")
@@ -156,7 +153,7 @@ def create_bucket():
     request_data = request.get_json()
     bucket = CreateBucket(request_data.get("name", "")).execute()
 
-    response = models.Bucket(
+    response = messages.Bucket(
       guid=str(bucket.guid),
       name=bucket.name,
     )
@@ -193,14 +190,14 @@ def create_receipt():
     ts = Timestamp()
     ts.FromDatetime(response_date)
 
-    response = models.Receipt(
+    response = messages.Receipt(
       guid=str(receipt.guid),
       vendor=receipt.vendor,
       date=ts,
       timezone=receipt.timezone,
       total=receipt.total,
       allocations=[
-        models.ReceiptAllocation(
+        messages.ReceiptAllocation(
           bucket_guid=str(a.bucket.guid),
           amount=a.amount,
         )
@@ -227,7 +224,7 @@ def get_bucket():
     bucket_ref = BucketRef(request_data.get("guid", ""))
     bucket = LoadBucket(ref=bucket_ref).execute()
 
-    response = models.Bucket(
+    response = messages.Bucket(
       guid=str(bucket.guid),
       name=bucket.name,
     )
@@ -252,7 +249,7 @@ def update_bucket():
     except Bucket.DoesNotExist:
       return Response(json.dumps({"error": "Bucket not found"}), status=404, content_type="application/json")
 
-    response = models.Bucket(
+    response = messages.Bucket(
       guid=str(bucket.guid),
       name=bucket.name,
     )
@@ -289,14 +286,12 @@ def list_receipts():
 
     # Convert receipts to protobuf format
     receipt_messages = []
-    for domain_receipt in repo.receipts:
-      text = domain_json.dumps(domain_receipt)
-      receipt = Parse(text, models.Receipt())
-
-      receipt_message = receipt
+    for receipt in repo.receipts:
+      text = domain_json.dumps(receipt)
+      receipt_message = Parse(text, messages.Receipt())
       receipt_messages.append(receipt_message)
 
-    response = models.ListReceiptsResponse(receipts=receipt_messages)
+    response = messages.ListReceiptsResponse(receipts=receipt_messages)
     response_dict = MessageToDict(response, preserving_proto_field_name=True)
 
     bucket_desc = f"bucket {bucket_guid}" if bucket_guid else "unallocated receipts"
@@ -317,7 +312,7 @@ def delete_bucket():
     bucket_ref = BucketRef(request_data.get("guid", ""))
     success = DeleteBucket(ref=bucket_ref).execute()
 
-    response = models.DeleteBucketResponse(success=success)
+    response = messages.DeleteBucketResponse(success=success)
     response_dict = MessageToDict(response, preserving_proto_field_name=True)
 
     return Response(json.dumps(response_dict), content_type="application/json")
@@ -353,14 +348,14 @@ def update_receipt():
     ts = Timestamp()
     ts.FromDatetime(response_date)
 
-    response = models.Receipt(
+    response = messages.Receipt(
       guid=str(receipt.guid),
       vendor=receipt.vendor,
       date=ts,
       timezone=receipt.timezone,
       total=receipt.total,
       allocations=[
-        models.ReceiptAllocation(
+        messages.ReceiptAllocation(
           bucket_guid=str(a.bucket.guid),
           amount=a.amount,
         )
@@ -387,7 +382,7 @@ def delete_receipt():
     receipt_ref = ReceiptRef(request_data.get("guid", ""))
     success = DeleteReceipt(receipt=receipt_ref).execute()
 
-    response = models.DeleteReceiptResponse(success=success)
+    response = messages.DeleteReceiptResponse(success=success)
     response_dict = MessageToDict(response, preserving_proto_field_name=True)
 
     return Response(json.dumps(response_dict), content_type="application/json")
@@ -462,11 +457,11 @@ def upload_receipt_file():
       ts = Timestamp()
       ts.FromDatetime(upload_timestamp)
 
-      file_info = models.UploadReceiptFileInfo(
+      file_info = messages.UploadReceiptFileInfo(
         file_hash=client_hash, filename=filename, file_path=zip_path, file_size=file_size, uploaded_at=ts
       )
 
-      response = models.UploadReceiptFileResponse(already_exists=True, file_info=file_info)
+      response = messages.UploadReceiptFileResponse(already_exists=True, file_info=file_info)
       response_dict = MessageToDict(response, preserving_proto_field_name=True)
       return Response(json.dumps(response_dict), content_type="application/json")
 
@@ -498,11 +493,11 @@ def upload_receipt_file():
     ts = Timestamp()
     ts.FromDatetime(upload_timestamp)
 
-    file_info = models.UploadReceiptFileInfo(
+    file_info = messages.UploadReceiptFileInfo(
       file_hash=client_hash, filename=filename, file_path=zip_path, file_size=file_size, uploaded_at=ts
     )
 
-    response = models.UploadReceiptFileResponse(already_exists=False, file_info=file_info)
+    response = messages.UploadReceiptFileResponse(already_exists=False, file_info=file_info)
     response_dict = MessageToDict(response, preserving_proto_field_name=True)
 
     return Response(json.dumps(response_dict), content_type="application/json")
@@ -542,7 +537,7 @@ def download_receipt_file():
 
     file_size = len(file_data)
 
-    response = models.DownloadReceiptFileResponse(filename=filename, file_data=file_data, file_size=file_size)
+    response = messages.DownloadReceiptFileResponse(filename=filename, file_data=file_data, file_size=file_size)
     response_dict = MessageToDict(response, preserving_proto_field_name=True)
 
     logger.info(f"Downloaded file {filename} with hash {file_hash} ({file_size} bytes)")
@@ -562,7 +557,7 @@ def authenticate():
     if not token:
       return Response(json.dumps({"error": "Missing token"}), status=400, content_type="application/json")
     tenant = AuthenticateTenant(token).execute()
-    response = models.AuthenticateResponse()
+    response = messages.AuthenticateResponse()
     response.name = tenant.name
     response_dict = MessageToDict(response, preserving_proto_field_name=True)
     return Response(json.dumps(response_dict), content_type="application/json")
