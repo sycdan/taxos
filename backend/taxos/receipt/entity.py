@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import UUID
 
+from taxos.allocation.entity import Allocation
 from taxos.tools.guid import parse_guid
 
 
@@ -15,8 +16,9 @@ class Receipt:
   total: float
   date: datetime
   timezone: str
-  allocations: list[tuple[str, float]] = field(
-    default_factory=list, metadata={"help": "List of (bucket_ref, amount) pairs."}
+  allocations: set[Allocation] = field(
+    default_factory=set,
+    metadata={"help": "How much of the total is assigned to which buckets."},
   )
   vendor_ref: str = ""
   notes: str = ""
@@ -30,9 +32,6 @@ class Receipt:
 
   def __hash__(self) -> int:
     return hash(self.guid)
-
-  def hydrate(self):
-    return self
 
 
 @dataclass
@@ -54,7 +53,12 @@ class ReceiptRef:
   def __str__(self) -> str:
     return f"receipt_{self.guid.hex}"
 
-  def hydrate(self) -> Receipt:
-    from taxos.receipt.load.query import LoadReceipt
 
-    return LoadReceipt(ref=self).execute()
+def require_receipt(ref: Receipt | ReceiptRef) -> Receipt:
+  """Hydrates a ReceiptRef to a Receipt, or returns the Receipt if already hydrated.
+  Raises Receipt.DoesNotExist."""
+  from taxos.receipt.load.query import LoadReceipt
+
+  if isinstance(ref, Receipt):
+    return ref
+  return LoadReceipt(ref).execute()

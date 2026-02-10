@@ -1,6 +1,6 @@
 import logging
 
-from taxos.receipt.entity import Receipt
+from taxos.receipt.entity import Receipt, require_receipt
 from taxos.tenant.unallocated_receipt.check.command import CheckUnallocatedReceipt
 from taxos.tenant.unallocated_receipt.entity import UnallocatedReceipt
 
@@ -11,13 +11,13 @@ def calculate_unallocated_amount(receipt: Receipt) -> float:
   if not receipt.allocations:
     return receipt.total
 
-  total_allocated = sum(amount for _, amount in receipt.allocations)
+  total_allocated = sum(a.amount for a in receipt.allocations)
   return receipt.total - total_allocated
 
 
 def handle(command: CheckUnallocatedReceipt) -> UnallocatedReceipt | None:
   logger.debug(f"{command=}")
-  receipt = command.receipt.hydrate()
+  receipt = require_receipt(command.receipt)
 
   unallocated_amount = calculate_unallocated_amount(receipt)
   if unallocated_amount:

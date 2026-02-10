@@ -14,6 +14,6 @@ def get_state_file(receipt_guid: UUID, tenant_guid: UUID) -> Path:
   return content_dir / "state.json"
 
 
-def get_unallocated_file(tenant_guid: UUID) -> Path:
+def get_index_file(tenant_guid: UUID) -> Path:
   content_dir = get_receipts_dir(tenant_guid)
-  return content_dir / "unallocated.json"
+  return content_dir / "index.json"

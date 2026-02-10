@@ -9,6 +9,10 @@ class LoadReceipt:
 
   ref: ReceiptRef
 
+  def __post_init__(self):
+    if not isinstance(self.ref, ReceiptRef):
+      self.ref = ReceiptRef(self.ref)
+
   def execute(self) -> Receipt:
     from taxos.receipt.load.handler import handle
 
