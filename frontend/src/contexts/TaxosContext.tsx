@@ -128,8 +128,19 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           endDate: endDate ? dateToTimestamp(endDate) as any : undefined,
         });
 
-        const totalAmount = unallocatedResponse.receipts.reduce((sum, r) => sum + r.total, 0);
-        const receiptCount = unallocatedResponse.receipts.length;
+        // Calculate unallocated amount (total - sum of allocations)
+        let totalAmount = 0;
+        let receiptCount = 0;
+        
+        for (const r of unallocatedResponse.receipts) {
+          const allocatedAmount = r.allocations.reduce((sum, a) => sum + a.amount, 0);
+          const unallocatedAmount = r.total - allocatedAmount;
+          if (unallocatedAmount > 0) {
+            totalAmount += unallocatedAmount;
+            receiptCount++;
+          }
+        }
+        
         setUnallocatedSummary({ totalAmount, receiptCount });
       } catch (error) {
         console.error('Failed to load unallocated summary:', error);
@@ -270,10 +281,10 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           date: toTimestamp(receipt.date),
           timezone: receipt.timezone,
           allocations: receipt.allocations.map(a => ({
-            bucketGuid: a.bucketId,
+            bucket: a.bucketId,
             amount: a.amount,
           })),
-          ref: receipt.ref || '',
+          vendorRef: receipt.ref || '',
           notes: receipt.notes || '',
           hash: receipt.hash || '',
         });
@@ -285,10 +296,10 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           date: timestampToIso(response.date),
           timezone: response.timezone,
           allocations: response.allocations.map(a => ({
-            bucketId: a.bucketGuid,
+            bucketId: a.bucket,
             amount: a.amount,
           })),
-          ref: response.ref || undefined,
+          ref: response.vendorRef || undefined,
           notes: response.notes || undefined,
           hash: response.hash || undefined,
         };
@@ -335,10 +346,10 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         date: toTimestamp(receipt.date),
         timezone: receipt.timezone,
         allocations: receipt.allocations.map(a => ({
-          bucketGuid: a.bucketId,
+          bucket: a.bucketId,
           amount: a.amount,
         })),
-        ref: receipt.ref || '',
+        vendorRef: receipt.ref || '',
         notes: receipt.notes || '',
         hash: receipt.hash || '',
       });
@@ -350,10 +361,10 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         date: timestampToIso(response.date),
         timezone: response.timezone,
         allocations: response.allocations.map(a => ({
-          bucketId: a.bucketGuid,
+          bucketId: a.bucket,
           amount: a.amount,
         })),
-        ref: response.ref || '',
+        ref: response.vendorRef || '',
         notes: response.notes || '',
         hash: response.hash || '',
       };
@@ -385,7 +396,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const loadReceiptsForBucket = useCallback(async (bucketId: string, startDate: Date, endDate: Date): Promise<Receipt[]> => {
     try {
       const response = await client.listReceipts({
-        bucketGuid: bucketId,
+        bucket: bucketId,
         startDate: dateToTimestamp(startDate) as any,
         endDate: dateToTimestamp(endDate) as any,
       });
@@ -397,10 +408,10 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         date: timestampToIso(r.date),
         timezone: r.timezone,
         allocations: r.allocations.map(a => ({
-          bucketId: a.bucketGuid,
+          bucketId: a.bucket,
           amount: a.amount,
         })),
-        ref: r.ref || undefined,
+        ref: r.vendorRef || undefined,
         notes: r.notes || undefined,
         hash: r.hash || undefined,
       }));
@@ -442,10 +453,10 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         date: timestampToIso(r.date),
         timezone: r.timezone,
         allocations: r.allocations.map(a => ({
-          bucketId: a.bucketGuid,
+          bucketId: a.bucket,
           amount: a.amount,
         })),
-        ref: r.ref || undefined,
+        ref: r.vendorRef || undefined,
         notes: r.notes || undefined,
         hash: r.hash || undefined,
       }));
