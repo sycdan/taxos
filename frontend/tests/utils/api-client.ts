@@ -1,99 +1,47 @@
+import { createClient, type Interceptor } from "@connectrpc/connect";
+import { createConnectTransport } from "@connectrpc/connect-web";
+import { TaxosApi } from "../../src/api/v1/taxos_service_connect";
+
 export class TaxosApiClient {
-	private token: string =
-		"65d2d4bb66af87ec6fc9dd5d9436e9b259eddb90724a9b22d089b4971e44cb53";
+	private client: ReturnType<typeof createClient<typeof TaxosApi>>;
 
-	constructor(private baseUrl: string = "http://backend:50051") {}
-
-	private get headers() {
-		return {
-			"Content-Type": "application/json",
-			Authorization: `Bearer ${this.token}`,
+	constructor(
+		private baseUrl: string = "http://backend:50051",
+		private token: string = "65d2d4bb66af87ec6fc9dd5d9436e9b259eddb90724a9b22d089b4971e44cb53",
+	) {
+		// Create an interceptor that adds the token to requests
+		const tokenInterceptor: Interceptor = (next) => async (req) => {
+			req.header.set("Authorization", `Bearer ${this.token}`);
+			return await next(req);
 		};
+
+		this.client = createClient(
+			TaxosApi,
+			createConnectTransport({
+				baseUrl: this.baseUrl,
+				interceptors: [tokenInterceptor],
+			}),
+		);
 	}
 
 	async listBuckets() {
-		const response = await fetch(
-			`${this.baseUrl}/taxos.v1.TaxosApi/ListBuckets`,
-			{
-				method: "POST",
-				headers: this.headers,
-				body: JSON.stringify({}),
-			},
-		);
-
-		if (!response.ok) {
-			throw new Error(`Failed to list buckets: ${response.statusText}`);
-		}
-
-		return response.json();
+		return await this.client.listBuckets({});
 	}
 
 	async createBucket(name: string) {
-		const response = await fetch(
-			`${this.baseUrl}/taxos.v1.TaxosApi/CreateBucket`,
-			{
-				method: "POST",
-				headers: this.headers,
-				body: JSON.stringify({ name }),
-			},
-		);
-
-		if (!response.ok) {
-			throw new Error(`Failed to create bucket: ${response.statusText}`);
-		}
-
-		return response.json();
+		return await this.client.createBucket({ name });
 	}
 
 	async getBucket(guid: string) {
-		const response = await fetch(
-			`${this.baseUrl}/taxos.v1.TaxosApi/GetBucket`,
-			{
-				method: "POST",
-				headers: this.headers,
-				body: JSON.stringify({ guid }),
-			},
-		);
-
-		if (!response.ok) {
-			throw new Error(`Failed to get bucket: ${response.statusText}`);
-		}
-
-		return response.json();
+		return await this.client.getBucket({ guid });
 	}
 
 	async updateBucket(guid: string, name: string) {
-		const response = await fetch(
-			`${this.baseUrl}/taxos.v1.TaxosApi/UpdateBucket`,
-			{
-				method: "POST",
-				headers: this.headers,
-				body: JSON.stringify({ guid, name }),
-			},
-		);
-
-		if (!response.ok) {
-			throw new Error(`Failed to update bucket: ${response.statusText}`);
-		}
-
-		return response.json();
+		return await this.client.updateBucket({ guid, name });
 	}
 
 	async deleteBucket(guid: string) {
-		const response = await fetch(
-			`${this.baseUrl}/taxos.v1.TaxosApi/DeleteBucket`,
-			{
-				method: "POST",
-				headers: this.headers,
-				body: JSON.stringify({ guid }),
-			},
-		);
-
-		if (!response.ok) {
-			throw new Error(`Failed to delete bucket: ${response.statusText}`);
-		}
-
-		return response.json();
+		return await this.client.deleteBucket({ guid });
 	}
 
 	async createReceipt(
@@ -102,64 +50,25 @@ export class TaxosApiClient {
 		notes?: string,
 		allocations?: Array<{ bucket: string; amount: number }>,
 	) {
-		const response = await fetch(
-			`${this.baseUrl}/taxos.v1.TaxosApi/CreateReceipt`,
-			{
-				method: "POST",
-				headers: this.headers,
-				body: JSON.stringify({
-					total: total,
-					vendor: vendor,
-					date: new Date().toISOString(),
-					timezone: "UTC",
-					notes: notes || "",
-					allocations: allocations || [],
-				}),
+		const date = new Date();
+		return await this.client.createReceipt({
+			total,
+			vendor,
+			date: {
+				seconds: BigInt(Math.floor(date.getTime() / 1000)),
+				nanos: (date.getTime() % 1000) * 1_000_000,
 			},
-		);
-
-		if (!response.ok) {
-			throw new Error(`Failed to create receipt: ${response.statusText}`);
-		}
-
-		return response.json();
+			timezone: "UTC",
+			notes: notes || "",
+			allocations: allocations || [],
+		});
 	}
 
 	async listUnallocatedReceipts() {
-		const response = await fetch(
-			`${this.baseUrl}/taxos.v1.TaxosApi/ListReceipts`,
-			{
-				method: "POST",
-				headers: this.headers,
-				body: JSON.stringify({}),
-			},
-		);
-
-		if (!response.ok) {
-			throw new Error(
-				`Failed to list unallocated receipts: ${response.statusText}`,
-			);
-		}
-
-		return response.json();
+		return await this.client.listReceipts({});
 	}
 
 	async listReceiptsForBucket(bucketGuid: string) {
-		const response = await fetch(
-			`${this.baseUrl}/taxos.v1.TaxosApi/ListReceipts`,
-			{
-				method: "POST",
-				headers: this.headers,
-				body: JSON.stringify({ bucket: bucketGuid }),
-			},
-		);
-
-		if (!response.ok) {
-			throw new Error(
-				`Failed to list receipts for bucket: ${response.statusText}`,
-			);
-		}
-
-		return response.json();
+		return await this.client.listReceipts({ bucket: bucketGuid });
 	}
 }
