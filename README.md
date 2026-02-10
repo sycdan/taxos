@@ -19,3 +19,13 @@ Run directly (from repo root):
 ```bash
 scaf . --call path/to/action/dir -- plus args and --flags
 ```
+
+## Testing
+
+From local, with devcontainers running:
+
+### Frontend
+
+```bash
+docker exec -it taxos-frontend-1 npm run test:integration
+```
