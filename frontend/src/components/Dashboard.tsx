@@ -113,11 +113,11 @@ const Dashboard: React.FC<DashboardProps> = ({
         count: summary.receiptCount
       })),
       // Unallocated bucket - use cached summary from context
-      { 
-        id: UNALLOCATED_BUCKET_ID, 
-        name: 'Unallocated', 
-        total: unallocatedSummary.totalAmount, 
-        count: unallocatedSummary.receiptCount 
+      {
+        id: UNALLOCATED_BUCKET_ID,
+        name: 'Unallocated',
+        total: unallocatedSummary.totalAmount,
+        count: unallocatedSummary.receiptCount
       }
     ];
   }, [bucketSummaries, unallocatedSummary]);
