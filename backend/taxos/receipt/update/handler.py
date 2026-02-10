@@ -1,11 +1,12 @@
 import logging
 import os
 
+from taxos.allocation.entity import Allocation
 from taxos.context.tools import require_tenant
 from taxos.receipt.entity import Receipt
+from taxos.receipt.repo.update.command import UpdateReceiptRepo
 from taxos.receipt.tools import get_state_file
 from taxos.receipt.update.command import UpdateReceipt
-from taxos.tenant.unallocated_receipt.repo.update.query import UpdateUnallocatedReceiptRepo
 from taxos.tools import json
 
 logger = logging.getLogger(__name__)
@@ -25,8 +26,10 @@ def handle(command: UpdateReceipt) -> Receipt:
   receipt.notes = command.notes
   receipt.hash = command.hash
 
-  # Update allocations - convert from dict format to tuple format
-  receipt.allocations = [(a.get("bucket_guid", ""), a.get("amount", 0)) for a in command.allocations]
+  # Update allocations - convert from dict format to Allocation objects
+  receipt.allocations = {
+    Allocation(bucket=a.get("bucket_guid", ""), amount=a.get("amount", 0)) for a in command.allocations
+  }
 
   # Save to state file atomically to avoid race conditions
   state_file = get_state_file(receipt.guid, tenant.guid)
@@ -36,7 +39,7 @@ def handle(command: UpdateReceipt) -> Receipt:
     json.dump(receipt, f)
   temp_file.replace(state_file)
 
-  # Update the unallocated receipt repo
-  UpdateUnallocatedReceiptRepo(receipt).execute()
+  # Update the receipt repo
+  UpdateReceiptRepo(receipt).execute()
 
   return receipt

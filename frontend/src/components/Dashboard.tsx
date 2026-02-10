@@ -25,11 +25,16 @@ const Dashboard: React.FC<DashboardProps> = ({
   onAddBucket,
   isNameTaken
 }) => {
-  const { buckets, getBucketTotal, getBucketCount } = useTaxos();
+  const { bucketSummaries, refreshBuckets } = useTaxos();
   const [isDragging, setIsDragging] = React.useState(false);
   const [isAddingBucket, setIsAddingBucket] = React.useState(false);
   const [newBucketName, setNewBucketName] = React.useState('');
   const dragCounter = React.useRef(0);
+
+  // Refresh buckets when date range changes
+  React.useEffect(() => {
+    void refreshBuckets(startDate, endDate);
+  }, [startDate, endDate, refreshBuckets]);
 
   React.useEffect(() => {
     const handleWindowDragOver = (e: DragEvent) => {
@@ -99,13 +104,18 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const bucketTotals = useMemo(() => {
-    const list = [...buckets, { id: UNALLOCATED_BUCKET_ID, name: 'Unallocated' }];
-    return list.map(b => ({
-      ...b,
-      total: getBucketTotal(b.id, startDate, endDate),
-      count: getBucketCount(b.id, startDate, endDate)
-    }));
-  }, [buckets, getBucketTotal, getBucketCount, startDate, endDate]);
+    // Add unallocated as a pseudo-bucket (summaries from API don't include it)
+    return [
+      ...bucketSummaries.map(summary => ({
+        id: summary.bucket.id,
+        name: summary.bucket.name,
+        total: summary.totalAmount,
+        count: summary.receiptCount
+      })),
+      // Unallocated bucket - will be populated via API when clicked
+      { id: UNALLOCATED_BUCKET_ID, name: 'Unallocated', total: 0, count: 0 }
+    ];
+  }, [bucketSummaries]);
 
   const filteredBuckets = useMemo(() => {
     if (showEmpty) return bucketTotals;

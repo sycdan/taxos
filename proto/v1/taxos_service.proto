@@ -18,6 +18,8 @@ service TaxosApi {
   rpc GetBucket(GetBucketRequest) returns (Bucket);
   // List all buckets
   rpc ListBuckets(ListBucketsRequest) returns (ListBucketsResponse);
+  // List receipts allocated to a specific bucket
+  rpc ListReceipts(ListReceiptsRequest) returns (ListReceiptsResponse);
   // List all unallocated receipts
   rpc ListUnallocatedReceipts(ListUnallocatedReceiptsRequest) returns (ListUnallocatedReceiptsResponse);
   // Update a bucket's details
@@ -43,15 +45,25 @@ message ReceiptAllocation {
 }
 
 message Receipt {
-  string                    guid        = 1;
-  string                    vendor      = 2;
-  google.protobuf.Timestamp date        = 3;
-  string                    timezone    = 4;
-  double                    total       = 5;
+  string                     guid        = 1;
+  string                     vendor      = 2;
+  google.protobuf.Timestamp  date        = 3;
+  string                     timezone    = 4;
+  double                     total       = 5;
   repeated ReceiptAllocation allocations = 6;
-  string                    ref         = 7;
-  string                    notes       = 8;
-  string                    hash        = 9;
+  string                     ref         = 7;
+  string                     notes       = 8;
+  string                     hash        = 9;
+}
+
+message ListReceiptsRequest {
+  optional string           bucket_guid = 1;
+  google.protobuf.Timestamp start_date  = 2;
+  google.protobuf.Timestamp end_date    = 3;
+}
+
+message ListReceiptsResponse {
+  repeated Receipt receipts = 1;
 }
 
 message CreateBucketRequest {
@@ -59,14 +71,14 @@ message CreateBucketRequest {
 }
 
 message CreateReceiptRequest {
-  string                    vendor      = 1;
-  google.protobuf.Timestamp date        = 2;
-  string                    timezone    = 3;
-  double                    total       = 4;
+  string                     vendor      = 1;
+  google.protobuf.Timestamp  date        = 2;
+  string                     timezone    = 3;
+  double                     total       = 4;
   repeated ReceiptAllocation allocations = 5;
-  string                    ref         = 6;
-  string                    notes       = 7;
-  string                    hash        = 8;
+  string                     ref         = 6;
+  string                     notes       = 7;
+  string                     hash        = 8;
 }
 
 message GetBucketRequest {
@@ -104,15 +116,15 @@ message UpdateBucketRequest {
 }
 
 message UpdateReceiptRequest {
-  string                    guid        = 1;
-  string                    vendor      = 2;
-  google.protobuf.Timestamp date        = 3;
-  string                    timezone    = 4;
-  double                    total       = 5;
+  string                     guid        = 1;
+  string                     vendor      = 2;
+  google.protobuf.Timestamp  date        = 3;
+  string                     timezone    = 4;
+  double                     total       = 5;
   repeated ReceiptAllocation allocations = 6;
-  string                    ref         = 7;
-  string                    notes       = 8;
-  string                    hash        = 9;
+  string                     ref         = 7;
+  string                     notes       = 8;
+  string                     hash        = 9;
 }
 
 message DeleteBucketRequest {
@@ -120,32 +132,32 @@ message DeleteBucketRequest {
 }
 
 message UploadReceiptFileRequest {
-  string file_hash = 1;      // SHA-256 hash of the file provided by client
-  string filename  = 2;      // Original filename
-  bytes  file_data = 3;      // File content (for new uploads)
+  string file_hash = 1; // SHA-256 hash of the file provided by client
+  string filename  = 2; // Original filename
+  bytes  file_data = 3; // File content (for new uploads)
 }
 
 message UploadReceiptFileInfo {
-  string file_hash     = 1;  // SHA-256 hash of the uploaded file
-  string filename      = 2;  // Original filename
-  string file_path     = 3;  // Server-side storage path
-  int64  file_size     = 4;  // File size in bytes
+  string                    file_hash   = 1; // SHA-256 hash of the uploaded file
+  string                    filename    = 2; // Original filename
+  string                    file_path   = 3; // Server-side storage path
+  int64                     file_size   = 4; // File size in bytes
   google.protobuf.Timestamp uploaded_at = 5; // Upload timestamp
 }
 
 message UploadReceiptFileResponse {
-  bool   already_exists = 1; // True if file with this hash already existed
-  UploadReceiptFileInfo file_info = 2; // Information about the uploaded/existing file
+  bool                  already_exists = 1; // True if file with this hash already existed
+  UploadReceiptFileInfo file_info      = 2; // Information about the uploaded/existing file
 }
 
 message DownloadReceiptFileRequest {
-  string file_hash = 1;      // SHA-256 hash of the file to download
+  string file_hash = 1; // SHA-256 hash of the file to download
 }
 
 message DownloadReceiptFileResponse {
-  string filename  = 1;      // Original filename
-  bytes  file_data = 2;      // File content
-  int64  file_size = 3;      // File size in bytes
+  string filename  = 1; // Original filename
+  bytes  file_data = 2; // File content
+  int64  file_size = 3; // File size in bytes
 }
 
 message DeleteBucketResponse {

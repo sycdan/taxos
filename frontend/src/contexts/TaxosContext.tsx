@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Timestamp } from '@bufbuild/protobuf';
-import type { Bucket, Receipt } from '../types';
+import type { Bucket, BucketSummary, Receipt } from '../types';
 import { UNALLOCATED_BUCKET_ID } from '../types';
 import { client, getToken, dateToTimestamp } from '../api/client';
 
@@ -16,7 +16,8 @@ const slugify = (text: string) => {
 
 interface TaxosContextType {
   buckets: Bucket[];
-  receipts: Receipt[];
+  bucketSummaries: BucketSummary[];
+  receipts: Record<string, Receipt>;
   loading: boolean;
   authenticated: boolean;
   isNameTaken: (name: string, excludeId?: string) => boolean;
@@ -26,9 +27,8 @@ interface TaxosContextType {
   addReceipt: (receipt: Omit<Receipt, 'id'>) => void;
   updateReceipt: (receipt: Receipt) => void;
   deleteReceipt: (id: string) => void;
-  getBucketTotal: (bucketId: string, startDate?: Date, endDate?: Date) => number;
-  getBucketCount: (bucketId: string, startDate?: Date, endDate?: Date) => number;
-  refreshBuckets: () => Promise<void>;
+  refreshBuckets: (startDate?: Date, endDate?: Date) => Promise<void>;
+  loadReceiptsForBucket: (bucketId: string, startDate: Date, endDate: Date) => Promise<Receipt[]>;
   getUnallocatedReceipts: (startDate: Date, endDate: Date) => Promise<Receipt[]>;
 }
 
@@ -36,10 +36,11 @@ const TaxosContext = createContext<TaxosContextType | undefined>(undefined);
 
 export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [buckets, setBuckets] = useState<Bucket[]>([]);
-  const [receipts, setReceipts] = useState<Receipt[]>(() => {
-    // Keep receipts in localStorage for now until we implement receipt API
+  const [bucketSummaries, setBucketSummaries] = useState<BucketSummary[]>([]);
+  const [receipts, setReceipts] = useState<Record<string, Receipt>>(() => {
+    // Load receipts from localStorage as guid-indexed dict
     const saved = localStorage.getItem('taxos_receipts');
-    return saved ? JSON.parse(saved) : [];
+    return saved ? JSON.parse(saved) : {};
   });
   const [loading, setLoading] = useState(true);
   const [authenticated] = useState(!!getToken());
@@ -59,37 +60,53 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     localStorage.setItem('taxos_receipts', JSON.stringify(receipts));
   }, [receipts]);
 
-  const refreshBuckets = async () => {
+  const refreshBuckets = useCallback(async (startDate?: Date, endDate?: Date) => {
     try {
       setLoading(true);
       if (!authenticated) {
         setLoading(false);
         return;
       }
-      const response = await client.listBuckets({});
-      const apiBuckets: Bucket[] = response.buckets.map(bucketSummary => ({
-        id: bucketSummary.bucket!.guid,
-        name: bucketSummary.bucket!.name
+      const response = await client.listBuckets({
+        startDate: startDate ? dateToTimestamp(startDate) as any : undefined,
+        endDate: endDate ? dateToTimestamp(endDate) as any : undefined,
+      });
+      
+      const apiBuckets: Bucket[] = response.buckets.map(summary => ({
+        id: summary.bucket!.guid,
+        name: summary.bucket!.name
       }));
+      
+      const apiSummaries: BucketSummary[] = response.buckets.map(summary => ({
+        bucket: {
+          id: summary.bucket!.guid,
+          name: summary.bucket!.name
+        },
+        totalAmount: summary.totalAmount,
+        receiptCount: summary.receiptCount
+      }));
+      
       setBuckets(apiBuckets);
+      setBucketSummaries(apiSummaries);
     } catch (error) {
       console.error('Failed to load buckets:', error);
       // Fallback to localStorage on error
       const saved = localStorage.getItem('taxos_buckets');
       setBuckets(saved ? JSON.parse(saved) : []);
+      setBucketSummaries([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [authenticated]);
 
   // Load buckets on mount if authenticated
   useEffect(() => {
     if (authenticated) {
-      refreshBuckets();
+      void refreshBuckets();
     } else {
       setLoading(false);
     }
-  }, [authenticated]);
+  }, [authenticated, refreshBuckets]);
 
   // Keep localStorage as backup
   useEffect(() => {
@@ -140,30 +157,42 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await client.deleteBucket({ guid: id });
       setBuckets(prev => prev.filter(b => b.id !== id));
-      setReceipts(prev => prev.map(r => ({
-        ...r,
-        allocations: r.allocations.filter(a => a.bucketId !== id)
-      })));
+      setReceipts(prev => {
+        const updated = { ...prev };
+        for (const key in updated) {
+          updated[key] = {
+            ...updated[key],
+            allocations: updated[key].allocations.filter(a => a.bucketId !== id)
+          };
+        }
+        return updated;
+      });
     } catch (error) {
       console.error('Failed to delete bucket:', error);
       // Fallback to local deletion
       setBuckets(prev => prev.filter(b => b.id !== id));
-      setReceipts(prev => prev.map(r => ({
-        ...r,
-        allocations: r.allocations.filter(a => a.bucketId !== id)
-      })));
+      setReceipts(prev => {
+        const updated = { ...prev };
+        for (const key in updated) {
+          updated[key] = {
+            ...updated[key],
+            allocations: updated[key].allocations.filter(a => a.bucketId !== id)
+          };
+        }
+        return updated;
+      });
     }
   };
 
   const addReceipt = (receipt: Omit<Receipt, 'id'>) => {
     const createLocal = (fallbackReceipt: Omit<Receipt, 'id'>) => {
       setReceipts(prev => {
-        if (fallbackReceipt.hash && prev.some(r => r.hash === fallbackReceipt.hash)) {
+        if (fallbackReceipt.hash && Object.values(prev).some(r => r.hash === fallbackReceipt.hash)) {
           console.warn('Duplicate receipt detected, skipping:', fallbackReceipt.vendor);
           return prev;
         }
         const newReceipt = { ...fallbackReceipt, id: uuidv4() };
-        return [...prev, newReceipt];
+        return { ...prev, [newReceipt.id]: newReceipt };
       });
     };
 
@@ -215,11 +244,11 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         };
 
         setReceipts(prev => {
-          if (createdReceipt.hash && prev.some(r => r.hash === createdReceipt.hash)) {
+          if (createdReceipt.hash && Object.values(prev).some(r => r.hash === createdReceipt.hash)) {
             console.warn('Duplicate receipt detected, skipping:', createdReceipt.vendor);
             return prev;
           }
-          return [...prev, createdReceipt];
+          return { ...prev, [createdReceipt.id]: createdReceipt };
         });
       } catch (error) {
         console.error('Failed to create receipt:', error);
@@ -248,7 +277,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     // Optimistically update local state
-    setReceipts(prev => prev.map(r => r.id === receipt.id ? receipt : r));
+    setReceipts(prev => ({ ...prev, [receipt.id]: receipt }));
 
     try {
       const response = await client.updateReceipt({
@@ -281,7 +310,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         hash: response.hash || '',
       };
 
-      setReceipts(prev => prev.map(r => r.id === updatedReceipt.id ? updatedReceipt : r));
+      setReceipts(prev => ({ ...prev, [updatedReceipt.id]: updatedReceipt }));
     } catch (error) {
       console.error('Failed to update receipt:', error);
       // Already updated local state optimistically
@@ -291,56 +320,65 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const deleteReceipt = async (id: string) => {
     try {
       await client.deleteReceipt({ guid: id });
-      setReceipts(prev => prev.filter(r => r.id !== id));
+      setReceipts(prev => {
+        const { [id]: _, ...rest } = prev;
+        return rest;
+      });
     } catch (error) {
       console.error('Failed to delete receipt:', error);
       // Fallback to local deletion
-      setReceipts(prev => prev.filter(r => r.id !== id));
+      setReceipts(prev => {
+        const { [id]: _, ...rest } = prev;
+        return rest;
+      });
     }
   };
 
-  const getBucketTotal = (bucketId: string, startDate?: Date, endDate?: Date) => {
-    return receipts
-      .filter(r => {
-        const rDate = new Date(r.date);
-        if (startDate && rDate < startDate) return false;
-        if (endDate && rDate > endDate) return false;
-        return true;
-      })
-      .reduce((sum, r) => {
-        const alloc = r.allocations.find(a => a.bucketId === bucketId);
-        if (alloc) return sum + alloc.amount;
+  const loadReceiptsForBucket = useCallback(async (bucketId: string, startDate: Date, endDate: Date): Promise<Receipt[]> => {
+    try {
+      const response = await client.listReceipts({
+        bucketGuid: bucketId,
+        startDate: dateToTimestamp(startDate) as any,
+        endDate: dateToTimestamp(endDate) as any,
+      });
 
-        if (bucketId === UNALLOCATED_BUCKET_ID) {
-          const allocatedSum = r.allocations.reduce((s, a) => s + a.amount, 0);
-          return sum + (r.total - allocatedSum);
+      const bucketReceipts: Receipt[] = response.receipts.map(r => ({
+        id: r.guid,
+        vendor: r.vendor,
+        total: r.total,
+        date: timestampToIso(r.date),
+        timezone: r.timezone,
+        allocations: r.allocations.map(a => ({
+          bucketId: a.bucketGuid,
+          amount: a.amount,
+        })),
+        ref: r.ref || undefined,
+        notes: r.notes || undefined,
+        hash: r.hash || undefined,
+      }));
+
+      // Update localStorage cache
+      setReceipts(prev => {
+        const updated = { ...prev };
+        for (const receipt of bucketReceipts) {
+          updated[receipt.id] = receipt;
         }
+        return updated;
+      });
 
-        return sum;
-      }, 0);
-  };
-
-  const getBucketCount = (bucketId: string, startDate?: Date, endDate?: Date) => {
-    return receipts
-      .filter(r => {
+      return bucketReceipts;
+    } catch (error) {
+      console.error('Failed to load receipts for bucket:', error);
+      // Fallback to client-side filtering from cache
+      return Object.values(receipts).filter(r => {
         const rDate = new Date(r.date);
-        if (startDate && rDate < startDate) return false;
-        if (endDate && rDate > endDate) return false;
+        if (rDate < startDate || rDate > endDate) return false;
+        return r.allocations.some(a => a.bucketId === bucketId);
+      }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+  }, [receipts]);
 
-        const hasAlloc = r.allocations.some(a => a.bucketId === bucketId);
-        if (hasAlloc) return true;
-
-        if (bucketId === UNALLOCATED_BUCKET_ID) {
-          const allocatedSum = r.allocations.reduce((s, a) => s + a.amount, 0);
-          // Unallocated if sum < total OR if it's a new $0 receipt with no allocations
-          return allocatedSum < r.total || (r.total === 0 && r.allocations.length === 0);
-        }
-
-        return false;
-      }).length;
-  };
-
-  const getUnallocatedReceipts = async (startDate: Date, endDate: Date): Promise<Receipt[]> => {
+  const getUnallocatedReceipts = useCallback(async (startDate: Date, endDate: Date): Promise<Receipt[]> => {
     try {
       const response = await client.listUnallocatedReceipts({
         startDate: dateToTimestamp(startDate) as any,
@@ -366,18 +404,19 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (error) {
       console.error('Failed to load unallocated receipts:', error);
       // Fallback to client-side filtering
-      return receipts.filter(r => {
+      return Object.values(receipts).filter(r => {
         const rDate = new Date(r.date);
         if (rDate < startDate || rDate > endDate) return false;
         const totalAllocated = r.allocations.reduce((sum, a) => sum + a.amount, 0);
         return totalAllocated < r.total || (r.total === 0 && r.allocations.length === 0);
       }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
-  };
+  }, [receipts]);
 
   return (
     <TaxosContext.Provider value={{
       buckets,
+      bucketSummaries,
       receipts,
       loading,
       authenticated,
@@ -388,9 +427,8 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       addReceipt,
       updateReceipt,
       deleteReceipt,
-      getBucketTotal,
-      getBucketCount,
       refreshBuckets,
+      loadReceiptsForBucket,
       getUnallocatedReceipts,
     }}>
       {children}

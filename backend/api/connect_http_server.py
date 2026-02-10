@@ -116,12 +116,15 @@ def list_buckets():
 
     for bucket in repo.index.values():
       # Load receipts for this bucket to calculate totals
-      receipt_repo = LoadUnallocatedReceiptRepo(
-        start_date=start_date, end_date=end_date, bucket_guid=bucket.guid
+      receipt_repo = LoadReceiptRepo(
+        start_date=start_date, end_date=end_date, timezone="UTC", bucket=str(bucket.guid)
       ).execute()
 
-      total_amount = sum(ur.unallocated_amount for ur in receipt_repo.unallocated_receipts)
-      receipt_count = len(receipt_repo.unallocated_receipts)
+      # Calculate total amount allocated to this bucket
+      total_amount = sum(
+        sum(a.amount for a in receipt.allocations if a.bucket.guid == bucket.guid) for receipt in receipt_repo.receipts
+      )
+      receipt_count = len(receipt_repo.receipts)
 
       buckets.append(
         models.BucketSummary(
@@ -197,8 +200,8 @@ def create_receipt():
       total=receipt.total,
       allocations=[
         models.ReceiptAllocation(
-          bucket_guid=a[0],
-          amount=a[1],
+          bucket_guid=str(a.bucket.guid),
+          amount=a.amount,
         )
         for a in receipt.allocations
       ],
@@ -281,14 +284,13 @@ def list_receipts():
       end_date = _parse_timestamp(end_date_value)
 
     # Load receipts for this bucket
-    repo: UnallocatedReceiptRepo = LoadUnallocatedReceiptRepo(
-      start_date=start_date, end_date=end_date, bucket_guid=bucket_guid
+    repo: ReceiptRepo = LoadReceiptRepo(
+      start_date=start_date, end_date=end_date, timezone="UTC", bucket=bucket_guid
     ).execute()
 
     # Convert receipts to protobuf format
     receipt_messages = []
-    for unallocated_receipt in repo.unallocated_receipts:
-      receipt = unallocated_receipt.receipt.hydrate()
+    for receipt in repo.receipts:
       # Convert date to timestamp
       response_date = _parse_timestamp(receipt.date)
       ts = Timestamp()
@@ -302,8 +304,8 @@ def list_receipts():
         total=receipt.total,
         allocations=[
           models.ReceiptAllocation(
-            bucket_guid=a[0],
-            amount=a[1],
+            bucket_guid=str(a.bucket.guid),
+            amount=a.amount,
           )
           for a in receipt.allocations
         ],
@@ -338,12 +340,11 @@ def list_unallocated_receipts():
     if end_date_value := request_data.get("end_date"):
       end_date = _parse_timestamp(end_date_value)
 
-    repo: UnallocatedReceiptRepo = LoadUnallocatedReceiptRepo(start_date=start_date, end_date=end_date).execute()
+    repo: ReceiptRepo = LoadReceiptRepo(start_date=start_date, end_date=end_date, timezone="UTC", bucket=None).execute()
 
     # Convert receipts to protobuf format
     receipt_messages = []
-    for unallocated_receipt in repo.unallocated_receipts:
-      receipt = unallocated_receipt.receipt.hydrate()
+    for receipt in repo.receipts:
       # Convert date to timestamp
       response_date = _parse_timestamp(receipt.date)
       ts = Timestamp()
@@ -357,8 +358,8 @@ def list_unallocated_receipts():
         total=receipt.total,
         allocations=[
           models.ReceiptAllocation(
-            bucket_guid=a[0],
-            amount=a[1],
+            bucket_guid=str(a.bucket.guid),
+            amount=a.amount,
           )
           for a in receipt.allocations
         ],
@@ -432,8 +433,8 @@ def update_receipt():
       total=receipt.total,
       allocations=[
         models.ReceiptAllocation(
-          bucket_guid=a[0],
-          amount=a[1],
+          bucket_guid=str(a.bucket.guid),
+          amount=a.amount,
         )
         for a in receipt.allocations
       ],

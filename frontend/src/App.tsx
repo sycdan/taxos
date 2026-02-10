@@ -25,7 +25,6 @@ interface FilterConfig {
 const App: React.FC = () => {
   const {
     buckets,
-    receipts,
     addReceipt,
     updateReceipt,
     deleteReceipt,
@@ -60,11 +59,6 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem("taxos_filter_config", JSON.stringify(filterConfig));
   }, [filterConfig]);
-
-  // Handle authentication state changes
-  useEffect(() => {
-    setShowLoginModal(!authenticated);
-  }, [authenticated]);
 
   // Derive start/end dates for the rest of the app
   const dateRange = (() => {
@@ -273,7 +267,6 @@ const App: React.FC = () => {
             <BucketDetail
               bucketId={currentBucketId}
               buckets={buckets}
-              receipts={receipts}
               onBack={() => setCurrentBucketId(null)}
               startDate={dateRange.start}
               endDate={dateRange.end}

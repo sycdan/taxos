@@ -9,7 +9,6 @@ import { useTaxos } from '../contexts/TaxosContext';
 interface BucketDetailProps {
   bucketId: string;
   buckets: Bucket[];
-  receipts: Receipt[];
   onBack: () => void;
   startDate: Date;
   endDate: Date;
@@ -22,7 +21,6 @@ interface BucketDetailProps {
 const BucketDetail: React.FC<BucketDetailProps> = ({
   bucketId,
   buckets,
-  receipts,
   onBack,
   startDate,
   endDate,
@@ -31,26 +29,33 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
   onEditReceipt,
   isNameTaken
 }) => {
-  const { getUnallocatedReceipts } = useTaxos();
+  const { loadReceiptsForBucket, getUnallocatedReceipts } = useTaxos();
   const [isEditing, setIsEditing] = React.useState(false);
   const [editName, setEditName] = React.useState('');
-  const [unallocatedReceipts, setUnallocatedReceipts] = useState<Receipt[]>([]);
+  const [receiptsForBucket, setReceiptsForBucket] = useState<Receipt[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Fetch unallocated receipts when bucket changes or date range changes
+  // Fetch receipts when bucket changes or date range changes
   useEffect(() => {
-    if (bucketId === UNALLOCATED_BUCKET_ID) {
-      const fetchUnallocated = async () => {
-        try {
+    const fetchReceipts = async () => {
+      setLoading(true);
+      try {
+        if (bucketId === UNALLOCATED_BUCKET_ID) {
           const data = await getUnallocatedReceipts(startDate, endDate);
-          setUnallocatedReceipts(data);
-        } catch (error) {
-          console.error('Failed to fetch unallocated receipts:', error);
-          setUnallocatedReceipts([]);
+          setReceiptsForBucket(data);
+        } else {
+          const data = await loadReceiptsForBucket(bucketId, startDate, endDate);
+          setReceiptsForBucket(data);
         }
-      };
-      void fetchUnallocated();
-    }
-  }, [bucketId, startDate, endDate, getUnallocatedReceipts]);
+      } catch (error) {
+        console.error('Failed to fetch receipts:', error);
+        setReceiptsForBucket([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void fetchReceipts();
+  }, [bucketId, startDate, endDate, loadReceiptsForBucket, getUnallocatedReceipts]);
   const bucketName = useMemo(() => {
     if (bucketId === UNALLOCATED_BUCKET_ID) return 'Unallocated';
     return buckets.find(b => b.id === bucketId)?.name || 'Unknown Bucket';
@@ -75,22 +80,8 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
   };
 
   const filteredReceipts = useMemo(() => {
-    // Use backend data for unallocated bucket
-    if (bucketId === UNALLOCATED_BUCKET_ID) {
-      return unallocatedReceipts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }
-
-    // Use client-side filtering for regular buckets
-    return receipts.filter(r => {
-      const rDate = new Date(r.date);
-      if (rDate < startDate || rDate > endDate) return false;
-
-      const hasAlloc = r.allocations.some(a => a.bucketId === bucketId);
-      if (hasAlloc) return true;
-
-      return false;
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [receipts, bucketId, startDate, endDate, unallocatedReceipts]);
+    return receiptsForBucket.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [receiptsForBucket]);
 
   const bucketTotal = useMemo(() => {
     return filteredReceipts.reduce((sum, r) => {

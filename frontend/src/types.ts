@@ -3,6 +3,12 @@ export interface Bucket {
 	name: string;
 }
 
+export interface BucketSummary {
+	bucket: Bucket;
+	totalAmount: number;
+	receiptCount: number;
+}
+
 export interface ReceiptAllocation {
 	bucketId: string;
 	amount: number;
