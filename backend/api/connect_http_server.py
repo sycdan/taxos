@@ -270,7 +270,7 @@ def list_receipts():
   logger.info("ListReceipts called via ConnectRPC")
   try:
     request_data = request.get_json() or {}
-    bucket_guid = request_data.get("bucket_guid") or request_data.get("bucket")
+    bucket_guid = request_data.get("bucket") or request_data.get("bucket")
 
     start_date = None
     end_date = None
@@ -279,14 +279,6 @@ def list_receipts():
     if end_date_value := request_data.get("end_date") or request_data.get("endDate"):
       end_date = _parse_timestamp(end_date_value)
     timezone = request_data.get("timezone") or "UTC"
-
-    logger.info(
-      "ListReceipts: bucket_guid=%s start_date=%s, end_date=%s, timezone=%s",
-      bucket_guid,
-      start_date,
-      end_date,
-      timezone,
-    )
 
     repo: ReceiptRepo = LoadReceiptRepo(
       start_date=start_date,
@@ -297,31 +289,11 @@ def list_receipts():
 
     # Convert receipts to protobuf format
     receipt_messages = []
-    for receipt in repo.receipts:
-      # Convert date to timestamp
-      response_date = _parse_timestamp(receipt.date)
-      ts = Timestamp()
-      ts.FromDatetime(response_date)
+    for domain_receipt in repo.receipts:
+      text = domain_json.dumps(domain_receipt)
+      receipt = Parse(text, models.Receipt())
 
-      serialized = json.loads(domain_json.dumps(receipt))
-
-      receipt_message = models.Receipt(
-        guid=str(receipt.guid),
-        vendor=receipt.vendor,
-        date=ts,
-        timezone=receipt.timezone,
-        total=receipt.total,
-        allocations=[
-          models.ReceiptAllocation(
-            bucket_guid=str(a.bucket.guid),
-            amount=a.amount,
-          )
-          for a in receipt.allocations
-        ],
-        ref=receipt.vendor_ref or "",
-        notes=receipt.notes or "",
-        hash=receipt.hash or "",
-      )
+      receipt_message = receipt
       receipt_messages.append(receipt_message)
 
     response = models.ListReceiptsResponse(receipts=receipt_messages)

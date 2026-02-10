@@ -25,6 +25,7 @@ def should_include(receipt: Receipt, bucket: Bucket | None = None) -> bool:
 
 
 def handle(query: LoadReceiptRepo) -> ReceiptRepo:
+  logger.debug(f"{query=}")
   assert not isinstance(query.start_date, str), "start_date should be a datetime, not a string"
   assert not isinstance(query.end_date, str), "end_date should be a datetime, not a string"
   assert not isinstance(query.bucket, str), "bucket should be a BucketRef, not a string"
