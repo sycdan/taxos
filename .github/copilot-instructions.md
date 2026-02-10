@@ -23,7 +23,8 @@ Receipt and bucket management system.
 
 ### Dev Commands
 
-Use `scaf` command system (source `.venvrc` to enable aliases):
+Use `scaf` to invoke domain actions (command.py or query.py) from the workspace root:
 
-- `domain.action-name` or `scaf . --call path/to/action/dir`
-- Common: dev.serve, dev.gen-proto
+```bash
+scaf . --call path/to/action/dir -- action args
+```
