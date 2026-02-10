@@ -267,7 +267,19 @@ def list_receipts():
   logger.info("ListReceipts called via ConnectRPC")
   try:
     request_data = request.get_json() or {}
-    bucket_guid = request_data.get("bucket") or request_data.get("bucket")
+    bucket_guid = request_data.get(
+      "bucket",
+      request_data.get(
+        "bucket_guid",
+        request_data.get(
+          "bucketGuid",
+          request_data.get(
+            "bucket_ref",
+            request_data.get("bucketRef", ""),
+          ),
+        ),
+      ),
+    )
 
     start_date = None
     end_date = None

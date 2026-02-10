@@ -131,7 +131,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         // Calculate unallocated amount (total - sum of allocations)
         let totalAmount = 0;
         let receiptCount = 0;
-        
+
         for (const r of unallocatedResponse.receipts) {
           const allocatedAmount = r.allocations.reduce((sum, a) => sum + a.amount, 0);
           const unallocatedAmount = r.total - allocatedAmount;
@@ -140,7 +140,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             receiptCount++;
           }
         }
-        
+
         setUnallocatedSummary({ totalAmount, receiptCount });
       } catch (error) {
         console.error('Failed to load unallocated summary:', error);

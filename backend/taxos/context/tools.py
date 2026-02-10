@@ -92,11 +92,12 @@ def with_context(context: Context):
   return decorator
 
 
-def require_bucket(ref) -> Bucket:
-  if isinstance(ref, Bucket):
-    return ref
-
-  return LoadBucket(BucketRef(ref)).execute()
+def require_bucket(value) -> Bucket:
+  if isinstance(value, Bucket):
+    return value
+  elif not isinstance(value, BucketRef):
+    value = BucketRef(value)
+  return LoadBucket(value).execute()
 
 
 def require_receipt(value) -> Receipt:
@@ -105,4 +106,6 @@ def require_receipt(value) -> Receipt:
 
   if isinstance(value, Receipt):
     return value
-  return LoadReceipt(ReceiptRef(value)).execute()
+  elif not isinstance(value, ReceiptRef):
+    value = ReceiptRef(value)
+  return LoadReceipt(value).execute()
