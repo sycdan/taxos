@@ -1,5 +1,6 @@
 import dataclasses
 import json
+import os
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -36,6 +37,7 @@ def dump(*args, **kwargs) -> None:
 def safe_dump(obj, file: Path, *args, **kwargs) -> None:
   """Writes JSON to a file atomically by writing to a temp file and then renaming."""
   # TODO: make this more safe. maybe just use postgres!
+  os.makedirs(file.parent, exist_ok=True)
   temp_file = file.with_suffix(f".tmp_{uuid.uuid4().hex[:8]}")
   with temp_file.open("w") as f:
     dump(obj, f, *args, **kwargs)

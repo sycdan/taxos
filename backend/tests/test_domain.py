@@ -10,10 +10,11 @@ from taxos.bucket.repo.entity import BucketRepo
 from taxos.context.entity import Context
 from taxos.context.tools import set_context
 from taxos.receipt.entity import Receipt
+from taxos.receipt.repo.entity import ReceiptRepo
 from taxos.tenant.create.command import CreateTenant
 from taxos.tenant.delete.command import DeleteTenant
 from taxos.tenant.entity import TenantRef
-from taxos.tenant.unallocated_receipt.repo.entity import UnallocatedReceiptRepo
+from taxos.tenant.unallocated_receipt.check.command import CheckUnallocatedReceipt
 
 from dev import BACKEND_ROOT
 
@@ -71,20 +72,21 @@ def ensure_bucket_exists(bucket: Bucket):
   assert any(b.guid == bucket.guid for b in bucket_list), "Created bucket not found in list"
 
 
-def ensure_unallocated_receipt_repo() -> UnallocatedReceiptRepo:
-  result = scaf("taxos/tenant/unallocated_receipt/repo/load")
-  assert isinstance(result, UnallocatedReceiptRepo), f"Expected UnallocatedReceiptRepo, got {type(result)}"
+def ensure_unallocated_receipt_repo() -> ReceiptRepo:
+  result = scaf("taxos/receipt/repo/load")
+  assert isinstance(result, ReceiptRepo), f"Expected ReceiptRepo, got {type(result)}"
   return result
 
 
 def ensure_no_unallocated_receipts():
   repo = ensure_unallocated_receipt_repo()
-  assert not repo.unallocated_receipts, "Unallocated receipts should be empty"
+  assert not repo.receipts, "Unallocated receipts should be empty"
 
 
 def ensure_unallocated_receipt(receipt: Receipt, unallocated_amount: float = 0):
   repo = ensure_unallocated_receipt_repo()
-  unallocated_receipt = repo.index_by_guid.get(receipt.guid)
+  assert receipt.guid in repo.index_by_guid, "Receipt should be in unallocated repo"
+  unallocated_receipt = CheckUnallocatedReceipt(receipt).execute()
   assert unallocated_receipt is not None, "Receipt should be unallocated"
   assert unallocated_receipt.unallocated_amount == unallocated_amount, "Unallocated amount should equal receipt total"
 

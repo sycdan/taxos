@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Union
+from typing import Union
 from zoneinfo import ZoneInfo
 
 from taxos.bucket.entity import BucketRef

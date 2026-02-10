@@ -22,9 +22,9 @@ from taxos.context.tools import set_context
 from taxos.receipt.create.command import CreateReceipt
 from taxos.receipt.delete.command import DeleteReceipt
 from taxos.receipt.entity import ReceiptRef
+from taxos.receipt.repo.entity import ReceiptRepo
+from taxos.receipt.repo.load.query import LoadReceiptRepo
 from taxos.receipt.update.command import UpdateReceipt
-from taxos.tenant.unallocated_receipt.repo.entity import UnallocatedReceiptRepo
-from taxos.tenant.unallocated_receipt.repo.load.query import LoadUnallocatedReceiptRepo
 
 from api.v1 import taxos_service_pb2 as models
 
@@ -101,16 +101,38 @@ def _parse_allocations(values: list[dict]) -> list[dict]:
 def list_buckets():
   logger.info("ListBuckets called via ConnectRPC")
   try:
+    request_data = request.get_json() or {}
+
+    # Parse date filters from request
+    start_date = None
+    end_date = None
+    if start_date_value := request_data.get("start_date"):
+      start_date = _parse_timestamp(start_date_value)
+    if end_date_value := request_data.get("end_date"):
+      end_date = _parse_timestamp(end_date_value)
+
     repo = LoadBucketRepo().execute()
-    buckets = [
-      models.BucketSummary(
-        bucket=models.Bucket(
-          guid=str(bucket.guid),
-          name=bucket.name,
+    buckets = []
+
+    for bucket in repo.index.values():
+      # Load receipts for this bucket to calculate totals
+      receipt_repo = LoadUnallocatedReceiptRepo(
+        start_date=start_date, end_date=end_date, bucket_guid=bucket.guid
+      ).execute()
+
+      total_amount = sum(ur.unallocated_amount for ur in receipt_repo.unallocated_receipts)
+      receipt_count = len(receipt_repo.unallocated_receipts)
+
+      buckets.append(
+        models.BucketSummary(
+          bucket=models.Bucket(
+            guid=str(bucket.guid),
+            name=bucket.name,
+          ),
+          total_amount=total_amount,
+          receipt_count=receipt_count,
         )
       )
-      for bucket in repo.index.values()
-    ]
 
     response = models.ListBucketsResponse(buckets=buckets)
     response_dict = MessageToDict(response, preserving_proto_field_name=True)
@@ -235,6 +257,69 @@ def update_bucket():
     return Response(json.dumps(response_dict), content_type="application/json")
   except Exception as e:
     logger.error(f"Failed to update bucket: {e}")
+    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+
+
+@app.route("/taxos.v1.TaxosApi/ListReceipts", methods=["POST"])
+@require_auth
+def list_receipts():
+  logger.info("ListReceipts called via ConnectRPC")
+  try:
+    request_data = request.get_json() or {}
+
+    # Parse bucket GUID
+    bucket_guid = request_data.get("bucket_guid")
+    if not bucket_guid:
+      return Response(json.dumps({"error": "bucket_guid is required"}), status=400, content_type="application/json")
+
+    # Parse date filters from request
+    start_date = None
+    end_date = None
+    if start_date_value := request_data.get("start_date"):
+      start_date = _parse_timestamp(start_date_value)
+    if end_date_value := request_data.get("end_date"):
+      end_date = _parse_timestamp(end_date_value)
+
+    # Load receipts for this bucket
+    repo: UnallocatedReceiptRepo = LoadUnallocatedReceiptRepo(
+      start_date=start_date, end_date=end_date, bucket_guid=bucket_guid
+    ).execute()
+
+    # Convert receipts to protobuf format
+    receipt_messages = []
+    for unallocated_receipt in repo.unallocated_receipts:
+      receipt = unallocated_receipt.receipt.hydrate()
+      # Convert date to timestamp
+      response_date = _parse_timestamp(receipt.date)
+      ts = Timestamp()
+      ts.FromDatetime(response_date)
+
+      receipt_message = models.Receipt(
+        guid=str(receipt.guid),
+        vendor=receipt.vendor,
+        date=ts,
+        timezone=receipt.timezone,
+        total=receipt.total,
+        allocations=[
+          models.ReceiptAllocation(
+            bucket_guid=a[0],
+            amount=a[1],
+          )
+          for a in receipt.allocations
+        ],
+        ref=receipt.vendor_ref or "",
+        notes=receipt.notes or "",
+        hash=receipt.hash or "",
+      )
+      receipt_messages.append(receipt_message)
+
+    response = models.ListReceiptsResponse(receipts=receipt_messages)
+    response_dict = MessageToDict(response, preserving_proto_field_name=True)
+
+    logger.info(f"Returning {len(receipt_messages)} receipts for bucket {bucket_guid}")
+    return Response(json.dumps(response_dict), content_type="application/json")
+  except Exception as e:
+    logger.error(f"Failed to list receipts: {e}")
     return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
 
 
