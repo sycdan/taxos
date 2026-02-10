@@ -1,7 +1,7 @@
 {
   "name": "Taxos Backend Development Environment",
   "dockerComposeFile": [
-    "../../dev/docker-compose.yml",
+    "../../docker-compose.development.yml",
     "docker-compose.override.yml"
   ],
   "features": {
