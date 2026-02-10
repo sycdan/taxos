@@ -16,10 +16,14 @@ class Bucket:
     if not isinstance(self.guid, UUID):
       self.guid = UUID(self.guid)
 
+  def __hash__(self) -> int:
+    return hash(self.guid)
+
 
 @dataclass
 class BucketRef:
   key: str = field(
+    repr=False,
     metadata={"help": "A plain-text reference to a bucket within the current tenant."},
   )
   guid: UUID = field(
