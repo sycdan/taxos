@@ -55,7 +55,10 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
       }
     };
     void fetchReceipts();
-  }, [bucketId, startDate, endDate, loadReceiptsForBucket, getUnallocatedReceipts]);
+    // Note: loadReceiptsForBucket and getUnallocatedReceipts are intentionally excluded from deps
+    // to prevent infinite loops since they depend on and update the same receipts state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bucketId, startDate, endDate]);
   const bucketName = useMemo(() => {
     if (bucketId === UNALLOCATED_BUCKET_ID) return 'Unallocated';
     return buckets.find(b => b.id === bucketId)?.name || 'Unknown Bucket';

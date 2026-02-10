@@ -14,18 +14,20 @@ logger = logging.getLogger(__name__)
 
 
 def should_include(receipt: Receipt, bucket: Bucket | None = None) -> bool:
+  logger.debug(f"Checking receipt {receipt.guid} for bucket {bucket.guid if bucket else None}")
   if bucket:
-    return any(a.bucket.guid == bucket.guid for a in receipt.allocations)
+    has_allocation = any(a.bucket.guid == bucket.guid for a in receipt.allocations)
+    logger.debug(f"Receipt {receipt.guid} has allocation to bucket {bucket.guid}: {has_allocation}")
+    return has_allocation
   elif CheckUnallocatedReceipt(receipt).execute():
     return True
   return False
 
 
 def handle(query: LoadReceiptRepo) -> ReceiptRepo:
-  assert not isinstance(query.start_date, str)
-  assert not isinstance(query.end_date, str)
-  assert not isinstance(query.timezone, str)
-  assert not isinstance(query.bucket, str)
+  assert not isinstance(query.start_date, str), "start_date should be a datetime, not a string"
+  assert not isinstance(query.end_date, str), "end_date should be a datetime, not a string"
+  assert not isinstance(query.bucket, str), "bucket should be a BucketRef, not a string"
   repo = ReceiptRepo()
   tenant = require_tenant()
 

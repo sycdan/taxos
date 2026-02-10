@@ -34,7 +34,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   // Refresh buckets when date range changes
   React.useEffect(() => {
     void refreshBuckets(startDate, endDate);
-  }, [startDate, endDate, refreshBuckets]);
+  }, [startDate, endDate]); // Remove refreshBuckets from dependency array to prevent infinite loop
 
   React.useEffect(() => {
     const handleWindowDragOver = (e: DragEvent) => {

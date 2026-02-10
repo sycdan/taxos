@@ -22,8 +22,6 @@ service TaxosApi {
   rpc ListBuckets(ListBucketsRequest) returns (ListBucketsResponse);
   // List receipts allocated to a specific bucket
   rpc ListReceipts(ListReceiptsRequest) returns (ListReceiptsResponse);
-  // List all unallocated receipts
-  rpc ListUnallocatedReceipts(ListUnallocatedReceiptsRequest) returns (ListUnallocatedReceiptsResponse);
   // Update a bucket's details
   rpc UpdateBucket(UpdateBucketRequest) returns (Bucket);
   // Update a receipt's details
@@ -105,14 +103,6 @@ message ListBucketsResponse {
   repeated BucketSummary buckets = 1;
 }
 
-message ListUnallocatedReceiptsRequest {
-  google.protobuf.Timestamp start_date = 1;
-  google.protobuf.Timestamp end_date   = 2;
-}
-
-message ListUnallocatedReceiptsResponse {
-  repeated Receipt receipts = 1;
-}
 
 message BucketSummary {
   Bucket bucket        = 1;

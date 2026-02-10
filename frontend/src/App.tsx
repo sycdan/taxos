@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Plus, LayoutDashboard, ArrowLeft, LogOut, Upload } from "lucide-react";
 import Dashboard from "./components/Dashboard";
 import BucketDetail from "./components/BucketDetail";
@@ -61,7 +61,7 @@ const App: React.FC = () => {
   }, [filterConfig]);
 
   // Derive start/end dates for the rest of the app
-  const dateRange = (() => {
+  const dateRange = useMemo(() => {
     try {
       if (filterConfig.mode === "year") {
         const year = parseInt(filterConfig.value) || new Date().getFullYear();
@@ -89,7 +89,7 @@ const App: React.FC = () => {
       console.error("Date parsing failed, falling back to current month", e);
       return { start: startOfMonth(new Date()), end: endOfMonth(new Date()) };
     }
-  })();
+  }, [filterConfig]); // Only recalculate when filterConfig changes
 
   const handleModeToggle = () => {
     setFilterConfig((prev: FilterConfig): FilterConfig => {

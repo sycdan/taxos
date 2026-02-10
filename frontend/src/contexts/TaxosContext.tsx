@@ -1,8 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Timestamp } from '@bufbuild/protobuf';
 import type { Bucket, BucketSummary, Receipt } from '../types';
-import { UNALLOCATED_BUCKET_ID } from '../types';
 import { client, getToken, dateToTimestamp } from '../api/client';
 
 const slugify = (text: string) => {
@@ -42,8 +41,17 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const saved = localStorage.getItem('taxos_receipts');
     return saved ? JSON.parse(saved) : {};
   });
+  // Track receipt hashes for O(1) duplicate detection
+  const receiptHashes = useMemo(() => {
+    const hashes = new Set<string>();
+    Object.values(receipts).forEach(r => {
+      if (r.hash) hashes.add(r.hash);
+    });
+    return hashes;
+  }, [receipts]);
   const [loading, setLoading] = useState(true);
   const [authenticated] = useState(!!getToken());
+  const [currentDateFilter, setCurrentDateFilter] = useState<{ start?: Date, end?: Date }>({});
 
   // Helper to convert Timestamp to ISO string
   const timestampToIso = (ts?: Timestamp) => {
@@ -61,22 +69,35 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [receipts]);
 
   const refreshBuckets = useCallback(async (startDate?: Date, endDate?: Date) => {
+    // Only refresh if dates have actually changed or it's the initial load
+    const sameStart = (!startDate && !currentDateFilter.start) || (startDate && currentDateFilter.start && startDate.getTime() === currentDateFilter.start.getTime());
+    const sameEnd = (!endDate && !currentDateFilter.end) || (endDate && currentDateFilter.end && endDate.getTime() === currentDateFilter.end.getTime());
+
+    if (sameStart && sameEnd && buckets.length > 0) {
+      console.log('Skipping ListBuckets - same date filter and buckets already loaded');
+      return;
+    }
+
     try {
       setLoading(true);
       if (!authenticated) {
         setLoading(false);
         return;
       }
+
+      console.log('Making ListBuckets request with date filter change...');
+      setCurrentDateFilter({ start: startDate, end: endDate });
+
       const response = await client.listBuckets({
         startDate: startDate ? dateToTimestamp(startDate) as any : undefined,
         endDate: endDate ? dateToTimestamp(endDate) as any : undefined,
       });
-      
+
       const apiBuckets: Bucket[] = response.buckets.map(summary => ({
         id: summary.bucket!.guid,
         name: summary.bucket!.name
       }));
-      
+
       const apiSummaries: BucketSummary[] = response.buckets.map(summary => ({
         bucket: {
           id: summary.bucket!.guid,
@@ -85,19 +106,19 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         totalAmount: summary.totalAmount,
         receiptCount: summary.receiptCount
       }));
-      
+
       setBuckets(apiBuckets);
       setBucketSummaries(apiSummaries);
     } catch (error) {
       console.error('Failed to load buckets:', error);
-      // Fallback to localStorage on error
+      // Don't immediately retry on error - just use fallback
       const saved = localStorage.getItem('taxos_buckets');
       setBuckets(saved ? JSON.parse(saved) : []);
       setBucketSummaries([]);
     } finally {
       setLoading(false);
     }
-  }, [authenticated]);
+  }, [authenticated, currentDateFilter, buckets.length]); // Include currentDateFilter and buckets.length
 
   // Load buckets on mount if authenticated
   useEffect(() => {
@@ -106,7 +127,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } else {
       setLoading(false);
     }
-  }, [authenticated, refreshBuckets]);
+  }, [authenticated]); // Remove refreshBuckets from dependency array to prevent infinite loop
 
   // Keep localStorage as backup
   useEffect(() => {
@@ -186,14 +207,12 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const addReceipt = (receipt: Omit<Receipt, 'id'>) => {
     const createLocal = (fallbackReceipt: Omit<Receipt, 'id'>) => {
-      setReceipts(prev => {
-        if (fallbackReceipt.hash && Object.values(prev).some(r => r.hash === fallbackReceipt.hash)) {
-          console.warn('Duplicate receipt detected, skipping:', fallbackReceipt.vendor);
-          return prev;
-        }
-        const newReceipt = { ...fallbackReceipt, id: uuidv4() };
-        return { ...prev, [newReceipt.id]: newReceipt };
-      });
+      if (fallbackReceipt.hash && receiptHashes.has(fallbackReceipt.hash)) {
+        console.warn('Duplicate receipt detected, skipping:', fallbackReceipt.vendor);
+        return;
+      }
+      const newReceipt = { ...fallbackReceipt, id: uuidv4() };
+      setReceipts(prev => ({ ...prev, [newReceipt.id]: newReceipt }));
     };
 
     const toTimestamp = (iso: string) => {
@@ -243,13 +262,11 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           hash: response.hash || undefined,
         };
 
-        setReceipts(prev => {
-          if (createdReceipt.hash && Object.values(prev).some(r => r.hash === createdReceipt.hash)) {
-            console.warn('Duplicate receipt detected, skipping:', createdReceipt.vendor);
-            return prev;
-          }
-          return { ...prev, [createdReceipt.id]: createdReceipt };
-        });
+        if (createdReceipt.hash && receiptHashes.has(createdReceipt.hash)) {
+          console.warn('Duplicate receipt detected, skipping:', createdReceipt.vendor);
+          return;
+        }
+        setReceipts(prev => ({ ...prev, [createdReceipt.id]: createdReceipt }));
       } catch (error) {
         console.error('Failed to create receipt:', error);
         createLocal(receipt);
@@ -380,7 +397,9 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const getUnallocatedReceipts = useCallback(async (startDate: Date, endDate: Date): Promise<Receipt[]> => {
     try {
-      const response = await client.listUnallocatedReceipts({
+      // Use listReceipts without bucket_guid to get unallocated receipts
+      const response = await client.listReceipts({
+        // No bucket_guid parameter = unallocated receipts
         startDate: dateToTimestamp(startDate) as any,
         endDate: dateToTimestamp(endDate) as any,
       });
@@ -399,6 +418,15 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         notes: r.notes || undefined,
         hash: r.hash || undefined,
       }));
+
+      // Update localStorage cache
+      setReceipts(prev => {
+        const updated = { ...prev };
+        for (const receipt of unallocatedReceipts) {
+          updated[receipt.id] = receipt;
+        }
+        return updated;
+      });
 
       return unallocatedReceipts;
     } catch (error) {

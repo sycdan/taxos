@@ -284,12 +284,20 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 		}
 	}, [uploadingFile, isOpen]);
 
-	if (!isOpen) return null;
+	// Create a bucket lookup map for O(1) access in allocation rendering
+	// Must be called before early return to avoid hook order violations
+	const bucketMap = useMemo(() => {
+		const map = new Map<string, Bucket>();
+		buckets.forEach(b => map.set(b.id, b));
+		return map;
+	}, [buckets]);
 
 	const availableBuckets = buckets.filter(
 		(b) => !allocations.some((a) => a.bucketId === b.id),
 	);
 	const isOverAllocated = allocatedTotal > total;
+
+	if (!isOpen) return null;
 
 	return (
 		<div
@@ -518,9 +526,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 						<div className="min-h-[60px]">
 							<AnimatePresence initial={false}>
 								{allocations.map((allocation, index) => {
-									const bucket = buckets.find(
-										(b) => b.id === allocation.bucketId,
-									);
+									const bucket = bucketMap.get(allocation.bucketId);
 									const isManual = manualAllocations.has(allocation.bucketId);
 									const percent =
 										total > 0 ? (allocation.amount / total) * 100 : 0;
