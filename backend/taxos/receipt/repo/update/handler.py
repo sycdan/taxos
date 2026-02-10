@@ -1,7 +1,7 @@
 import logging
 import os
 
-from taxos.context.tools import require_tenant, require_receipt
+from taxos.context.tools import require_receipt, require_tenant
 from taxos.receipt.entity import Receipt
 from taxos.receipt.repo.entity import ReceiptRepo
 from taxos.receipt.repo.load.query import LoadReceiptRepo
@@ -22,7 +22,7 @@ def save_repo(repo: ReceiptRepo):
     month = month.strftime("%Y-%m")
     state.setdefault(month, []).extend([r.guid.hex for r in receipts])
 
-  json.safe_dump(state, repo_file)
+  json.dump(state, repo_file)
 
 
 def handle(command: UpdateReceiptRepo) -> bool:

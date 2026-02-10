@@ -36,11 +36,8 @@ def handle(command: GenerateAccessToken) -> AccessToken:
   access_token = AccessToken(key=token_hash, tenant=tenant)
   tenant.token_count = new_token_count
 
-  with token_file.open("w") as f:
-    json.dump({"tenant": tenant.guid.hex}, f)
-
-  with tenant.state_file.open("w") as f:
-    json.dump(tenant, f)
+  json.dump({"tenant": tenant.guid.hex}, token_file)
+  json.dump(tenant, tenant.state_file)
 
   if new_token_count > 1:
     delete_old_token(tenant.guid, new_token_count)

@@ -1,5 +1,4 @@
 import logging
-import os
 
 from taxos.allocation.entity import Allocation
 from taxos.context.tools import require_receipt, require_tenant
@@ -17,7 +16,6 @@ def handle(command: UpdateReceipt) -> Receipt:
   tenant = require_tenant()
   receipt = require_receipt(command.ref)
 
-  # Update receipt fields
   receipt.vendor = command.vendor
   receipt.total = command.total
   receipt.date = command.date
@@ -26,20 +24,13 @@ def handle(command: UpdateReceipt) -> Receipt:
   receipt.notes = command.notes
   receipt.hash = command.hash
 
-  # Update allocations - convert from dict format to Allocation objects
   receipt.allocations = {
     Allocation(bucket=a.get("bucket_guid", ""), amount=a.get("amount", 0)) for a in command.allocations
   }
 
-  # Save to state file atomically to avoid race conditions
   state_file = get_state_file(receipt.guid, tenant.guid)
-  os.makedirs(state_file.parent, exist_ok=True)
-  temp_file = state_file.with_suffix(".tmp")
-  with temp_file.open("w") as f:
-    json.dump(receipt, f)
-  temp_file.replace(state_file)
+  json.dump(receipt, state_file)
 
-  # Update the receipt repo
   UpdateReceiptRepo(receipt).execute()
 
   return receipt

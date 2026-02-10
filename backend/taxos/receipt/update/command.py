@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Union
 
-from taxos.receipt.entity import ReceiptRef
+from taxos.receipt.entity import Receipt, ReceiptRef
 
 
 @dataclass
 class UpdateReceipt:
-  ref: ReceiptRef
+  ref: Union[Receipt, ReceiptRef, str]
   vendor: str
   total: float
   date: datetime

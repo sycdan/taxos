@@ -1,5 +1,4 @@
 import logging
-import os
 
 from taxos.tenant.create.command import CreateTenant
 from taxos.tenant.entity import Tenant
@@ -15,7 +14,5 @@ def handle(command: CreateTenant) -> Tenant:
   if tenant.state_file.exists() and tenant.state_file.read_text().strip():
     raise RuntimeError(f"Tenant {tenant.name} already exists.")
 
-  os.makedirs(tenant.content_dir, exist_ok=True)
-  with tenant.state_file.open("w") as f:
-    json.dump(tenant, f)
+  json.dump(tenant, tenant.state_file)
   return tenant

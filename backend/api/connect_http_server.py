@@ -1,10 +1,8 @@
-import hashlib
 import json
 import logging
-import os
-import zipfile
 from datetime import datetime, timezone
 from functools import wraps
+from uuid import uuid4
 
 from flask import Flask, Response, request
 from flask_cors import CORS
@@ -35,23 +33,32 @@ app = Flask(__name__)
 CORS(app)
 
 
-def _get_field(data, *keys, default=None):
+def message_to_json(message) -> str:
+  message_dict = MessageToDict(
+    message,
+    preserving_proto_field_name=False,
+    always_print_fields_with_no_presence=True,
+  )
+  return json.dumps(message_dict)
+
+
+def get_text(data, *keys, default: str = ""):
   for key in keys:
     if key in data:
-      return data[key]
+      return str(data[key])
   return default
 
 
 def get_start_date(data):
-  return _get_field(data, "start_date", "startDate")
+  return get_text(data, "start_date", "startDate")
 
 
 def get_end_date(data):
-  return _get_field(data, "end_date", "endDate")
+  return get_text(data, "end_date", "endDate")
 
 
 def get_timezone(data):
-  return _get_field(data, "timezone", "tz", "time zone", "timeZone", "timezone", default="UTC")
+  return str(get_text(data, "timezone", "tz", "time zone", "timeZone", "timezone", default="UTC"))
 
 
 def require_auth(f):
@@ -121,22 +128,18 @@ def _parse_allocations(values: list[dict]) -> list[dict]:
 def list_buckets():
   logger.info("ListBuckets called via ConnectRPC")
   try:
-    bucket_summaries: list[messages.BucketSummary] = []
     request_data = request.get_json() or {}
+    bucket_summaries: list[messages.BucketSummary] = []
 
-    start_date = None
-    end_date = None
-    if start_date_value := get_start_date(request_data):
-      start_date = _parse_timestamp(start_date_value)
-    if end_date_value := get_end_date(request_data):
-      end_date = _parse_timestamp(end_date_value)
-    timezone = get_timezone(request_data)
+    # Always return all buckets
     repo = LoadBucketRepo().execute()
+
+    # Calculate total amount and receipt count for each bucket
     for bucket in repo.index.values():
       receipt_repo = LoadReceiptRepo(
-        start_date=start_date,
-        end_date=end_date,
-        timezone=timezone,
+        start_date=get_start_date(request_data),
+        end_date=get_end_date(request_data),
+        timezone=get_timezone(request_data),
         bucket=bucket,
       ).execute()
 
@@ -144,20 +147,20 @@ def list_buckets():
         sum(a.amount for a in r.allocations if a.bucket.guid == bucket.guid) for r in receipt_repo.receipts
       )
       receipt_count = len(receipt_repo.receipts)
-      bucket_message = Parse(domain_json.dumps(bucket), messages.Bucket())
       bucket_summaries.append(
         messages.BucketSummary(
-          bucket=bucket_message,
+          bucket=messages.Bucket(
+            guid=str(bucket.guid),
+            name=bucket.name,
+          ),
           total_amount=total_amount,
           receipt_count=receipt_count,
         )
       )
 
-    response = messages.ListBucketsResponse(buckets=bucket_summaries)
-    response_dict = MessageToDict(response, preserving_proto_field_name=True, always_print_fields_with_no_presence=True)
-
     logger.info(f"Returning {len(bucket_summaries)} buckets")
-    return Response(json.dumps(response_dict), content_type="application/json")
+    response_message = messages.ListBucketsResponse(buckets=bucket_summaries)
+    return Response(message_to_json(response_message), content_type="application/json")
   except Exception as e:
     logger.error(f"Failed to list buckets: {e}")
     return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
@@ -169,15 +172,14 @@ def create_bucket():
   logger.info("CreateBucket called via ConnectRPC")
   try:
     request_data = request.get_json()
-    bucket = CreateBucket(request_data.get("name", "")).execute()
-
-    response = messages.Bucket(
+    bucket = CreateBucket(
+      get_text(request_data, "name", default=uuid4().hex[:8]),
+    ).execute()
+    bucket_message = messages.Bucket(
       guid=str(bucket.guid),
       name=bucket.name,
     )
-    response_dict = MessageToDict(response, preserving_proto_field_name=True)
-
-    return Response(json.dumps(response_dict), content_type="application/json")
+    return Response(message_to_json(bucket_message), content_type="application/json")
   except Exception as e:
     logger.error(f"Failed to create bucket: {e}")
     return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
@@ -194,40 +196,18 @@ def create_receipt():
     allocations = _parse_allocations(request_data.get("allocations", []))
 
     receipt = CreateReceipt(
-      vendor=request_data.get("vendor", ""),
+      vendor=get_text(request_data, "vendor", default=""),
       total=float(request_data.get("total", 0)),
       date=date,
-      timezone=request_data.get("timezone", ""),
+      timezone=get_timezone(request_data),
       allocations=allocations,
-      vendor_ref=request_data.get("ref") or "",
-      notes=request_data.get("notes") or "",
-      hash=request_data.get("hash") or "",
+      vendor_ref=get_text(request_data, "ref", default=""),
+      notes=get_text(request_data, "notes", default=""),
+      hash=get_text(request_data, "hash", default=""),
     ).execute()
 
-    response_date = _parse_timestamp(receipt.date)
-    ts = Timestamp()
-    ts.FromDatetime(response_date)
-
-    response = messages.Receipt(
-      guid=str(receipt.guid),
-      vendor=receipt.vendor,
-      date=ts,
-      timezone=receipt.timezone,
-      total=receipt.total,
-      allocations=[
-        messages.ReceiptAllocation(
-          bucket_guid=str(a.bucket.guid),
-          amount=a.amount,
-        )
-        for a in receipt.allocations
-      ],
-      ref=receipt.vendor_ref or "",
-      notes=receipt.notes or "",
-      hash=receipt.hash or "",
-    )
-    response_dict = MessageToDict(response, preserving_proto_field_name=True)
-
-    return Response(json.dumps(response_dict), content_type="application/json")
+    receipt_message = Parse(domain_json.dumps(receipt), messages.Receipt())
+    return Response(message_to_json(receipt_message), content_type="application/json")
   except Exception as e:
     logger.error(f"Failed to create receipt: {e}")
     return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
@@ -267,13 +247,8 @@ def update_bucket():
     except Bucket.DoesNotExist:
       return Response(json.dumps({"error": "Bucket not found"}), status=404, content_type="application/json")
 
-    response = messages.Bucket(
-      guid=str(bucket.guid),
-      name=bucket.name,
-    )
-    response_dict = MessageToDict(response, preserving_proto_field_name=True)
-
-    return Response(json.dumps(response_dict), content_type="application/json")
+    bucket_message = Parse(domain_json.dumps(bucket), messages.Bucket())
+    return Response(message_to_json(bucket_message), content_type="application/json")
   except Exception as e:
     logger.error(f"Failed to update bucket: {e}")
     return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
@@ -285,7 +260,7 @@ def list_receipts():
   logger.info("ListReceipts called via ConnectRPC")
   try:
     request_data = request.get_json() or {}
-    bucket_guid = _get_field(request_data, "bucket", "bucket_guid", "bucketGuid", "bucket_ref", "bucketRef")
+    bucket_guid = get_text(request_data, "bucket", "bucket_guid", "bucketGuid", "bucket_ref", "bucketRef")
 
     start_date = None
     end_date = None
@@ -305,8 +280,8 @@ def list_receipts():
     # Convert receipts to protobuf format
     receipt_messages = []
     for receipt in repo.receipts:
-      text = domain_json.dumps(receipt)
-      receipt_message = Parse(text, messages.Receipt())
+      receipt_text = domain_json.dumps(receipt)
+      receipt_message = Parse(receipt_text, messages.Receipt())
       receipt_messages.append(receipt_message)
 
     response = messages.ListReceiptsResponse(receipts=receipt_messages)
@@ -345,47 +320,25 @@ def update_receipt():
   logger.info("UpdateReceipt called via ConnectRPC")
   try:
     request_data = request.get_json() or {}
-    receipt_ref = ReceiptRef(request_data.get("guid", ""))
-    date_value = request_data.get("date")
+
+    date_value = get_text(request_data, "date", default=None)
     date = _parse_timestamp(date_value)
     allocations = _parse_allocations(request_data.get("allocations", []))
 
     receipt = UpdateReceipt(
-      ref=receipt_ref,
-      vendor=request_data.get("vendor", ""),
-      total=float(request_data.get("total", 0)),
+      ref=str(get_text(request_data, "guid", "receipt_guid", "receiptGuid", default="")),
+      vendor=get_text(request_data, "vendor", default=""),
+      total=float(get_text(request_data, "total", default=0)),
       date=date,
-      timezone=request_data.get("timezone", ""),
+      timezone=get_timezone(request_data),
       allocations=allocations,
-      vendor_ref=request_data.get("ref") or "",
-      notes=request_data.get("notes") or "",
-      hash=request_data.get("hash") or "",
+      vendor_ref=get_text(request_data, "ref", "vendor_ref", "vendorRef", default=""),
+      notes=get_text(request_data, "notes", default=""),
+      hash=get_text(request_data, "hash", default=""),
     ).execute()
 
-    response_date = _parse_timestamp(receipt.date)
-    ts = Timestamp()
-    ts.FromDatetime(response_date)
-
-    response = messages.Receipt(
-      guid=str(receipt.guid),
-      vendor=receipt.vendor,
-      date=ts,
-      timezone=receipt.timezone,
-      total=receipt.total,
-      allocations=[
-        messages.ReceiptAllocation(
-          bucket_guid=str(a.bucket.guid),
-          amount=a.amount,
-        )
-        for a in receipt.allocations
-      ],
-      ref=receipt.vendor_ref or "",
-      notes=receipt.notes or "",
-      hash=receipt.hash or "",
-    )
-    response_dict = MessageToDict(response, preserving_proto_field_name=True)
-
-    return Response(json.dumps(response_dict), content_type="application/json")
+    receipt_message = Parse(domain_json.dumps(receipt), messages.Receipt())
+    return Response(message_to_json(receipt_message), content_type="application/json")
   except Exception as e:
     logger.error(f"Failed to update receipt: {e}")
     return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
@@ -397,13 +350,10 @@ def delete_receipt():
   logger.info("DeleteReceipt called via ConnectRPC")
   try:
     request_data = request.get_json()
-    receipt_ref = ReceiptRef(request_data.get("guid", ""))
-    success = DeleteReceipt(receipt=receipt_ref).execute()
-
-    response = messages.DeleteReceiptResponse(success=success)
-    response_dict = MessageToDict(response, preserving_proto_field_name=True)
-
-    return Response(json.dumps(response_dict), content_type="application/json")
+    receipt_ref = ReceiptRef(get_text(request_data, "guid", "receipt_guid", "receiptGuid", default=""))
+    success = DeleteReceipt(receipt_ref).execute()
+    response_message = messages.DeleteReceiptResponse(success=success)
+    return Response(message_to_json(response_message), content_type="application/json")
   except Exception as e:
     logger.error(f"Failed to delete receipt: {e}")
     return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
@@ -479,9 +429,8 @@ def upload_receipt_file():
         file_hash=client_hash, filename=filename, file_path=zip_path, file_size=file_size, uploaded_at=ts
       )
 
-      response = messages.UploadReceiptFileResponse(already_exists=True, file_info=file_info)
-      response_dict = MessageToDict(response, preserving_proto_field_name=True)
-      return Response(json.dumps(response_dict), content_type="application/json")
+      response_message = messages.UploadReceiptFileResponse(already_exists=True, file_info=file_info)
+      return Response(message_to_json(response_message), content_type="application/json")
 
     # Decode file data
     if not file_data_b64:
@@ -515,10 +464,8 @@ def upload_receipt_file():
       file_hash=client_hash, filename=filename, file_path=zip_path, file_size=file_size, uploaded_at=ts
     )
 
-    response = messages.UploadReceiptFileResponse(already_exists=False, file_info=file_info)
-    response_dict = MessageToDict(response, preserving_proto_field_name=True)
-
-    return Response(json.dumps(response_dict), content_type="application/json")
+    response_message = messages.UploadReceiptFileResponse(already_exists=False, file_info=file_info)
+    return Response(message_to_json(response_message), content_type="application/json")
 
   except Exception as e:
     logger.error(f"Failed to upload file: {e}")
@@ -555,11 +502,9 @@ def download_receipt_file():
 
     file_size = len(file_data)
 
-    response = messages.DownloadReceiptFileResponse(filename=filename, file_data=file_data, file_size=file_size)
-    response_dict = MessageToDict(response, preserving_proto_field_name=True)
-
     logger.info(f"Downloaded file {filename} with hash {file_hash} ({file_size} bytes)")
-    return Response(json.dumps(response_dict), content_type="application/json")
+    response_message = messages.DownloadReceiptFileResponse(filename=filename, file_data=file_data, file_size=file_size)
+    return Response(message_to_json(response_message), content_type="application/json")
 
   except Exception as e:
     logger.error(f"Failed to download file: {e}")
@@ -575,10 +520,9 @@ def authenticate():
     if not token:
       return Response(json.dumps({"error": "Missing token"}), status=400, content_type="application/json")
     tenant = AuthenticateTenant(token).execute()
-    response = messages.AuthenticateResponse()
-    response.name = tenant.name
-    response_dict = MessageToDict(response, preserving_proto_field_name=True)
-    return Response(json.dumps(response_dict), content_type="application/json")
+    response_message = messages.AuthenticateResponse()
+    response_message.name = tenant.name
+    return Response(message_to_json(response_message), content_type="application/json")
   except Exception as e:
     logger.warning(f"Authentication failed: {e}")
     return Response(json.dumps({"error": str(e)}), status=401, content_type="application/json")

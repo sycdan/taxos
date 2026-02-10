@@ -9,6 +9,6 @@ def handle(command: SaveReceipt):
   tenant = require_tenant()
   receipt = command.receipt
   state_file = get_state_file(receipt.guid, tenant.guid)
-  json.safe_dump(receipt, state_file)
+  json.dump(receipt, state_file)
   UpdateReceiptRepo(receipt).execute()
   return receipt

@@ -54,19 +54,12 @@ def dumps(*args, **kwargs) -> str:
   return json.dumps(flattened, indent=2)
 
 
-def dump(obj, fp, *args, **kwargs) -> None:
-  kwargs.setdefault("indent", 2)
-  text = dumps(obj, *args, **kwargs)
-  return json.dump(text, fp, *args, **kwargs)
-
-
-def safe_dump(obj, file: Path, *args, **kwargs) -> None:
+def dump(obj, file: Path, *args, **kwargs) -> None:
   """Writes JSON to a file atomically by writing to a temp file and then renaming."""
   # TODO: make this more safe. maybe just use postgres!
   os.makedirs(file.parent, exist_ok=True)
   temp_file = file.with_suffix(f".tmp_{uuid.uuid4().hex[:8]}")
-  with temp_file.open("w") as f:
-    dump(obj, f, *args, **kwargs)
+  temp_file.write_text(dumps(obj, *args, **kwargs))
   temp_file.replace(file)
 
 

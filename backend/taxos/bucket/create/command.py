@@ -6,7 +6,9 @@ class CreateBucket:
   name: str
 
   def __post_init__(self):
-    if not self.name or not self.name.strip():
+    if name := str(self.name or "").strip():
+      self.name = name
+    else:
       raise ValueError("Bucket name cannot be empty or whitespace.")
 
   def execute(self):

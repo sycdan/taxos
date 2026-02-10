@@ -21,11 +21,7 @@ def handle(command: CreateBucket) -> Bucket:
     raise RuntimeError(f"Bucket {bucket.name} already exists.")
 
   os.makedirs(state_file.parent, exist_ok=True)
-  
-  # Write to temp file first, then atomically rename to avoid race conditions
-  temp_file = state_file.with_suffix(".tmp")
-  with temp_file.open("w") as f:
-    json.dump(bucket, f)
-  temp_file.replace(state_file)
-  
+
+  json.dump(bucket, state_file)
+
   return bucket
