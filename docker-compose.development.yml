@@ -3,7 +3,10 @@ services:
     image: mcr.microsoft.com/devcontainers/python:1-3.12-bookworm
     volumes:
       - .:/workspaces/taxos
-    command: sleep infinity
+    command: >
+      bash -c "pip install -r /workspaces/taxos/backend/requirements.txt &&
+               pip install -r /workspaces/taxos/dev/requirements.txt &&
+               python /workspaces/taxos/backend/api/connect_http_server.py"
     ports:
       - "50051:50051"
 
