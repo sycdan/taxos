@@ -103,7 +103,6 @@ def require_bucket(value) -> Bucket:
 def require_receipt(value) -> Receipt:
   """Hydrates a ReceiptRef to a Receipt, or returns the Receipt if already hydrated.
   Raises Receipt.DoesNotExist."""
-
   if isinstance(value, Receipt):
     return value
   elif not isinstance(value, ReceiptRef):

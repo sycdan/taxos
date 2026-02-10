@@ -35,6 +35,25 @@ app = Flask(__name__)
 CORS(app)
 
 
+def _get_field(data, *keys, default=None):
+  for key in keys:
+    if key in data:
+      return data[key]
+  return default
+
+
+def get_start_date(data):
+  return _get_field(data, "start_date", "startDate")
+
+
+def get_end_date(data):
+  return _get_field(data, "end_date", "endDate")
+
+
+def get_timezone(data):
+  return _get_field(data, "timezone", "tz", "time zone", "timeZone", "timezone", default="UTC")
+
+
 def require_auth(f):
   """Decorator to require authentication via access token in headers."""
 
@@ -107,12 +126,11 @@ def list_buckets():
 
     start_date = None
     end_date = None
-    if start_date_value := request_data.get("start_date"):
+    if start_date_value := get_start_date(request_data):
       start_date = _parse_timestamp(start_date_value)
-    if end_date_value := request_data.get("end_date"):
+    if end_date_value := get_end_date(request_data):
       end_date = _parse_timestamp(end_date_value)
-    timezone = request_data.get("timezone", "")
-
+    timezone = get_timezone(request_data)
     repo = LoadBucketRepo().execute()
     for bucket in repo.index.values():
       receipt_repo = LoadReceiptRepo(
@@ -136,7 +154,7 @@ def list_buckets():
       )
 
     response = messages.ListBucketsResponse(buckets=bucket_summaries)
-    response_dict = MessageToDict(response, preserving_proto_field_name=True)
+    response_dict = MessageToDict(response, preserving_proto_field_name=True, always_print_fields_with_no_presence=True)
 
     logger.info(f"Returning {len(bucket_summaries)} buckets")
     return Response(json.dumps(response_dict), content_type="application/json")
@@ -267,27 +285,15 @@ def list_receipts():
   logger.info("ListReceipts called via ConnectRPC")
   try:
     request_data = request.get_json() or {}
-    bucket_guid = request_data.get(
-      "bucket",
-      request_data.get(
-        "bucket_guid",
-        request_data.get(
-          "bucketGuid",
-          request_data.get(
-            "bucket_ref",
-            request_data.get("bucketRef", ""),
-          ),
-        ),
-      ),
-    )
+    bucket_guid = _get_field(request_data, "bucket", "bucket_guid", "bucketGuid", "bucket_ref", "bucketRef")
 
     start_date = None
     end_date = None
-    if start_date_value := request_data.get("start_date") or request_data.get("startDate"):
+    if start_date_value := get_start_date(request_data):
       start_date = _parse_timestamp(start_date_value)
-    if end_date_value := request_data.get("end_date") or request_data.get("endDate"):
+    if end_date_value := get_end_date(request_data):
       end_date = _parse_timestamp(end_date_value)
-    timezone = request_data.get("timezone") or "UTC"
+    timezone = get_timezone(request_data)
 
     repo: ReceiptRepo = LoadReceiptRepo(
       start_date=start_date,
