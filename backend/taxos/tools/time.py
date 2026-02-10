@@ -1,16 +1,32 @@
+import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+DEFAULT_TIMEZONE = ZoneInfo("UTC")
 
-def parse_datetime(value: datetime | str, zone: str = "UTC") -> datetime:
+logger = logging.getLogger(__name__)
+
+
+def parse_datetime(when: datetime | str, where: ZoneInfo | str | None = None) -> datetime:
+  logger.debug(f"{when=}, {where=}")
+  if not where:
+    where = DEFAULT_TIMEZONE
+
   try:
-    tz = ZoneInfo(zone.strip())
-    if isinstance(value, str):
-      dt = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
-    else:
-      dt = value
-    if dt.tzinfo is None:
-      dt = dt.replace(tzinfo=tz)
-    return dt.astimezone(tz)
-  except ValueError as e:
-    raise ValueError(f"Invalid datetime format: {value}") from e
+    if not isinstance(where, ZoneInfo):
+      where = ZoneInfo(where.strip())
+  except Exception as e:
+    raise ValueError(f"Invalid timezone: {where}") from e
+
+  try:
+    if not isinstance(when, datetime):
+      when = datetime.fromisoformat(when.strip().replace("Z", "+00:00"))
+  except Exception as e:
+    raise ValueError(f"Invalid datetime: {when}") from e
+
+  if when.tzinfo is None:
+    when = when.replace(tzinfo=where)
+
+  when = when.astimezone(tz=where)
+  logger.debug(f"Parsed datetime: {when}")
+  return when
