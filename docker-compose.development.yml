@@ -6,8 +6,9 @@ services:
     command: >
       bash -c "pip install -r /workspaces/taxos/backend/requirements.txt &&
                pip install -r /workspaces/taxos/dev/requirements.txt &&
-               python /workspaces/taxos/backend/api/connect_http_server.py"
+               python -m debugpy --listen 0.0.0.0:5678 /workspaces/taxos/backend/api/connect_http_server.py"
     ports:
+      - "5678:5678"
       - "50051:50051"
 
   frontend:

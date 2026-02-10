@@ -25,7 +25,7 @@ beforeAll(async () => {
       await new Promise(resolve => setTimeout(resolve, 3000))
     }
   }
-}, 30000)
+}, 300000) // 5 minutes for debugging
 
 afterAll(async () => {
   console.log('🧹 Cleaning up integration test environment...')

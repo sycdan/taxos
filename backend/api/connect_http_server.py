@@ -115,11 +115,11 @@ def _parse_allocations(values: list[dict]) -> list[dict]:
   for item in values or []:
     if not isinstance(item, dict):
       continue
-    bucket_guid = item.get("bucket_guid") or item.get("bucketGuid") or ""
+    bucket_guid = item.get("bucket") or item.get("bucket_guid") or item.get("bucketGuid") or ""
     if not bucket_guid:
       continue
     amount = float(item.get("amount", 0))
-    allocations.append({"bucket_guid": bucket_guid, "amount": amount})
+    allocations.append({"bucket": bucket_guid, "amount": amount})
   return allocations
 
 
@@ -529,6 +529,6 @@ def authenticate():
 
 
 if __name__ == "__main__":
-  logging.basicConfig(level=logging.INFO)
+  logging.basicConfig(level=logging.DEBUG)
   logger.info("Starting ConnectRPC HTTP server on port 50051...")
   app.run(host="0.0.0.0", port=50051, debug=True)

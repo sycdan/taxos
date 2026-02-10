@@ -4,8 +4,8 @@ export default defineConfig({
   test: {
     name: 'integration',
     environment: 'node',
-    testTimeout: 30000,
-    hookTimeout: 30000,
+    testTimeout: 300000, // 5 minutes for debugging
+    hookTimeout: 300000, // 5 minutes for debugging
     globals: true,
     setupFiles: ['./tests/integration/setup/global-setup.ts'],
     include: ['tests/integration/**/*.test.ts'],
