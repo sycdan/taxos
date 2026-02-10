@@ -4,6 +4,7 @@ import { setToken } from "../api/client";
 import { createPromiseClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { TaxosApi } from "../api/v1/taxos_service_connect";
+import { AuthenticateRequest } from "../api/v1/taxos_service_pb";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -33,8 +34,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onLogin }) => {
         })
       );
 
-      // Try to make a simple API call to validate the token
-      await testClient.listBuckets({});
+      // Use the authenticate endpoint to validate the token
+      await testClient.authenticate(new AuthenticateRequest({ token: tokenToValidate }));
       return true;
     } catch (err: any) {
       // If it's a 401 or unauthenticated error, token is invalid
