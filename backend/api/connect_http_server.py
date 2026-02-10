@@ -117,7 +117,7 @@ def list_buckets():
     for bucket in repo.index.values():
       # Load receipts for this bucket to calculate totals
       receipt_repo = LoadReceiptRepo(
-        start_date=start_date, end_date=end_date, timezone="UTC", bucket=str(bucket.guid)
+        start_date=start_date, end_date=end_date, timezone=timezone, bucket=str(bucket.guid)
       ).execute()
 
       # Calculate total amount allocated to this bucket
@@ -282,10 +282,13 @@ def list_receipts():
       start_date = _parse_timestamp(start_date_value)
     if end_date_value := request_data.get("end_date"):
       end_date = _parse_timestamp(end_date_value)
+    timezone = request_data.get("timezone", "")
 
-    # Load receipts for this bucket
     repo: ReceiptRepo = LoadReceiptRepo(
-      start_date=start_date, end_date=end_date, timezone="UTC", bucket=bucket_guid
+      start_date=start_date,
+      end_date=end_date,
+      timezone=timezone,
+      bucket=bucket_guid,
     ).execute()
 
     # Convert receipts to protobuf format
@@ -339,8 +342,14 @@ def list_unallocated_receipts():
       start_date = _parse_timestamp(start_date_value)
     if end_date_value := request_data.get("end_date"):
       end_date = _parse_timestamp(end_date_value)
+    timezone = request_data.get("timezone", "")
 
-    repo: ReceiptRepo = LoadReceiptRepo(start_date=start_date, end_date=end_date, timezone="UTC", bucket=None).execute()
+    repo: ReceiptRepo = LoadReceiptRepo(
+      start_date=start_date,
+      end_date=end_date,
+      timezone=timezone,
+      bucket=None,
+    ).execute()
 
     # Convert receipts to protobuf format
     receipt_messages = []
@@ -623,6 +632,24 @@ def download_receipt_file():
   except Exception as e:
     logger.error(f"Failed to download file: {e}")
     return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+
+
+@app.route("/taxos.v1.TaxosApi/Authenticate", methods=["POST"])
+def authenticate():
+  logger.info("Authenticate called via ConnectRPC")
+  try:
+    request_data = request.get_json() or {}
+    token = request_data.get("token", "")
+    if not token:
+      return Response(json.dumps({"error": "Missing token"}), status=400, content_type="application/json")
+    tenant = AuthenticateTenant(token).execute()
+    response = models.AuthenticateResponse()
+    response.name = tenant.name
+    response_dict = MessageToDict(response, preserving_proto_field_name=True)
+    return Response(json.dumps(response_dict), content_type="application/json")
+  except Exception as e:
+    logger.warning(f"Authentication failed: {e}")
+    return Response(json.dumps({"error": str(e)}), status=401, content_type="application/json")
 
 
 if __name__ == "__main__":

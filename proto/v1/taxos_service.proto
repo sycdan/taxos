@@ -16,6 +16,8 @@ service TaxosApi {
   rpc DownloadReceiptFile(DownloadReceiptFileRequest) returns (DownloadReceiptFileResponse);
   // Retrieve a bucket by GUID
   rpc GetBucket(GetBucketRequest) returns (Bucket);
+  // Authenticates a tenant and returns tenant information
+  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {}
   // List all buckets
   rpc ListBuckets(ListBucketsRequest) returns (ListBucketsResponse);
   // List receipts allocated to a specific bucket
@@ -30,6 +32,14 @@ service TaxosApi {
   rpc DeleteBucket(DeleteBucketRequest) returns (DeleteBucketResponse);
   // Delete a receipt by GUID
   rpc DeleteReceipt(DeleteReceiptRequest) returns (DeleteReceiptResponse);
+}
+
+message AuthenticateRequest {
+  string token = 1;
+}
+
+message AuthenticateResponse {
+  string name = 1;
 }
 
 message Bucket {
