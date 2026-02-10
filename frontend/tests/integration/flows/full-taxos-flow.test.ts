@@ -203,16 +203,13 @@ describe("Full Taxos API Integration Flow", () => {
 
 			// Step 5: Verify bucket 1 has correct receipts
 			console.log("📋 Step 5: Verifying receipts for bucket 1...");
-			const bucket1Receipts = await apiClient.listReceiptsForBucket(
-				bucket1Guid,
-			);
+			const bucket1Receipts =
+				await apiClient.listReceiptsForBucket(bucket1Guid);
 
 			expect(bucket1Receipts.receipts).toBeDefined();
 			expect(bucket1Receipts.receipts.length).toBe(2); // receipt1 and receipt2
 
-			const guidsInBucket1 = bucket1Receipts.receipts.map(
-				(r: any) => r.guid,
-			);
+			const guidsInBucket1 = bucket1Receipts.receipts.map((r: any) => r.guid);
 			expect(guidsInBucket1).toContain(receipt1.guid);
 			expect(guidsInBucket1).toContain(receipt2.guid);
 			expect(guidsInBucket1).not.toContain(receipt3.guid);
@@ -220,16 +217,13 @@ describe("Full Taxos API Integration Flow", () => {
 
 			// Step 6: Verify bucket 2 has correct receipts
 			console.log("📋 Step 6: Verifying receipts for bucket 2...");
-			const bucket2Receipts = await apiClient.listReceiptsForBucket(
-				bucket2Guid,
-			);
+			const bucket2Receipts =
+				await apiClient.listReceiptsForBucket(bucket2Guid);
 
 			expect(bucket2Receipts.receipts).toBeDefined();
 			expect(bucket2Receipts.receipts.length).toBe(1); // only receipt2
 
-			const guidsInBucket2 = bucket2Receipts.receipts.map(
-				(r: any) => r.guid,
-			);
+			const guidsInBucket2 = bucket2Receipts.receipts.map((r: any) => r.guid);
 			expect(guidsInBucket2).toContain(receipt2.guid);
 			expect(guidsInBucket2).not.toContain(receipt1.guid);
 			expect(guidsInBucket2).not.toContain(receipt3.guid);
