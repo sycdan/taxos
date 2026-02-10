@@ -5,7 +5,7 @@ from pathlib import Path
 from taxos.context.tools import require_tenant
 from taxos.receipt.entity import Receipt, ReceiptRef
 from taxos.receipt.load.query import LoadReceipt
-from taxos.receipt.tools import get_index_file
+from taxos.receipt.tools import get_repo_file
 from taxos.tenant.tools import get_receipts_dir
 from taxos.tenant.unallocated_receipt.check.command import CheckUnallocatedReceipt
 from taxos.tenant.unallocated_receipt.entity import UnallocatedReceipt
@@ -57,7 +57,7 @@ def _load_receipts_for_bucket(query: LoadUnallocatedReceiptRepo, repo: Unallocat
 
 def _load_unallocated_receipts(query: LoadUnallocatedReceiptRepo, repo: UnallocatedReceiptRepo, tenant_guid):
   """Load receipts that have unallocated amounts using the unallocated index."""
-  unallocated_file = get_index_file(tenant_guid)
+  unallocated_file = get_repo_file(tenant_guid)
   if not unallocated_file.exists():
     logger.info(f"No unallocated receipts file found for tenant {tenant_guid}")
     return
