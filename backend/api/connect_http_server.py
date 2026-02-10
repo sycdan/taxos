@@ -50,11 +50,11 @@ def get_text(data, *keys, default: str = ""):
 
 
 def get_start_date(data):
-  return get_text(data, "start_date", "startDate")
+  return get_text(data, "start_date", "startDate") or None
 
 
 def get_end_date(data):
-  return get_text(data, "end_date", "endDate")
+  return get_text(data, "end_date", "endDate") or None
 
 
 def get_timezone(data):

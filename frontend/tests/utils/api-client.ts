@@ -102,7 +102,7 @@ export class TaxosApiClient {
   }
 
   async listUnallocatedReceipts() {
-    const response = await fetch(`${this.baseUrl}/taxos.v1.TaxosApi/ListUnallocatedReceipts`, {
+    const response = await fetch(`${this.baseUrl}/taxos.v1.TaxosApi/ListReceipts`, {
       method: 'POST',
       headers: this.headers,
       body: JSON.stringify({}),

@@ -93,7 +93,7 @@ describe("Full Taxos API Integration Flow", () => {
 
 		// Verify our created receipts are in the unallocated list
 		const ourReceipts = unallocatedReceipts.receipts.filter((r: any) =>
-			createdReceiptGuids.includes(r.receipt.guid),
+			createdReceiptGuids.includes(r.guid),
 		);
 		expect(ourReceipts.length).toBe(createdReceiptGuids.length);
 		console.log("✅ All created receipts are unallocated");
