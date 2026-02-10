@@ -3,7 +3,7 @@ import os
 
 from taxos.allocation.entity import Allocation
 from taxos.context.tools import require_tenant
-from taxos.receipt.entity import Receipt
+from taxos.receipt.entity import Receipt, require_receipt
 from taxos.receipt.repo.update.command import UpdateReceiptRepo
 from taxos.receipt.tools import get_state_file
 from taxos.receipt.update.command import UpdateReceipt
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def handle(command: UpdateReceipt) -> Receipt:
   logger.debug(f"{command=}")
   tenant = require_tenant()
-  receipt = command.ref.hydrate()
+  receipt = require_receipt(command.ref)
 
   # Update receipt fields
   receipt.vendor = command.vendor
