@@ -15,13 +15,20 @@ logger = logging.getLogger(__name__)
 def parse_allocations(data) -> set[Allocation]:
   allocations: set[Allocation] = set()
   if not isinstance(data, list):
-    logger.warning("Invalid allocations data in receipt state file: %s", data)
+    logger.warning("Invalid allocations data in receipt state data: %s", data)
     return allocations
-  logger.debug("Parsing allocations data: %s", data)
 
+  if not data:
+    logger.debug("No allocations found in receipt state data")
+    return allocations
+
+  logger.debug("Parsing allocations data: %s", data)
   for pair in data:
+    logger.debug(
+      f"Processing allocation pair: {pair}, type: {type(pair)}, len: {len(pair) if isinstance(pair, dict) else 'N/A'}"
+    )
     if not isinstance(pair, dict) or len(pair) != 2:
-      logger.warning("Invalid allocation pair in receipt state file: %s", pair)
+      logger.warning("Invalid allocation pair in receipt state data: %s", pair)
       continue
 
     bucket_ref_key = pair.get("bucket", pair.get("bucket_guid", pair.get("bucket_ref", "")))
@@ -46,9 +53,13 @@ def parse_receipt(state_file: Path) -> Receipt | None:
     return None
 
   state = json.load(state_file)
+  logger.debug(f"Loaded receipt state from {state_file}: {state}")
   if not isinstance(state, dict):
     logger.warning("Invalid receipt state file: %s", state_file)
     return None
+
+  allocations_data = state.get("allocations", [])
+  logger.debug(f"Allocations data from file: {allocations_data}, type: {type(allocations_data)}")
 
   receipt = Receipt(
     state["guid"],
@@ -56,7 +67,7 @@ def parse_receipt(state_file: Path) -> Receipt | None:
     total=state["total"],
     date=state["date"],
     timezone=state["timezone"],
-    allocations=parse_allocations(state.get("allocations", [])),
+    allocations=parse_allocations(allocations_data),
     vendor_ref=state.get("vendor_ref", ""),
     notes=state.get("notes", ""),
     hash=state.get("hash", ""),

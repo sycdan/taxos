@@ -1,5 +1,7 @@
 import logging
 
+from taxos.allocation.entity import Allocation
+from taxos.bucket.entity import BucketRef
 from taxos.context.tools import require_tenant
 from taxos.receipt.create.command import CreateReceipt
 from taxos.receipt.entity import Receipt
@@ -26,7 +28,7 @@ def handle(command: CreateReceipt) -> Receipt:
     total=command.total,
     date=parse_datetime(command.date, command.timezone),
     timezone=command.timezone,
-    allocations=command.allocations or [],  # type: ignore
+    allocations=command.allocations,
     vendor_ref=command.vendor_ref,
     notes=command.notes,
     hash=command.hash,

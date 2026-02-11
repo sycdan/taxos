@@ -1,5 +1,4 @@
 import logging
-import os
 
 from taxos.context.tools import require_receipt, require_tenant
 from taxos.receipt.entity import Receipt
@@ -15,9 +14,8 @@ logger = logging.getLogger(__name__)
 def save_repo(repo: ReceiptRepo):
   tenant = require_tenant()
   repo_file = get_repo_file(tenant.guid)
-  os.makedirs(repo_file.parent, exist_ok=True)
-  state = {}
 
+  state = {}
   for month, receipts in repo.index_by_month.items():
     month = month.strftime("%Y-%m")
     state.setdefault(month, []).extend([r.guid.hex for r in receipts])

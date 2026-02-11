@@ -3,6 +3,7 @@ from datetime import datetime
 from hashlib import sha256
 from typing import Union
 
+from taxos.allocation.entity import Allocation
 from taxos.tools.time import parse_datetime
 
 
@@ -12,7 +13,7 @@ class CreateReceipt:
   total: float
   date: Union[datetime, str]
   timezone: str
-  allocations: list[dict] = field(default_factory=list)
+  allocations: set[Allocation] = field(default_factory=set)
   vendor_ref: str = ""
   notes: str = ""
   hash: str = field(
@@ -26,10 +27,10 @@ class CreateReceipt:
     if self.total < 0:
       raise ValueError("Total amount cannot be negative.")
     if self.allocations is None:
-      self.allocations = []
+      self.allocations = set()
     if not isinstance(self.date, datetime):
       self.date = parse_datetime(self.date, self.timezone)
-    self.vendor_ref = str(self.vendor_ref).strip()
+    self.vendor_ref = str(self.vendor_ref or "").strip()
     if not self.hash:
       hash_parts = [self.vendor, self.date.isoformat(), self.vendor_ref]
       self.hash = sha256("\n".join(hash_parts).encode()).hexdigest()

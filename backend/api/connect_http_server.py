@@ -1,5 +1,6 @@
 import json
 import logging
+import zipfile
 from datetime import datetime, timezone
 from functools import wraps
 from uuid import uuid4
@@ -110,8 +111,12 @@ def _parse_timestamp(value) -> datetime:
   return datetime.now(timezone.utc)
 
 
-def _parse_allocations(values: list[dict]) -> list[dict]:
-  allocations = []
+def _parse_allocations(values: list[dict]) -> set:
+  """Convert API allocation dicts to domain Allocation objects."""
+  from taxos.allocation.entity import Allocation
+  from taxos.bucket.entity import BucketRef
+
+  allocations = set()
   for item in values or []:
     if not isinstance(item, dict):
       continue
@@ -119,7 +124,7 @@ def _parse_allocations(values: list[dict]) -> list[dict]:
     if not bucket_guid:
       continue
     amount = float(item.get("amount", 0))
-    allocations.append({"bucket": bucket_guid, "amount": amount})
+    allocations.add(Allocation(bucket=BucketRef(bucket_guid), amount=amount))
   return allocations
 
 
@@ -290,9 +295,12 @@ def list_receipts():
     bucket_desc = f"bucket {bucket_guid}" if bucket_guid else "unallocated receipts"
     logger.info(f"Returning {len(receipt_messages)} receipts for {bucket_desc}")
     return Response(json.dumps(response_dict), content_type="application/json")
+  except Bucket.DoesNotExist:
+    logger.warning(f"Bucket not found: {bucket_guid}")
+    return Response(json.dumps({"error": "Bucket not found"}), status=404, content_type="application/json")
   except Exception as e:
     logger.error(f"Failed to list receipts: {e}")
-    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+    return Response(json.dumps({"error": "An unexpected error occurred"}), status=500, content_type="application/json")
 
 
 # DeleteBucket RPC adapter
