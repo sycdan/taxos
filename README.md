@@ -26,6 +26,8 @@ From local, with devcontainers running:
 
 ### Frontend
 
+Run a specific test in docker with verbose logging:
+
 ```bash
-docker exec -it taxos-frontend-1 npm run test:integration
+docker exec -it taxos-frontend-1 npm run test:integration -- --reporter=verbose -t "allocation"
 ```
