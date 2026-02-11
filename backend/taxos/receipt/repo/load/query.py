@@ -16,7 +16,13 @@ class LoadReceiptRepo:
   bucket: Union[Bucket, BucketRef, str, None] = field(
     default=None,
     metadata={
-      "help": "If set, load receipts allocated to this bucket. If None, load unallocated.",
+      "help": "If set, load receipts allocated to this bucket. If None, load all.",
+    },
+  )
+  unallocated_only: bool = field(
+    default=False,
+    metadata={
+      "help": "If True, only load receipts without any allocations. Ignored if bucket is set.",
     },
   )
 

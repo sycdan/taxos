@@ -13,17 +13,6 @@ from taxos.tools.time import parse_datetime
 logger = logging.getLogger(__name__)
 
 
-def should_include(receipt: Receipt, bucket: Bucket | None = None) -> bool:
-  logger.debug(f"Checking receipt {receipt.guid} for bucket {bucket.guid if bucket else None}")
-  if bucket:
-    has_allocation = any(a.bucket.guid == bucket.guid for a in receipt.allocations)
-    logger.debug(f"Receipt {receipt.guid} has allocation to bucket {bucket.guid}: {has_allocation}")
-    return has_allocation
-  elif CheckUnallocatedReceipt(receipt).execute():
-    return True
-  return False
-
-
 def handle(query: LoadReceiptRepo) -> ReceiptRepo:
   logger.debug(f"{query=}")
   assert not isinstance(query.start_date, str), "start_date should be a datetime, not a string"
@@ -36,6 +25,18 @@ def handle(query: LoadReceiptRepo) -> ReceiptRepo:
     bucket = require_bucket(query.bucket)
   else:
     bucket = None
+
+  def should_include(receipt: Receipt) -> bool:
+    logger.debug(f"Checking if receipt {receipt.guid} should be included for bucket {bucket}")
+    if not bucket and not query.unallocated_only:
+      return True
+    if bucket:
+      has_allocation = any(a.bucket.guid == bucket.guid for a in receipt.allocations)
+      logger.debug(f"Receipt {receipt.guid} has allocation to bucket {bucket.guid}: {has_allocation}")
+      return has_allocation
+    elif query.unallocated_only and CheckUnallocatedReceipt(receipt).execute():
+      return True
+    return False
 
   repo_file = get_repo_file(tenant.guid)
   if not repo_file.exists():
@@ -58,7 +59,7 @@ def handle(query: LoadReceiptRepo) -> ReceiptRepo:
       except Receipt.DoesNotExist:
         logger.debug(f"Skipping missing receipt {receipt_key}")
         continue
-      if should_include(receipt, bucket):
+      if should_include(receipt):
         repo.add(receipt)
 
   logger.info(f"Found {len(repo.receipts)} receipts")
