@@ -1,5 +1,7 @@
+import hashlib
 import json
 import logging
+import os
 import zipfile
 from datetime import datetime, timezone
 from functools import wraps
