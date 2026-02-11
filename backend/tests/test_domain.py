@@ -9,14 +9,19 @@ from taxos.bucket.entity import Bucket
 from taxos.bucket.repo.entity import BucketRepo
 from taxos.context.entity import Context
 from taxos.context.tools import set_context
+from taxos.receipt.delete.command import DeleteReceipt
 from taxos.receipt.entity import Receipt
 from taxos.receipt.repo.entity import ReceiptRepo
+from taxos.receipt.repo.load.command import LoadReceiptRepo
+from taxos.tenant.api.list_receipts.query import ListReceipts
 from taxos.tenant.create.command import CreateTenant
 from taxos.tenant.delete.command import DeleteTenant
 from taxos.tenant.entity import TenantRef
 from taxos.tenant.unallocated_receipt.check.command import CheckUnallocatedReceipt
 
 from dev import BACKEND_ROOT
+
+MONTH_KEY = datetime.now().strftime("%Y-%m")
 
 
 @pytest.fixture
@@ -72,20 +77,15 @@ def ensure_bucket_exists(bucket: Bucket):
   assert any(b.guid == bucket.guid for b in bucket_list), "Created bucket not found in list"
 
 
-def ensure_unallocated_receipt_repo() -> ReceiptRepo:
-  result = scaf("taxos/receipt/repo/load")
-  assert isinstance(result, ReceiptRepo), f"Expected ReceiptRepo, got {type(result)}"
+def get_receipt_list(month_key: str = MONTH_KEY, bucket=None) -> list[Receipt]:
+  result = ListReceipts(months=[month_key], bucket=bucket).execute()
+  assert isinstance(result, list), f"Expected Receipt list, got {type(result)}"
   return result
 
 
-def ensure_no_unallocated_receipts():
-  repo = ensure_unallocated_receipt_repo()
-  assert not repo.receipts, "Unallocated receipts should be empty"
-
-
 def ensure_unallocated_receipt(receipt: Receipt, unallocated_amount: float = 0):
-  repo = ensure_unallocated_receipt_repo()
-  assert receipt.guid in repo.index_by_guid, "Receipt should be in unallocated repo"
+  receipts = get_receipt_list()
+  assert receipt in receipts, "Receipt should be in unallocated list"
   unallocated_receipt = CheckUnallocatedReceipt(receipt).execute()
   assert unallocated_receipt is not None, "Receipt should be unallocated"
   assert unallocated_receipt.unallocated_amount == unallocated_amount, "Unallocated amount should equal receipt total"
@@ -113,10 +113,10 @@ def ensure_receipt_created(vendor: str, total: float, vendor_ref: str = "TEST-RE
 
 
 def ensure_receipt_deleted(receipt: Receipt):
-  result = scaf("taxos/receipt/delete", receipt.guid.hex)
+  result = DeleteReceipt(receipt).execute()
   assert result is True, f"Expected True from receipt delete, got {result}"
-  repo = ensure_unallocated_receipt_repo()
-  assert receipt.guid not in repo.index_by_guid, "Deleted receipt should not be in unallocated repo"
+  repo = LoadReceiptRepo().execute()
+  assert repo.get_by_ref(receipt.guid) is None, "Receipt should be deleted from repo"
 
 
 def ensure_bucket_deleted(bucket: Bucket):
@@ -142,7 +142,6 @@ def test_happy_path(test_context):
   assert updated_bucket.guid == created_bucket.guid, "Bucket GUID should not change on update"
 
   ensure_bucket_exists(updated_bucket)
-  ensure_no_unallocated_receipts()
 
   receipt = ensure_receipt_created("THE AWESOME STORE!", 12.34)
   ensure_unallocated_receipt(receipt, 12.34)

@@ -1,8 +1,6 @@
 import logging
 from datetime import datetime
 
-from taxos.allocation.entity import Allocation
-from taxos.bucket.entity import BucketRef
 from taxos.context.tools import require_tenant
 from taxos.receipt.create.command import CreateReceipt
 from taxos.receipt.entity import Receipt

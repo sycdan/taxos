@@ -21,7 +21,7 @@ def handle(command: DeleteReceipt):
     return False
 
   UpdateReceiptRepo(receipt, remove=True).execute()
-  receipt_guid = command.ref.guid
+  receipt_guid = receipt.guid
   state_file = get_state_file(receipt_guid, tenant.guid)
   content_dir = state_file.parent
   if content_dir.exists():

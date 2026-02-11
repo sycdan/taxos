@@ -1,26 +1,13 @@
 import logging
 
-from taxos.context.tools import require_receipt, require_tenant
+from taxos.context.tools import require_receipt
 from taxos.receipt.entity import Receipt
 from taxos.receipt.repo.entity import ReceiptRepo
-from taxos.receipt.repo.load.query import LoadReceiptRepo
+from taxos.receipt.repo.load.command import LoadReceiptRepo
+from taxos.receipt.repo.save.command import SaveReceiptRepo
 from taxos.receipt.repo.update.command import UpdateReceiptRepo
-from taxos.receipt.tools import get_repo_file
-from taxos.tools import json
 
 logger = logging.getLogger(__name__)
-
-
-def save_repo(repo: ReceiptRepo):
-  tenant = require_tenant()
-  repo_file = get_repo_file(tenant.guid)
-
-  state = {}
-  for month, receipts in repo.index_by_month.items():
-    month = month.strftime("%Y-%m")
-    state.setdefault(month, []).extend([r.guid.hex for r in receipts])
-
-  json.dump(state, repo_file)
 
 
 def handle(command: UpdateReceiptRepo) -> bool:
@@ -37,7 +24,7 @@ def handle(command: UpdateReceiptRepo) -> bool:
       repo.remove(receipt)
     else:
       repo.add(receipt)
-    save_repo(repo)
+    SaveReceiptRepo(repo).execute()
     return True
   except Exception as e:
     logger.error(f"Failed to update receipt repo: {e}")

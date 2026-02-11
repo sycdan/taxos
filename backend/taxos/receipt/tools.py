@@ -16,4 +16,4 @@ def get_state_file(receipt_guid: UUID, tenant_guid: UUID) -> Path:
 
 def get_repo_file(tenant_guid: UUID) -> Path:
   content_dir = get_receipts_dir(tenant_guid)
-  return content_dir / "repo.json"
+  return content_dir / "repo.pkl"

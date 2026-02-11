@@ -24,8 +24,9 @@ from taxos.receipt.create.command import CreateReceipt
 from taxos.receipt.delete.command import DeleteReceipt
 from taxos.receipt.entity import ReceiptRef
 from taxos.receipt.repo.entity import ReceiptRepo
-from taxos.receipt.repo.load.query import LoadReceiptRepo
+from taxos.receipt.repo.load.command import LoadReceiptRepo
 from taxos.receipt.update.command import UpdateReceipt
+from taxos.tenant.api.list_receipts.query import ListReceipts
 from taxos.tools import json as domain_json
 
 from api.v1 import taxos_service_pb2 as messages
@@ -34,6 +35,16 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
+
+
+def get_request_data() -> dict:
+  """Gets the data from the current API request."""
+  data = request.get_json() or {}
+  logger.debug(f"Received request data: {data}")
+  if not isinstance(data, dict):
+    logger.warning("Request data is not a dict")
+    return {}
+  return data
 
 
 def message_to_json(message) -> str:
@@ -140,24 +151,20 @@ def _parse_allocations(values: list[dict]) -> set:
 @require_auth
 def list_buckets():
   logger.info("ListBuckets called via ConnectRPC")
+  data = get_request_data()
+  bucket_summaries: list[messages.BucketSummary] = []
   try:
-    request_data = request.get_json() or {}
-    bucket_summaries: list[messages.BucketSummary] = []
-
-    # Always return all buckets
     repo = LoadBucketRepo().execute()
 
     # Calculate total amount and receipt count for each bucket
     for bucket in repo.index.values():
-      receipt_repo = LoadReceiptRepo(
-        months=request_data.get("months", []),
+      receipts = ListReceipts(
+        months=data.get("months", []),
         bucket=bucket,
       ).execute()
 
-      total_amount = sum(
-        sum(a.amount for a in r.allocations if a.bucket.guid == bucket.guid) for r in receipt_repo.receipts
-      )
-      receipt_count = len(receipt_repo.receipts)
+      total_amount = sum(sum(a.amount for a in r.allocations if a.bucket.guid == bucket.guid) for r in receipts)
+      receipt_count = len(receipts)
       bucket_summaries.append(
         messages.BucketSummary(
           bucket=messages.Bucket(
@@ -283,18 +290,13 @@ def update_bucket():
 @require_auth
 def list_receipts():
   logger.info("ListReceipts called via ConnectRPC")
+  data = get_request_data()
   try:
-    request_data = request.get_json() or {}
-    bucket_guid = get_text(request_data, "bucket", "bucket_guid", "bucketGuid", "bucket_ref", "bucketRef")
-
-    repo: ReceiptRepo = LoadReceiptRepo(
-      months=request_data.get("months", []),
-      bucket=bucket_guid or None,
-      unallocated_only=not bucket_guid,
-    ).execute()
-
+    months = data.get("months", [])
+    bucket_guid = get_text(data, "bucket", "bucket_guid", "bucketGuid", "bucket_ref", "bucketRef")
+    receipts = ListReceipts(months, bucket_guid).execute()
     receipt_messages = []
-    for receipt in repo.receipts:
+    for receipt in receipts:
       receipt_message = messages.Receipt(
         guid=receipt.guid.hex,
         vendor=receipt.vendor,
@@ -313,7 +315,6 @@ def list_receipts():
         hash=receipt.hash,
       )
       receipt_messages.append(receipt_message)
-
     response = messages.ListReceiptsResponse(receipts=receipt_messages)
     bucket_desc = f"bucket {bucket_guid}" if bucket_guid else "unallocated receipts"
     logger.info(f"Returning {len(receipt_messages)} receipts for {bucket_desc}")
