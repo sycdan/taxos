@@ -65,9 +65,8 @@ message Receipt {
 }
 
 message ListReceiptsRequest {
-  optional string           bucket     = 1;
-  google.protobuf.Timestamp start_date = 2;
-  google.protobuf.Timestamp end_date   = 3;
+  optional string bucket = 1;
+  repeated string months = 2;
 }
 
 message ListReceiptsResponse {
@@ -94,8 +93,7 @@ message GetBucketRequest {
 }
 
 message ListBucketsRequest {
-  google.protobuf.Timestamp start_date = 1;
-  google.protobuf.Timestamp end_date   = 2;
+  repeated string months = 1;
 }
 
 message ListBucketsResponse {

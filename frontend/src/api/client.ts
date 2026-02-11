@@ -56,8 +56,11 @@ export class TaxosApiClient {
 	}
 
 	// Bucket methods
-	async listBuckets() {
-		return await this.client.listBuckets({});
+	async listBuckets(params?: {
+		startDate?: any;
+		endDate?: any;
+	}) {
+		return await this.client.listBuckets(params || {});
 	}
 
 	async createBucket(name: string) {
@@ -91,6 +94,23 @@ export class TaxosApiClient {
 			timezone: "UTC",
 			notes: notes || "",
 			allocations: allocations || [],
+		});
+	}
+
+	async updateReceipt(params: {
+		guid: string;
+		vendor?: string;
+		total?: number;
+		notes?: string;
+		allocations?: Array<{ bucket: string; amount: number }>;
+	}) {
+		return await this.client.updateReceipt({
+			guid: params.guid,
+			vendor: params.vendor || "",
+			total: params.total || 0,
+			timezone: "UTC",
+			notes: params.notes || "",
+			allocations: params.allocations || [],
 		});
 	}
 

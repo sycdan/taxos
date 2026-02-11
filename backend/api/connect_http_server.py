@@ -150,9 +150,7 @@ def list_buckets():
     # Calculate total amount and receipt count for each bucket
     for bucket in repo.index.values():
       receipt_repo = LoadReceiptRepo(
-        start_date=get_start_date(request_data),
-        end_date=get_end_date(request_data),
-        timezone=get_timezone(request_data),
+        months=request_data.get("months", []),
         bucket=bucket,
       ).execute()
 
@@ -289,18 +287,8 @@ def list_receipts():
     request_data = request.get_json() or {}
     bucket_guid = get_text(request_data, "bucket", "bucket_guid", "bucketGuid", "bucket_ref", "bucketRef")
 
-    start_date = None
-    end_date = None
-    if start_date_value := get_start_date(request_data):
-      start_date = _parse_timestamp(start_date_value)
-    if end_date_value := get_end_date(request_data):
-      end_date = _parse_timestamp(end_date_value)
-    timezone = get_timezone(request_data)
-
     repo: ReceiptRepo = LoadReceiptRepo(
-      start_date=start_date,
-      end_date=end_date,
-      timezone=timezone,
+      months=request_data.get("months", []),
       bucket=bucket_guid or None,
       unallocated_only=not bucket_guid,
     ).execute()

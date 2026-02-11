@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { Timestamp } from '@bufbuild/protobuf';
 import type { Bucket, BucketSummary, Receipt } from '../types';
-import { client, getToken, dateToTimestamp } from '../api/client';
+import { client, getToken } from '../api/client';
 
 const slugify = (text: string) => {
   return text
@@ -24,10 +23,10 @@ interface TaxosContextType {
   addBucket: (name: string) => Promise<boolean>;
   updateBucket: (id: string, name: string) => Promise<boolean>;
   deleteBucket: (id: string) => Promise<void>;
-  addReceipt: (receipt: Omit<Receipt, 'id'>) => void;
-  updateReceipt: (receipt: Receipt) => void;
-  deleteReceipt: (id: string) => void;
-  refreshBuckets: (startDate?: Date, endDate?: Date) => Promise<void>;
+  addReceipt: (receipt: Omit<Receipt, 'id'>) => Promise<void>;
+  updateReceipt: (receipt: Receipt) => Promise<void>;
+  deleteReceipt: (id: string) => Promise<void>;
+  refreshBuckets: (startDate?: Date, endDate?: Date, force?: boolean) => Promise<void>;
   loadReceiptsForBucket: (bucketId: string, startDate: Date, endDate: Date) => Promise<Receipt[]>;
   getUnallocatedReceipts: (startDate: Date, endDate: Date) => Promise<Receipt[]>;
 }
@@ -37,15 +36,8 @@ const TaxosContext = createContext<TaxosContextType | undefined>(undefined);
 export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [buckets, setBuckets] = useState<Bucket[]>([]);
   const [bucketSummaries, setBucketSummaries] = useState<BucketSummary[]>([]);
-  const [unallocatedSummary, setUnallocatedSummary] = useState<{ totalAmount: number; receiptCount: number }>(() => {
-    const saved = localStorage.getItem('taxos_unallocated_summary');
-    return saved ? JSON.parse(saved) : { totalAmount: 0, receiptCount: 0 };
-  });
-  const [receipts, setReceipts] = useState<Record<string, Receipt>>(() => {
-    // Load receipts from localStorage as guid-indexed dict
-    const saved = localStorage.getItem('taxos_receipts');
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [unallocatedSummary, setUnallocatedSummary] = useState<{ totalAmount: number; receiptCount: number }>({ totalAmount: 0, receiptCount: 0 });
+  const [receipts, setReceipts] = useState<Record<string, Receipt>>({});
   // Track receipt hashes for O(1) duplicate detection
   const receiptHashes = useMemo(() => {
     const hashes = new Set<string>();
@@ -68,22 +60,30 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return new Date(seconds * 1000 + nanos / 1_000_000).toISOString();
   };
 
-  // Keep receipts in localStorage in sync
-  useEffect(() => {
-    localStorage.setItem('taxos_receipts', JSON.stringify(receipts));
-  }, [receipts]);
+  // Helper to generate "yyyy-mm" strings for a range
+  const getMonthsInRange = (start?: Date, end?: Date): string[] => {
+    if (!start || !end) return [];
+    const months: string[] = [];
+    let current = new Date(start.getFullYear(), start.getMonth(), 1);
+    const last = new Date(end.getFullYear(), end.getMonth(), 1);
 
-  // Keep unallocated summary in localStorage in sync
-  useEffect(() => {
-    localStorage.setItem('taxos_unallocated_summary', JSON.stringify(unallocatedSummary));
-  }, [unallocatedSummary]);
+    while (current <= last) {
+      const year = current.getFullYear();
+      const month = String(current.getMonth() + 1).padStart(2, '0');
+      months.push(`${year}-${month}`);
+      current.setMonth(current.getMonth() + 1);
+    }
+    return months;
+  };
 
-  const refreshBuckets = useCallback(async (startDate?: Date, endDate?: Date) => {
+
+
+  const refreshBuckets = useCallback(async (startDate?: Date, endDate?: Date, force?: boolean) => {
     // Only refresh if dates have actually changed or it's the initial load
     const sameStart = (!startDate && !currentDateFilter.start) || (startDate && currentDateFilter.start && startDate.getTime() === currentDateFilter.start.getTime());
     const sameEnd = (!endDate && !currentDateFilter.end) || (endDate && currentDateFilter.end && endDate.getTime() === currentDateFilter.end.getTime());
 
-    if (sameStart && sameEnd && buckets.length > 0) {
+    if (!force && sameStart && sameEnd && buckets.length > 0) {
       console.log('Skipping ListBuckets - same date filter and buckets already loaded');
       return;
     }
@@ -99,8 +99,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setCurrentDateFilter({ start: startDate, end: endDate });
 
       const response = await client.listBuckets({
-        startDate: startDate ? dateToTimestamp(startDate) as any : undefined,
-        endDate: endDate ? dateToTimestamp(endDate) as any : undefined,
+        months: getMonthsInRange(startDate, endDate),
       });
 
       const apiBuckets: Bucket[] = response.buckets.map(summary => ({
@@ -124,8 +123,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       try {
         const unallocatedResponse = await client.listReceipts({
           // No bucket_guid = unallocated receipts
-          startDate: startDate ? dateToTimestamp(startDate) as any : undefined,
-          endDate: endDate ? dateToTimestamp(endDate) as any : undefined,
+          months: getMonthsInRange(startDate, endDate),
         });
 
         // Calculate unallocated amount (total - sum of allocations)
@@ -148,10 +146,6 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     } catch (error) {
       console.error('Failed to load buckets:', error);
-      // Don't immediately retry on error - just use fallback
-      const saved = localStorage.getItem('taxos_buckets');
-      setBuckets(saved ? JSON.parse(saved) : []);
-      setBucketSummaries([]);
     } finally {
       setLoading(false);
     }
@@ -162,19 +156,15 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!authenticated) {
       setLoading(false);
     } else {
-      // Load from localStorage on mount
-      const saved = localStorage.getItem('taxos_buckets');
-      if (saved) {
-        setBuckets(JSON.parse(saved));
-      }
       setLoading(false);
     }
   }, [authenticated]);
 
-  // Keep localStorage as backup
-  useEffect(() => {
-    localStorage.setItem('taxos_buckets', JSON.stringify(buckets));
-  }, [buckets]);
+  const triggerRefresh = useCallback(() => {
+    if (currentDateFilter.start || currentDateFilter.end) {
+      void refreshBuckets(currentDateFilter.start, currentDateFilter.end, true);
+    }
+  }, [currentDateFilter, refreshBuckets]);
 
   const isNameTaken = (name: string, excludeId?: string) => {
     const slug = slugify(name);
@@ -191,13 +181,11 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         name: response.name
       };
       setBuckets(prev => [...prev, newBucket]);
+      triggerRefresh();
       return true;
     } catch (error) {
       console.error('Failed to create bucket:', error);
-      // Fallback to local creation
-      const newBucket = { id: uuidv4(), name };
-      setBuckets(prev => [...prev, newBucket]);
-      return true;
+      return false;
     }
   };
 
@@ -210,9 +198,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return true;
     } catch (error) {
       console.error('Failed to update bucket:', error);
-      // Fallback to local update
-      setBuckets(prev => prev.map(b => b.id === id ? { ...b, name } : b));
-      return true;
+      return false;
     }
   };
 
@@ -232,31 +218,10 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
     } catch (error) {
       console.error('Failed to delete bucket:', error);
-      // Fallback to local deletion
-      setBuckets(prev => prev.filter(b => b.id !== id));
-      setReceipts(prev => {
-        const updated = { ...prev };
-        for (const key in updated) {
-          updated[key] = {
-            ...updated[key],
-            allocations: updated[key].allocations.filter(a => a.bucketId !== id)
-          };
-        }
-        return updated;
-      });
     }
   };
 
-  const addReceipt = (receipt: Omit<Receipt, 'id'>) => {
-    const createLocal = (fallbackReceipt: Omit<Receipt, 'id'>) => {
-      if (fallbackReceipt.hash && receiptHashes.has(fallbackReceipt.hash)) {
-        console.warn('Duplicate receipt detected, skipping:', fallbackReceipt.vendor);
-        return;
-      }
-      const newReceipt = { ...fallbackReceipt, id: uuidv4() };
-      setReceipts(prev => ({ ...prev, [newReceipt.id]: newReceipt }));
-    };
-
+  const addReceipt = async (receipt: Omit<Receipt, 'id'>) => {
     const toTimestamp = (iso: string) => {
       const date = new Date(iso);
       const seconds = BigInt(Math.floor(date.getTime() / 1000));
@@ -264,58 +229,45 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return new Timestamp({ seconds, nanos });
     };
 
-    const timestampToIso = (ts?: Timestamp) => {
-      if (!ts) return new Date().toISOString();
-      const asAny = ts as any;
-      if (typeof asAny.toDate === 'function') return asAny.toDate().toISOString();
-      const seconds = Number(asAny.seconds ?? 0);
-      const nanos = Number(asAny.nanos ?? 0);
-      return new Date(seconds * 1000 + nanos / 1_000_000).toISOString();
-    };
+    try {
+      const response = await client.createReceipt({
+        vendor: receipt.vendor,
+        total: receipt.total,
+        date: toTimestamp(receipt.date),
+        timezone: receipt.timezone,
+        allocations: receipt.allocations.map(a => ({
+          bucket: a.bucketId,
+          amount: a.amount,
+        })),
+        vendorRef: receipt.ref || '',
+        notes: receipt.notes || '',
+        hash: receipt.hash || '',
+      });
 
-    const createRemote = async () => {
-      try {
-        const response = await client.createReceipt({
-          vendor: receipt.vendor,
-          total: receipt.total,
-          date: toTimestamp(receipt.date),
-          timezone: receipt.timezone,
-          allocations: receipt.allocations.map(a => ({
-            bucket: a.bucketId,
-            amount: a.amount,
-          })),
-          vendorRef: receipt.ref || '',
-          notes: receipt.notes || '',
-          hash: receipt.hash || '',
-        });
+      const createdReceipt: Receipt = {
+        id: response.guid,
+        vendor: response.vendor,
+        total: response.total,
+        date: timestampToIso(response.date),
+        timezone: response.timezone,
+        allocations: response.allocations.map(a => ({
+          bucketId: a.bucket,
+          amount: a.amount,
+        })),
+        ref: response.vendorRef || undefined,
+        notes: response.notes || undefined,
+        hash: response.hash || undefined,
+      };
 
-        const createdReceipt: Receipt = {
-          id: response.guid,
-          vendor: response.vendor,
-          total: response.total,
-          date: timestampToIso(response.date),
-          timezone: response.timezone,
-          allocations: response.allocations.map(a => ({
-            bucketId: a.bucket,
-            amount: a.amount,
-          })),
-          ref: response.vendorRef || undefined,
-          notes: response.notes || undefined,
-          hash: response.hash || undefined,
-        };
-
-        if (createdReceipt.hash && receiptHashes.has(createdReceipt.hash)) {
-          console.warn('Duplicate receipt detected, skipping:', createdReceipt.vendor);
-          return;
-        }
-        setReceipts(prev => ({ ...prev, [createdReceipt.id]: createdReceipt }));
-      } catch (error) {
-        console.error('Failed to create receipt:', error);
-        createLocal(receipt);
+      if (createdReceipt.hash && receiptHashes.has(createdReceipt.hash)) {
+        console.warn('Duplicate receipt detected, skipping:', createdReceipt.vendor);
+        return;
       }
-    };
-
-    void createRemote();
+      setReceipts(prev => ({ ...prev, [createdReceipt.id]: createdReceipt }));
+      triggerRefresh();
+    } catch (error) {
+      console.error('Failed to create receipt:', error);
+    }
   };
 
   const updateReceipt = async (receipt: Receipt) => {
@@ -326,14 +278,8 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return new Timestamp({ seconds, nanos });
     };
 
-    const timestampToIso = (ts?: Timestamp) => {
-      if (!ts) return new Date().toISOString();
-      const asAny = ts as any;
-      if (typeof asAny.toDate === 'function') return asAny.toDate().toISOString();
-      const seconds = Number(asAny.seconds ?? 0);
-      const nanos = Number(asAny.nanos ?? 0);
-      return new Date(seconds * 1000 + nanos / 1_000_000).toISOString();
-    };
+    // Save previous state for rollback
+    const previousReceipt = receipts[receipt.id];
 
     // Optimistically update local state
     setReceipts(prev => ({ ...prev, [receipt.id]: receipt }));
@@ -370,9 +316,13 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       };
 
       setReceipts(prev => ({ ...prev, [updatedReceipt.id]: updatedReceipt }));
+      triggerRefresh();
     } catch (error) {
       console.error('Failed to update receipt:', error);
-      // Already updated local state optimistically
+      // Revert optimistic update
+      if (previousReceipt) {
+        setReceipts(prev => ({ ...prev, [receipt.id]: previousReceipt }));
+      }
     }
   };
 
@@ -383,13 +333,9 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const { [id]: _, ...rest } = prev;
         return rest;
       });
+      triggerRefresh();
     } catch (error) {
       console.error('Failed to delete receipt:', error);
-      // Fallback to local deletion
-      setReceipts(prev => {
-        const { [id]: _, ...rest } = prev;
-        return rest;
-      });
     }
   };
 
@@ -397,8 +343,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       const response = await client.listReceipts({
         bucket: bucketId,
-        startDate: dateToTimestamp(startDate) as any,
-        endDate: dateToTimestamp(endDate) as any,
+        months: getMonthsInRange(startDate, endDate),
       });
 
       const bucketReceipts: Receipt[] = response.receipts.map(r => ({
@@ -442,8 +387,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       // Use listReceipts without bucket_guid to get unallocated receipts
       const response = await client.listReceipts({
         // No bucket_guid parameter = unallocated receipts
-        startDate: dateToTimestamp(startDate) as any,
-        endDate: dateToTimestamp(endDate) as any,
+        months: getMonthsInRange(startDate, endDate),
       });
 
       const unallocatedReceipts: Receipt[] = response.receipts.map(r => ({
