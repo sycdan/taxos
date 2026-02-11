@@ -1,5 +1,5 @@
 import { beforeAll, afterAll } from "vitest";
-import { TaxosApiClient } from "../../utils/api-client";
+import { createTestClient } from "../../utils/api-client";
 
 beforeAll(async () => {
 	console.log("🚀 Setting up integration test environment...");
@@ -7,7 +7,7 @@ beforeAll(async () => {
 	// Wait for backend to be ready by testing ListBuckets
 	const maxRetries = 5;
 	let retries = 0;
-	const apiClient = new TaxosApiClient();
+	const apiClient = createTestClient();
 
 	while (retries < maxRetries) {
 		try {
