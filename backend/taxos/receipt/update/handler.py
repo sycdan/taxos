@@ -1,6 +1,6 @@
 import logging
+from datetime import datetime
 
-from taxos.allocation.entity import Allocation
 from taxos.context.tools import require_receipt, require_tenant
 from taxos.receipt.entity import Receipt
 from taxos.receipt.repo.update.command import UpdateReceiptRepo
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def handle(command: UpdateReceipt) -> Receipt:
-  assert not isinstance(command.date, str), "Date must be parsed."
+  assert isinstance(command.date, datetime), "Date must be parsed."
   logger.debug(f"{command=}")
   tenant = require_tenant()
   receipt = require_receipt(command.ref)
