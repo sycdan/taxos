@@ -301,22 +301,35 @@ def list_receipts():
       start_date=start_date,
       end_date=end_date,
       timezone=timezone,
-      bucket=bucket_guid or None,  # None means unallocated receipts
+      bucket=bucket_guid or None,
+      unallocated_only=not bucket_guid,
     ).execute()
 
-    # Convert receipts to protobuf format
     receipt_messages = []
     for receipt in repo.receipts:
-      receipt_text = domain_json.dumps(receipt)
-      receipt_message = Parse(receipt_text, messages.Receipt())
+      receipt_message = messages.Receipt(
+        guid=receipt.guid.hex,
+        vendor=receipt.vendor,
+        total=receipt.total,
+        date=make_timestamp(receipt.date),
+        timezone=receipt.timezone,
+        allocations=[
+          messages.ReceiptAllocation(
+            bucket=allocation.bucket.guid.hex,
+            amount=allocation.amount,
+          )
+          for allocation in receipt.allocations
+        ],
+        vendor_ref=receipt.vendor_ref,
+        notes=receipt.notes,
+        hash=receipt.hash,
+      )
       receipt_messages.append(receipt_message)
 
     response = messages.ListReceiptsResponse(receipts=receipt_messages)
-    response_dict = MessageToDict(response, preserving_proto_field_name=True)
-
     bucket_desc = f"bucket {bucket_guid}" if bucket_guid else "unallocated receipts"
     logger.info(f"Returning {len(receipt_messages)} receipts for {bucket_desc}")
-    return Response(json.dumps(response_dict), content_type="application/json")
+    return Response(message_to_json(response), content_type="application/json")
   except Bucket.DoesNotExist:
     logger.warning(f"Bucket not found: {bucket_guid}")
     return Response(json.dumps({"error": "Bucket not found"}), status=404, content_type="application/json")
