@@ -12,21 +12,19 @@ logger = logging.getLogger(__name__)
 
 
 def handle(command: UpdateReceipt) -> Receipt:
+  assert not isinstance(command.date, str), "Date must be parsed."
   logger.debug(f"{command=}")
   tenant = require_tenant()
   receipt = require_receipt(command.ref)
 
   receipt.vendor = command.vendor
   receipt.total = command.total
+  receipt.allocations = command.allocations
   receipt.date = command.date
   receipt.timezone = command.timezone
   receipt.vendor_ref = command.vendor_ref
   receipt.notes = command.notes
   receipt.hash = command.hash
-
-  receipt.allocations = {
-    Allocation(bucket=a.get("bucket_guid", ""), amount=a.get("amount", 0)) for a in command.allocations
-  }
 
   state_file = get_state_file(receipt.guid, tenant.guid)
   json.dump(receipt, state_file)

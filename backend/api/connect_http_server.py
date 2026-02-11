@@ -45,6 +45,12 @@ def message_to_json(message) -> str:
   return json.dumps(message_dict)
 
 
+def make_timestamp(value: datetime) -> Timestamp:
+  ts = Timestamp()
+  ts.FromDatetime(value)
+  return ts
+
+
 def get_text(data, *keys, default: str = ""):
   for key in keys:
     if key in data:
@@ -157,7 +163,7 @@ def list_buckets():
       bucket_summaries.append(
         messages.BucketSummary(
           bucket=messages.Bucket(
-            guid=str(bucket.guid),
+            guid=bucket.guid.hex,
             name=bucket.name,
           ),
           total_amount=total_amount,
@@ -183,7 +189,7 @@ def create_bucket():
       get_text(request_data, "name", default=uuid4().hex[:8]),
     ).execute()
     bucket_message = messages.Bucket(
-      guid=str(bucket.guid),
+      guid=bucket.guid.hex,
       name=bucket.name,
     )
     return Response(message_to_json(bucket_message), content_type="application/json")
@@ -198,14 +204,12 @@ def create_receipt():
   logger.info("CreateReceipt called via ConnectRPC")
   try:
     request_data = request.get_json() or {}
-    date_value = request_data.get("date")
-    date = _parse_timestamp(date_value)
     allocations = _parse_allocations(request_data.get("allocations", []))
 
     receipt = CreateReceipt(
       vendor=get_text(request_data, "vendor", default=""),
       total=float(request_data.get("total", 0)),
-      date=date,
+      date=get_text(request_data, "date"),
       timezone=get_timezone(request_data),
       allocations=allocations,
       vendor_ref=get_text(request_data, "ref", default=""),
@@ -213,7 +217,23 @@ def create_receipt():
       hash=get_text(request_data, "hash", default=""),
     ).execute()
 
-    receipt_message = Parse(domain_json.dumps(receipt), messages.Receipt())
+    receipt_message = messages.Receipt(
+      guid=receipt.guid.hex,
+      vendor=receipt.vendor,
+      total=receipt.total,
+      date=make_timestamp(receipt.date),
+      timezone=receipt.timezone,
+      allocations=[
+        messages.ReceiptAllocation(
+          bucket=allocation.bucket.guid.hex,
+          amount=allocation.amount,
+        )
+        for allocation in receipt.allocations
+      ],
+      vendor_ref=receipt.vendor_ref,
+      notes=receipt.notes,
+      hash=receipt.hash,
+    )
     return Response(message_to_json(receipt_message), content_type="application/json")
   except Exception as e:
     logger.error(f"Failed to create receipt: {e}")
@@ -230,7 +250,7 @@ def get_bucket():
     bucket = LoadBucket(ref=bucket_ref).execute()
 
     response = messages.Bucket(
-      guid=str(bucket.guid),
+      guid=bucket.guid.hex,
       name=bucket.name,
     )
     response_dict = MessageToDict(response, preserving_proto_field_name=True)
@@ -331,15 +351,13 @@ def update_receipt():
   try:
     request_data = request.get_json() or {}
 
-    date_value = get_text(request_data, "date", default=None)
-    date = _parse_timestamp(date_value)
     allocations = _parse_allocations(request_data.get("allocations", []))
 
     receipt = UpdateReceipt(
-      ref=str(get_text(request_data, "guid", "receipt_guid", "receiptGuid", default="")),
+      ref=get_text(request_data, "guid", "receipt_guid", "receiptGuid", default=""),
       vendor=get_text(request_data, "vendor", default=""),
       total=float(get_text(request_data, "total", default=0)),
-      date=date,
+      date=get_text(request_data, "date") or None,
       timezone=get_timezone(request_data),
       allocations=allocations,
       vendor_ref=get_text(request_data, "ref", "vendor_ref", "vendorRef", default=""),

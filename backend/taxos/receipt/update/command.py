@@ -1,7 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Union
 
+from taxos.allocation.entity import Allocation
 from taxos.receipt.entity import Receipt, ReceiptRef
 
 
@@ -10,9 +11,9 @@ class UpdateReceipt:
   ref: Union[Receipt, ReceiptRef, str]
   vendor: str
   total: float
-  date: datetime
+  date: Union[datetime, str]
   timezone: str
-  allocations: list[dict]
+  allocations: set[Allocation] = field(default_factory=set)
   vendor_ref: str = ""
   notes: str = ""
   hash: str = ""

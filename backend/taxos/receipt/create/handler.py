@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from taxos.allocation.entity import Allocation
 from taxos.bucket.entity import BucketRef
@@ -8,12 +9,12 @@ from taxos.receipt.entity import Receipt
 from taxos.receipt.save.command import SaveReceipt
 from taxos.receipt.tools import get_state_file
 from taxos.tools import guid
-from taxos.tools.time import parse_datetime
 
 logger = logging.getLogger(__name__)
 
 
 def handle(command: CreateReceipt) -> Receipt:
+  assert isinstance(command.date, datetime), "Date must be parsed."
   logger.debug(f"{command=}")
   tenant = require_tenant()
   receipt_guid = guid.uuid7()
@@ -26,7 +27,7 @@ def handle(command: CreateReceipt) -> Receipt:
     receipt_guid,
     vendor=command.vendor,
     total=command.total,
-    date=parse_datetime(command.date, command.timezone),
+    date=command.date,
     timezone=command.timezone,
     allocations=command.allocations,
     vendor_ref=command.vendor_ref,
