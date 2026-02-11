@@ -10,7 +10,7 @@ class LoadReceiptRepo:
   months: list[str] = field(
     default_factory=list,
     metadata={
-      "help": "List of month keys to load, e.g. ['2024-01', '2024-02']",
+      "help": "List of specific month keys to load, e.g. ['2024-01', '2024-02']. If empty, load all months.",
     },
   )
   bucket: Union[Bucket, BucketRef, str, None] = field(

@@ -42,8 +42,12 @@ def handle(query: LoadReceiptRepo) -> ReceiptRepo:
 
   state = json.load(repo_file)  # index is {month: [receipt_key, ...], ...}
 
+  months_to_load = query.months
+  if not months_to_load:
+    months_to_load = list(state.keys())
+
   # Load only the specific months requested
-  for month_key in query.months:
+  for month_key in months_to_load:
     if month_key not in state:
       continue
 
