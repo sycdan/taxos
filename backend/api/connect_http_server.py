@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from flask import Flask, Response, request
 from flask_cors import CORS
-from google.protobuf.json_format import MessageToDict, Parse
+from google.protobuf.json_format import MessageToDict
 from google.protobuf.timestamp_pb2 import Timestamp
 from taxos.access.authenticate_tenant.command import AuthenticateTenant
 from taxos.bucket.create.command import CreateBucket
@@ -23,15 +23,12 @@ from taxos.context.tools import set_context
 from taxos.receipt.create.command import CreateReceipt
 from taxos.receipt.delete.command import DeleteReceipt
 from taxos.receipt.entity import ReceiptRef
-from taxos.receipt.repo.entity import ReceiptRepo
-from taxos.receipt.repo.load.command import LoadReceiptRepo
 from taxos.receipt.update.command import UpdateReceipt
-from taxos.tenant.api.list_receipts.query import ListReceipts
-from taxos.tools import json as domain_json
+from taxos.tenant.list_receipts.query import ListReceipts
 
 from api.v1 import taxos_service_pb2 as messages
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("api")
 
 app = Flask(__name__)
 CORS(app)
@@ -54,6 +51,22 @@ def message_to_json(message) -> str:
     always_print_fields_with_no_presence=True,
   )
   return json.dumps(message_dict)
+
+
+def success_response(message) -> Response:
+  return Response(message_to_json(message), content_type="application/json")
+
+
+def error_response(
+  status: int = 500,
+  message: str = "An unexpected error occurred",
+  exception: Exception | None = None,
+) -> Response:
+  if exception:
+    logger.error("Request to %s raised %s: %s", request.path, type(exception).__name__, exception)
+  else:
+    logger.warning("Request to %s failed %s: %s", request.path, status, message)
+  return Response(json.dumps({"error": message}), status=status, content_type="application/json")
 
 
 def make_timestamp(value: datetime) -> Timestamp:
@@ -89,12 +102,7 @@ def require_auth(f):
     # Get token from Authorization header (format: "Bearer <token_hash>")
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
-      logger.warning("Missing or invalid Authorization header")
-      return Response(
-        json.dumps({"error": "Missing or invalid Authorization header"}),
-        status=401,
-        content_type="application/json",
-      )
+      return error_response(401, "Missing or invalid Authorization header")
 
     token_hash = auth_header[7:]  # Remove "Bearer " prefix
 
@@ -105,11 +113,7 @@ def require_auth(f):
       return f(*args, **kwargs)
     except Exception as e:
       logger.warning(f"Authentication failed: {e}")
-      return Response(
-        json.dumps({"error": "Invalid or expired access token"}),
-        status=401,
-        content_type="application/json",
-      )
+      return error_response(401, "Invalid or expired access token")
 
   return decorated_function
 
@@ -178,10 +182,9 @@ def list_buckets():
 
     logger.info(f"Returning {len(bucket_summaries)} buckets")
     response_message = messages.ListBucketsResponse(buckets=bucket_summaries)
-    return Response(message_to_json(response_message), content_type="application/json")
+    return success_response(response_message)
   except Exception as e:
-    logger.error(f"Failed to list buckets: {e}")
-    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+    return error_response(exception=e)
 
 
 @app.route("/taxos.v1.TaxosApi/CreateBucket", methods=["POST"])
@@ -197,10 +200,9 @@ def create_bucket():
       guid=bucket.guid.hex,
       name=bucket.name,
     )
-    return Response(message_to_json(bucket_message), content_type="application/json")
+    return success_response(bucket_message)
   except Exception as e:
-    logger.error(f"Failed to create bucket: {e}")
-    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+    return error_response(exception=e)
 
 
 @app.route("/taxos.v1.TaxosApi/CreateReceipt", methods=["POST"])
@@ -239,10 +241,9 @@ def create_receipt():
       notes=receipt.notes,
       hash=receipt.hash,
     )
-    return Response(message_to_json(receipt_message), content_type="application/json")
+    return success_response(receipt_message)
   except Exception as e:
-    logger.error(f"Failed to create receipt: {e}")
-    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+    return error_response(exception=e)
 
 
 @app.route("/taxos.v1.TaxosApi/GetBucket", methods=["POST"])
@@ -258,12 +259,10 @@ def get_bucket():
       guid=bucket.guid.hex,
       name=bucket.name,
     )
-    response_dict = MessageToDict(response, preserving_proto_field_name=True)
 
-    return Response(json.dumps(response_dict), content_type="application/json")
+    return success_response(response)
   except Exception as e:
-    logger.error(f"Failed to get bucket: {e}")
-    return Response(json.dumps({"error": str(e)}), status=404, content_type="application/json")
+    return error_response(exception=e)
 
 
 @app.route("/taxos.v1.TaxosApi/UpdateBucket", methods=["POST"])
@@ -279,23 +278,25 @@ def update_bucket():
     except Bucket.DoesNotExist:
       return Response(json.dumps({"error": "Bucket not found"}), status=404, content_type="application/json")
 
-    bucket_message = Parse(domain_json.dumps(bucket), messages.Bucket())
-    return Response(message_to_json(bucket_message), content_type="application/json")
+    bucket_message = messages.Bucket(
+      guid=bucket.guid.hex,
+      name=bucket.name,
+    )
+    return success_response(bucket_message)
   except Exception as e:
-    logger.error(f"Failed to update bucket: {e}")
-    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+    return error_response(exception=e)
 
 
 @app.route("/taxos.v1.TaxosApi/ListReceipts", methods=["POST"])
 @require_auth
 def list_receipts():
   logger.info("ListReceipts called via ConnectRPC")
-  data = get_request_data()
   try:
-    months = data.get("months", [])
-    bucket_guid = get_text(data, "bucket", "bucket_guid", "bucketGuid", "bucket_ref", "bucketRef")
-    receipts = ListReceipts(months, bucket_guid).execute()
     receipt_messages = []
+    data = get_request_data()
+    bucket_guid = get_text(data, "bucket", "bucket_guid", "bucketGuid", "bucket_ref", "bucketRef")
+    months = data.get("months", [])
+    receipts = ListReceipts(months=months, bucket=bucket_guid).execute()
     for receipt in receipts:
       receipt_message = messages.Receipt(
         guid=receipt.guid.hex,
@@ -315,16 +316,14 @@ def list_receipts():
         hash=receipt.hash,
       )
       receipt_messages.append(receipt_message)
-    response = messages.ListReceiptsResponse(receipts=receipt_messages)
-    bucket_desc = f"bucket {bucket_guid}" if bucket_guid else "unallocated receipts"
-    logger.info(f"Returning {len(receipt_messages)} receipts for {bucket_desc}")
-    return Response(message_to_json(response), content_type="application/json")
-  except Bucket.DoesNotExist:
-    logger.warning(f"Bucket not found: {bucket_guid}")
-    return Response(json.dumps({"error": "Bucket not found"}), status=404, content_type="application/json")
+    logger.info(f"Returning {len(receipt_messages)} receipts for bucket {bucket_guid}")
+    return success_response(messages.ListReceiptsResponse(receipts=receipt_messages))
+  except ValueError as e:
+    return error_response(400, str(e))
+  except Bucket.DoesNotExist as e:
+    return error_response(404, e.__class__.__name__)
   except Exception as e:
-    logger.error(f"Failed to list receipts: {e}")
-    return Response(json.dumps({"error": "An unexpected error occurred"}), status=500, content_type="application/json")
+    return error_response(exception=e)
 
 
 # DeleteBucket RPC adapter
@@ -336,14 +335,9 @@ def delete_bucket():
     request_data = request.get_json()
     bucket_ref = BucketRef(request_data.get("guid", ""))
     success = DeleteBucket(ref=bucket_ref).execute()
-
-    response = messages.DeleteBucketResponse(success=success)
-    response_dict = MessageToDict(response, preserving_proto_field_name=True)
-
-    return Response(json.dumps(response_dict), content_type="application/json")
+    return success_response(messages.DeleteBucketResponse(success=success))
   except Exception as e:
-    logger.error(f"Failed to delete bucket: {e}")
-    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+    return error_response(exception=e)
 
 
 @app.route("/taxos.v1.TaxosApi/UpdateReceipt", methods=["POST"])
@@ -359,7 +353,7 @@ def update_receipt():
       ref=get_text(request_data, "guid", "receipt_guid", "receiptGuid", default=""),
       vendor=get_text(request_data, "vendor", default=""),
       total=float(get_text(request_data, "total", default=0)),
-      date=get_text(request_data, "date") or None,
+      date=get_text(request_data, "date") or "",
       timezone=get_timezone(request_data),
       allocations=allocations,
       vendor_ref=get_text(request_data, "ref", "vendor_ref", "vendorRef", default=""),
@@ -367,11 +361,26 @@ def update_receipt():
       hash=get_text(request_data, "hash", default=""),
     ).execute()
 
-    receipt_message = Parse(domain_json.dumps(receipt), messages.Receipt())
-    return Response(message_to_json(receipt_message), content_type="application/json")
+    receipt_message = messages.Receipt(
+      guid=receipt.guid.hex,
+      vendor=receipt.vendor,
+      total=receipt.total,
+      date=make_timestamp(receipt.date),
+      timezone=receipt.timezone,
+      allocations=[
+        messages.ReceiptAllocation(
+          bucket=allocation.bucket.guid.hex,
+          amount=allocation.amount,
+        )
+        for allocation in receipt.allocations
+      ],
+      vendor_ref=receipt.vendor_ref,
+      notes=receipt.notes,
+      hash=receipt.hash,
+    )
+    return success_response(receipt_message)
   except Exception as e:
-    logger.error(f"Failed to update receipt: {e}")
-    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+    return error_response(exception=e)
 
 
 @app.route("/taxos.v1.TaxosApi/DeleteReceipt", methods=["POST"])
@@ -382,11 +391,9 @@ def delete_receipt():
     request_data = request.get_json()
     receipt_ref = ReceiptRef(get_text(request_data, "guid", "receipt_guid", "receiptGuid", default=""))
     success = DeleteReceipt(receipt_ref).execute()
-    response_message = messages.DeleteReceiptResponse(success=success)
-    return Response(message_to_json(response_message), content_type="application/json")
+    return success_response(messages.DeleteReceiptResponse(success=success))
   except Exception as e:
-    logger.error(f"Failed to delete receipt: {e}")
-    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+    return error_response(exception=e)
 
 
 def _get_upload_directory():
@@ -495,11 +502,9 @@ def upload_receipt_file():
     )
 
     response_message = messages.UploadReceiptFileResponse(already_exists=False, file_info=file_info)
-    return Response(message_to_json(response_message), content_type="application/json")
-
+    return success_response(response_message)
   except Exception as e:
-    logger.error(f"Failed to upload file: {e}")
-    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+    return error_response(exception=e)
 
 
 @app.route("/taxos.v1.TaxosApi/DownloadReceiptFile", methods=["POST"])
@@ -534,28 +539,24 @@ def download_receipt_file():
 
     logger.info(f"Downloaded file {filename} with hash {file_hash} ({file_size} bytes)")
     response_message = messages.DownloadReceiptFileResponse(filename=filename, file_data=file_data, file_size=file_size)
-    return Response(message_to_json(response_message), content_type="application/json")
-
+    return success_response(response_message)
   except Exception as e:
-    logger.error(f"Failed to download file: {e}")
-    return Response(json.dumps({"error": str(e)}), status=500, content_type="application/json")
+    return error_response(exception=e)
 
 
 @app.route("/taxos.v1.TaxosApi/Authenticate", methods=["POST"])
 def authenticate():
   logger.info("Authenticate called via ConnectRPC")
   try:
-    request_data = request.get_json() or {}
-    token = request_data.get("token", "")
+    data = get_request_data()
+    token = get_text(data, "token", "access_token", "accessToken")
     if not token:
-      return Response(json.dumps({"error": "Missing token"}), status=400, content_type="application/json")
+      return error_response(400, "Missing token")
     tenant = AuthenticateTenant(token).execute()
-    response_message = messages.AuthenticateResponse()
-    response_message.name = tenant.name
-    return Response(message_to_json(response_message), content_type="application/json")
+    response_message = messages.AuthenticateResponse(name=tenant.name)
+    return success_response(response_message)
   except Exception as e:
-    logger.warning(f"Authentication failed: {e}")
-    return Response(json.dumps({"error": str(e)}), status=401, content_type="application/json")
+    return error_response(exception=e)
 
 
 if __name__ == "__main__":

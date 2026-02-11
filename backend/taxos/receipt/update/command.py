@@ -20,6 +20,7 @@ class UpdateReceipt:
   hash: str = ""
 
   def __post_init__(self):
+    # TODO: tenant timezone
     if not isinstance(self.date, datetime):
       self.date = parse_datetime(self.date, self.timezone)
 
