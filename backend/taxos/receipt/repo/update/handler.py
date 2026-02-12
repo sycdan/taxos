@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 def handle(command: UpdateReceiptRepo) -> bool:
   """Returns True if the repo was updated, False otherwise."""
+  logger.debug(f"{command=}")
   try:
     receipt = require_receipt(command.receipt)
   except Receipt.DoesNotExist:

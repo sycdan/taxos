@@ -1,11 +1,15 @@
+import logging
 import pickle
 
 from taxos.context.tools import require_tenant
 from taxos.receipt.repo.save.command import SaveReceiptRepo
 from taxos.receipt.tools import get_repo_file
 
+logger = logging.getLogger(__name__)
+
 
 def handle(command: SaveReceiptRepo):
+  logger.debug(f"{command=}")
   tenant = require_tenant()
   repo_file = get_repo_file(tenant.guid)
   repo_file.parent.mkdir(parents=True, exist_ok=True)
