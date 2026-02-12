@@ -8,6 +8,7 @@ from taxos.receipt.entity import Receipt
 from taxos.receipt.load.query import LoadReceipt
 from taxos.receipt.tools import get_state_file
 from taxos.tools import json
+from taxos.tools.guid import parse_guid
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +68,12 @@ def parse_receipt(state_file: Path) -> Receipt | None:
     legacy_state_file = Path(state["state_file"])
     state["guid"] = legacy_state_file.parent.name
 
+  if not (guid := parse_guid(str(state.get("guid")))):
+    logger.warning("Invalid or missing GUID in receipt state file: %s", state_file)
+    return None
+
   receipt = Receipt(
-    state["guid"],
+    guid,
     vendor=state["vendor"],
     total=state["total"],
     date=state["date"],
@@ -86,6 +91,9 @@ def handle(query: LoadReceipt) -> Receipt:
   tenant = require_tenant()
   receipt_guid = query.ref.guid
   state_file = get_state_file(receipt_guid, tenant.guid)
-  if receipt := parse_receipt(state_file):
-    return receipt
+  try:
+    if receipt := parse_receipt(state_file):
+      return receipt
+  except Exception as e:
+    logger.exception(f"Failed loading receipt from state file {state_file}: {e}")
   raise Receipt.DoesNotExist(receipt_guid)
