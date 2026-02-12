@@ -315,20 +315,20 @@ def delete_bucket():
 @require_auth
 def update_receipt():
   try:
-    request_data = request.get_json() or {}
+    data = get_request_data()
 
-    allocations = _parse_allocations(request_data.get("allocations", []))
+    allocations = _parse_allocations(data.get("allocations", []))
 
     receipt = UpdateReceipt(
-      ref=get_text(request_data, "guid", "receipt_guid", "receiptGuid", default=""),
-      vendor=get_text(request_data, "vendor", default=""),
-      total=float(get_text(request_data, "total", default=0)),
-      date=get_text(request_data, "date") or "",
-      timezone=get_timezone(request_data),
+      ref=get_text(data, "guid", "receipt_guid", "receiptGuid", default=""),
+      vendor=get_text(data, "vendor", default=""),
+      total=float(get_text(data, "total", default=0)),
+      date=get_text(data, "date") or "",
+      timezone=get_timezone(data),
       allocations=allocations,
-      vendor_ref=get_text(request_data, "ref", "vendor_ref", "vendorRef", default=""),
-      notes=get_text(request_data, "notes", default=""),
-      hash=get_text(request_data, "hash", default=""),
+      vendor_ref=get_text(data, "ref", "vendor_ref", "vendorRef", default=""),
+      notes=get_text(data, "notes", default=""),
+      hash=get_text(data, "hash", default=""),
     ).execute()
 
     return success_response(make_receipt_message(receipt))
