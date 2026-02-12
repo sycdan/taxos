@@ -61,6 +61,12 @@ def parse_receipt(state_file: Path) -> Receipt | None:
   allocations_data = state.get("allocations", [])
   logger.debug(f"Allocations data from file: {allocations_data}, type: {type(allocations_data)}")
 
+  # Backwards compat
+  if "state_file" in state and "guid" not in state:
+    logger.debug("Found 'state_file' in receipt state, loading allocations from it for backwards compatibility")
+    legacy_state_file = Path(state["state_file"])
+    state["guid"] = legacy_state_file.parent.name
+
   receipt = Receipt(
     state["guid"],
     vendor=state["vendor"],
