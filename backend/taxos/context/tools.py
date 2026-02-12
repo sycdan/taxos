@@ -37,7 +37,7 @@ def set_context(context: Context) -> None:
   _context_var.set(context)
 
 
-def get_context() -> Optional[Context]:
+def get_context() -> Context | None:
   """Get the current request context, falling back to default context for CLI tools."""
   context = _context_var.get()
   if context is not None:
