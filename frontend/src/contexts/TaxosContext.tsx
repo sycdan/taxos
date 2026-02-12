@@ -291,11 +291,9 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateReceipt = async (receipt: Receipt) => {
-    const toTimestamp = (iso: string) => {
-      const date = new Date(iso);
-      const seconds = BigInt(Math.floor(date.getTime() / 1000));
-      const nanos = (date.getTime() % 1000) * 1_000_000;
-      return new Timestamp({ seconds, nanos });
+    // Send ISO string for date (not protobuf Timestamp)
+    const toIsoString = (iso: string) => {
+      return new Date(iso).toISOString();
     };
 
     // Save previous state for rollback
@@ -309,7 +307,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         guid: receipt.id,
         vendor: receipt.vendor,
         total: receipt.total,
-        date: toTimestamp(receipt.date),
+        date: toIsoString(receipt.date),
         timezone: receipt.timezone,
         allocations: receipt.allocations.map(a => ({
           bucket: a.bucketId,

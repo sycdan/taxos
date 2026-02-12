@@ -2,9 +2,6 @@ mkdir -p ~/.local/bin
 sudo chown -R $USER /workspaces/taxos
 sudo apt-get update
 
-# Install tmux
-sudo apt-get install -y tmux
-
 # Install Buf
 curl -sSL \
   "https://github.com/bufbuild/buf/releases/download/v1.34.0/buf-Linux-x86_64" \
