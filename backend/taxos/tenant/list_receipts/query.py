@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Union
+from typing import Optional, Union
 
 from taxos.bucket.entity import Bucket, BucketRef
+from taxos.receipt.repo.entity import ReceiptRepo
 
 
 @dataclass
@@ -14,6 +15,13 @@ class ListReceipts:
   bucket: Union[Bucket, BucketRef, str] = field(
     metadata={
       "help": "Include only receipts allocated to this bucket.",
+    },
+  )
+  repo: Optional[ReceiptRepo] = field(
+    default=None,
+    repr=False,
+    metadata={
+      "help": "Optional pre-loaded receipt repo to use.",
     },
   )
 

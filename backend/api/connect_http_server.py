@@ -16,7 +16,6 @@ from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.delete.command import DeleteBucket
 from taxos.bucket.entity import Bucket, BucketRef
 from taxos.bucket.load.query import LoadBucket
-from taxos.bucket.repo.load.query import LoadBucketRepo
 from taxos.bucket.update.command import UpdateBucket
 from taxos.context.entity import Context
 from taxos.context.tools import set_context
@@ -24,6 +23,7 @@ from taxos.receipt.create.command import CreateReceipt
 from taxos.receipt.delete.command import DeleteReceipt
 from taxos.receipt.entity import ReceiptRef
 from taxos.receipt.update.command import UpdateReceipt
+from taxos.tenant.dashboard.get.query import GetDashboard
 from taxos.tenant.list_receipts.query import ListReceipts
 
 from api.v1 import taxos_service_pb2 as messages
@@ -73,6 +73,26 @@ def make_timestamp(value: datetime) -> Timestamp:
   ts = Timestamp()
   ts.FromDatetime(value)
   return ts
+
+
+def make_receipt_message(receipt) -> messages.Receipt:
+  return messages.Receipt(
+    guid=receipt.guid.hex,
+    vendor=receipt.vendor,
+    total=receipt.total,
+    date=make_timestamp(receipt.date),
+    timezone=receipt.timezone,
+    allocations=[
+      messages.ReceiptAllocation(
+        bucket=allocation.bucket.guid.hex,
+        amount=allocation.amount,
+      )
+      for allocation in receipt.allocations
+    ],
+    vendor_ref=receipt.vendor_ref,
+    notes=receipt.notes,
+    hash=receipt.hash,
+  )
 
 
 def get_text(data, *keys, default: str = ""):
@@ -151,37 +171,29 @@ def _parse_allocations(values: list[dict]) -> set:
   return allocations
 
 
-@app.route("/taxos.v1.TaxosApi/ListBuckets", methods=["POST"])
+@app.route("/taxos.v1.TaxosApi/GetDashboard", methods=["POST"])
 @require_auth
-def list_buckets():
-  logger.info("ListBuckets called via ConnectRPC")
+def get_dashboard():
   data = get_request_data()
-  bucket_summaries: list[messages.BucketSummary] = []
   try:
-    repo = LoadBucketRepo().execute()
-
-    # Calculate total amount and receipt count for each bucket
-    for bucket in repo.index.values():
-      receipts = ListReceipts(
-        months=data.get("months", []),
-        bucket=bucket,
-      ).execute()
-
-      total_amount = sum(sum(a.amount for a in r.allocations if a.bucket.guid == bucket.guid) for r in receipts)
-      receipt_count = len(receipts)
+    dashboard = GetDashboard(months=data.get("months", [])).execute()
+    bucket_summaries = []
+    for bs in dashboard.buckets:
       bucket_summaries.append(
         messages.BucketSummary(
-          bucket=messages.Bucket(
-            guid=bucket.guid.hex,
-            name=bucket.name,
-          ),
-          total_amount=total_amount,
-          receipt_count=receipt_count,
+          guid=bs.guid,
+          name=bs.name,
+          total_amount=bs.total_amount,
+          receipt_count=bs.receipt_count,
         )
       )
 
-    logger.info(f"Returning {len(bucket_summaries)} buckets")
-    response_message = messages.ListBucketsResponse(buckets=bucket_summaries)
+    unallocated_receipt_messages = [make_receipt_message(r) for r in dashboard.unallocated]
+
+    response_message = messages.GetDashboardResponse(
+      buckets=bucket_summaries,
+      unallocated_receipts=unallocated_receipt_messages,
+    )
     return success_response(response_message)
   except Exception as e:
     return error_response(exception=e)
@@ -190,7 +202,6 @@ def list_buckets():
 @app.route("/taxos.v1.TaxosApi/CreateBucket", methods=["POST"])
 @require_auth
 def create_bucket():
-  logger.info("CreateBucket called via ConnectRPC")
   try:
     request_data = request.get_json()
     bucket = CreateBucket(
@@ -208,7 +219,6 @@ def create_bucket():
 @app.route("/taxos.v1.TaxosApi/CreateReceipt", methods=["POST"])
 @require_auth
 def create_receipt():
-  logger.info("CreateReceipt called via ConnectRPC")
   try:
     request_data = request.get_json() or {}
     allocations = _parse_allocations(request_data.get("allocations", []))
@@ -224,24 +234,7 @@ def create_receipt():
       hash=get_text(request_data, "hash", default=""),
     ).execute()
 
-    receipt_message = messages.Receipt(
-      guid=receipt.guid.hex,
-      vendor=receipt.vendor,
-      total=receipt.total,
-      date=make_timestamp(receipt.date),
-      timezone=receipt.timezone,
-      allocations=[
-        messages.ReceiptAllocation(
-          bucket=allocation.bucket.guid.hex,
-          amount=allocation.amount,
-        )
-        for allocation in receipt.allocations
-      ],
-      vendor_ref=receipt.vendor_ref,
-      notes=receipt.notes,
-      hash=receipt.hash,
-    )
-    return success_response(receipt_message)
+    return success_response(make_receipt_message(receipt))
   except Exception as e:
     return error_response(exception=e)
 
@@ -249,7 +242,6 @@ def create_receipt():
 @app.route("/taxos.v1.TaxosApi/GetBucket", methods=["POST"])
 @require_auth
 def get_bucket():
-  logger.info("GetBucket called via ConnectRPC")
   try:
     request_data = request.get_json()
     bucket_ref = BucketRef(request_data.get("guid", ""))
@@ -268,7 +260,6 @@ def get_bucket():
 @app.route("/taxos.v1.TaxosApi/UpdateBucket", methods=["POST"])
 @require_auth
 def update_bucket():
-  logger.info("UpdateBucket called via ConnectRPC")
   try:
     request_data = request.get_json()
     bucket_ref = BucketRef(request_data.get("guid", ""))
@@ -290,32 +281,13 @@ def update_bucket():
 @app.route("/taxos.v1.TaxosApi/ListReceipts", methods=["POST"])
 @require_auth
 def list_receipts():
-  logger.info("ListReceipts called via ConnectRPC")
   try:
     receipt_messages = []
     data = get_request_data()
     bucket_guid = get_text(data, "bucket", "bucket_guid", "bucketGuid", "bucket_ref", "bucketRef")
     months = data.get("months", [])
     receipts = ListReceipts(months=months, bucket=bucket_guid).execute()
-    for receipt in receipts:
-      receipt_message = messages.Receipt(
-        guid=receipt.guid.hex,
-        vendor=receipt.vendor,
-        total=receipt.total,
-        date=make_timestamp(receipt.date),
-        timezone=receipt.timezone,
-        allocations=[
-          messages.ReceiptAllocation(
-            bucket=allocation.bucket.guid.hex,
-            amount=allocation.amount,
-          )
-          for allocation in receipt.allocations
-        ],
-        vendor_ref=receipt.vendor_ref,
-        notes=receipt.notes,
-        hash=receipt.hash,
-      )
-      receipt_messages.append(receipt_message)
+    receipt_messages = [make_receipt_message(r) for r in receipts]
     logger.info(f"Returning {len(receipt_messages)} receipts for bucket {bucket_guid}")
     return success_response(messages.ListReceiptsResponse(receipts=receipt_messages))
   except ValueError as e:
@@ -330,7 +302,6 @@ def list_receipts():
 @app.route("/taxos.v1.TaxosApi/DeleteBucket", methods=["POST"])
 @require_auth
 def delete_bucket():
-  logger.info("DeleteBucket called via ConnectRPC")
   try:
     request_data = request.get_json()
     bucket_ref = BucketRef(request_data.get("guid", ""))
@@ -343,7 +314,6 @@ def delete_bucket():
 @app.route("/taxos.v1.TaxosApi/UpdateReceipt", methods=["POST"])
 @require_auth
 def update_receipt():
-  logger.info("UpdateReceipt called via ConnectRPC")
   try:
     request_data = request.get_json() or {}
 
@@ -361,24 +331,7 @@ def update_receipt():
       hash=get_text(request_data, "hash", default=""),
     ).execute()
 
-    receipt_message = messages.Receipt(
-      guid=receipt.guid.hex,
-      vendor=receipt.vendor,
-      total=receipt.total,
-      date=make_timestamp(receipt.date),
-      timezone=receipt.timezone,
-      allocations=[
-        messages.ReceiptAllocation(
-          bucket=allocation.bucket.guid.hex,
-          amount=allocation.amount,
-        )
-        for allocation in receipt.allocations
-      ],
-      vendor_ref=receipt.vendor_ref,
-      notes=receipt.notes,
-      hash=receipt.hash,
-    )
-    return success_response(receipt_message)
+    return success_response(make_receipt_message(receipt))
   except Exception as e:
     return error_response(exception=e)
 
@@ -386,7 +339,6 @@ def update_receipt():
 @app.route("/taxos.v1.TaxosApi/DeleteReceipt", methods=["POST"])
 @require_auth
 def delete_receipt():
-  logger.info("DeleteReceipt called via ConnectRPC")
   try:
     request_data = request.get_json()
     receipt_ref = ReceiptRef(get_text(request_data, "guid", "receipt_guid", "receiptGuid", default=""))
@@ -433,7 +385,6 @@ def _save_file_as_zip(file_data: bytes, filename: str, file_hash: str) -> tuple[
 @app.route("/taxos.v1.TaxosApi/UploadReceiptFile", methods=["POST"])
 @require_auth
 def upload_receipt_file():
-  logger.info("UploadReceiptFile called via ConnectRPC")
   try:
     request_data = request.get_json()
     # Handle both camelCase (from protobuf JS) and snake_case
@@ -510,7 +461,6 @@ def upload_receipt_file():
 @app.route("/taxos.v1.TaxosApi/DownloadReceiptFile", methods=["POST"])
 @require_auth
 def download_receipt_file():
-  logger.info("DownloadReceiptFile called via ConnectRPC")
   try:
     request_data = request.get_json()
     # Handle both camelCase (from protobuf JS) and snake_case
@@ -546,7 +496,6 @@ def download_receipt_file():
 
 @app.route("/taxos.v1.TaxosApi/Authenticate", methods=["POST"])
 def authenticate():
-  logger.info("Authenticate called via ConnectRPC")
   try:
     data = get_request_data()
     token = get_text(data, "token", "access_token", "accessToken")

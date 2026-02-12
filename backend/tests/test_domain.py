@@ -11,12 +11,12 @@ from taxos.context.entity import Context
 from taxos.context.tools import set_context
 from taxos.receipt.delete.command import DeleteReceipt
 from taxos.receipt.entity import Receipt
-from taxos.receipt.repo.entity import ReceiptRepo
 from taxos.receipt.repo.load.command import LoadReceiptRepo
-from taxos.tenant.api.list_receipts.query import ListReceipts
 from taxos.tenant.create.command import CreateTenant
+from taxos.tenant.dashboard.get.query import GetDashboard
 from taxos.tenant.delete.command import DeleteTenant
 from taxos.tenant.entity import TenantRef
+from taxos.tenant.list_receipts.query import ListReceipts
 from taxos.tenant.unallocated_receipt.check.command import CheckUnallocatedReceipt
 
 from dev import BACKEND_ROOT
@@ -84,8 +84,8 @@ def get_receipt_list(month_key: str = MONTH_KEY, bucket=None) -> list[Receipt]:
 
 
 def ensure_unallocated_receipt(receipt: Receipt, unallocated_amount: float = 0):
-  receipts = get_receipt_list()
-  assert receipt in receipts, "Receipt should be in unallocated list"
+  dashboard = GetDashboard(months=[MONTH_KEY]).execute()
+  assert receipt in dashboard.unallocated, "Receipt should be in unallocated list"
   unallocated_receipt = CheckUnallocatedReceipt(receipt).execute()
   assert unallocated_receipt is not None, "Receipt should be unallocated"
   assert unallocated_receipt.unallocated_amount == unallocated_amount, "Unallocated amount should equal receipt total"

@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def handle(query: ListReceipts) -> list[Receipt]:
-  repo: ReceiptRepo = LoadReceiptRepo().execute()
+  repo: ReceiptRepo = query.repo or LoadReceiptRepo().execute()
   receipts: list[Receipt] = []
 
   bucket = require_bucket(query.bucket)

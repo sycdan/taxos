@@ -19,7 +19,7 @@ service TaxosApi {
   // Authenticates a tenant and returns tenant information
   rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {}
   // Get summary of buckets and unallocated receipts for a given time period
-  rpc ListBuckets(ListBucketsRequest) returns (ListBucketsResponse);
+  rpc GetDashboard(GetDashboardRequest) returns (GetDashboardResponse);
   // List receipts allocated to a specific bucket
   rpc ListReceipts(ListReceiptsRequest) returns (ListReceiptsResponse);
   // Update a bucket's details
@@ -65,7 +65,7 @@ message Receipt {
 }
 
 message ListReceiptsRequest {
-  optional string bucket = 1;
+  string          bucket = 1;
   repeated string months = 2;
 }
 
@@ -92,18 +92,20 @@ message GetBucketRequest {
   string guid = 1;
 }
 
-message ListBucketsRequest {
+message GetDashboardRequest {
   repeated string months = 1;
 }
 
-message ListBucketsResponse {
-  repeated BucketSummary buckets = 1;
+message GetDashboardResponse {
+  repeated BucketSummary buckets             = 1;
+  repeated Receipt       unallocated_receipts = 2;
 }
 
 message BucketSummary {
-  Bucket bucket        = 1;
-  double total_amount  = 2;
-  int32  receipt_count = 3;
+  string guid           = 1;
+  string name           = 2;
+  double total_amount   = 3;
+  int32  receipt_count  = 4;
 }
 
 message UpdateBucketRequest {

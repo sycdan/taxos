@@ -1,5 +1,7 @@
 # To Do: Taxos Development
 
+## Today's Task
+
 The flow of data we have now is inconsistent.
 
 We need to convert the current ListBucketsRequest into GetDashboardRequest, and add a domain action for it at taxos/tenant/dashboard/get. We can define the shape in taxos/tenant/dashboard/entity.py (it is a capable entity.)
