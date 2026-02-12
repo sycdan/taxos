@@ -4,6 +4,7 @@ import shutil
 from taxos.bucket.delete.command import DeleteBucket
 from taxos.bucket.tools import get_state_file
 from taxos.context.tools import require_tenant
+from taxos.receipt.repo.load.command import LoadReceiptRepo
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ def handle(command: DeleteBucket):
     content_dir = state_file.parent
     if content_dir.exists():
       shutil.rmtree(content_dir)
+      LoadReceiptRepo(force_rebuild=True).execute()
       return True
   except RuntimeError:
     pass  # probably does not exist
