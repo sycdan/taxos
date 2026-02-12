@@ -60,11 +60,11 @@ def handle(command: LoadReceiptRepo) -> ReceiptRepo:
 
   if not repo_file.exists():
     logger.info(f"No receipt index found for tenant {tenant.guid}")
-    return rebuild(tenant, repo_file)
+    return rebuild(tenant)
 
   try:
     repo = pickle.load(repo_file.open("rb"))
     return repo
   except Exception as e:
     logger.warning(f"Failed to load receipt repo from file: {e}")
-    return rebuild(tenant, repo_file)
+    return rebuild(tenant)

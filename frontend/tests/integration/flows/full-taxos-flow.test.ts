@@ -411,7 +411,7 @@ describe("Full Taxos API Integration Flow", () => {
 		console.log("📝 Step 1: Creating bucket...");
 		const bucket = await apiClient.createBucket("Bucket To Delete");
 		expect(bucket.guid).toBeDefined();
-		// Don't add to cleanup — we delete it explicitly
+		// Don't add to cleanup, we delete it explicitly
 
 		// Step 2: Create a receipt allocated to that bucket
 		console.log("🧾 Step 2: Creating receipt allocated to bucket...");
@@ -435,7 +435,7 @@ describe("Full Taxos API Integration Flow", () => {
 		console.log("✅ Receipt found in bucket");
 
 		// Step 4: Delete the bucket
-		console.log("🗑️ Step 4: Deleting bucket...");
+		console.log("🗑️  Step 4: Deleting bucket...");
 		const deleteResult = await apiClient.deleteBucket(bucket.guid);
 		expect(deleteResult).toBeDefined();
 		console.log("✅ Bucket deleted");
