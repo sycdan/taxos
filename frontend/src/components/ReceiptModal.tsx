@@ -186,12 +186,13 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 	};
 
 	const handleManualAmount = (bucketId: string, amount: number) => {
+		const safeAmount = Math.max(0, amount);
 		const newManual = new Set(manualAllocations);
 		newManual.add(bucketId);
 		setManualAllocations(newManual);
 
 		const newAllocations = allocations.map((a) =>
-			a.bucketId === bucketId ? { ...a, amount } : a,
+			a.bucketId === bucketId ? { ...a, amount: safeAmount } : a,
 		);
 		updateSplits(newAllocations, newManual, total);
 	};
