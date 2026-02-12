@@ -14,6 +14,7 @@ import {
 	endOfYear,
 } from "date-fns";
 import type { Receipt } from "./types";
+import { sha256 } from "js-sha256";
 
 type FilterMode = "year" | "month";
 
@@ -49,9 +50,9 @@ const App: React.FC = () => {
 	>();
 
 	const [filterConfig, setFilterConfig] = useState<FilterConfig>(() => {
-    try {
-      const saved = localStorage.getItem("taxos_filter_config");
-      if (saved) return JSON.parse(saved);
+		try {
+			const saved = localStorage.getItem("taxos_filter_config");
+			if (saved) return JSON.parse(saved);
 		} catch (error) {
 			console.error("Failed to parse filter config", error);
 		}
@@ -124,9 +125,14 @@ const App: React.FC = () => {
 	// Calculate file hash
 	const calculateFileHash = async (file: File): Promise<string> => {
 		const arrayBuffer = await file.arrayBuffer();
-		const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
-		const hashArray = Array.from(new Uint8Array(hashBuffer));
-		return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+		if (crypto && crypto.subtle) {
+			const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
+			const hashArray = Array.from(new Uint8Array(hashBuffer));
+			return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+		} else {
+			// Fallback for non-secure contexts (http)
+			return sha256(arrayBuffer);
+		}
 	};
 
 	const handleFileUpload = async (file: File) => {
