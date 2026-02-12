@@ -43,6 +43,7 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
 		currentReceiptsList,
 		unallocatedSummary,
 		unallocatedReceipts,
+		setActiveBucketId,
 	} = useTaxos();
 	const [isEditing, setIsEditing] = React.useState(false);
 	const [editName, setEditName] = React.useState("");
@@ -54,6 +55,7 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
 
 	// Fetch receipts when bucket changes or date range changes
 	useEffect(() => {
+		setActiveBucketId(bucketId);
 		const fetchReceipts = async () => {
 			try {
 				if (bucketId === UNALLOCATED_BUCKET_ID) {
@@ -66,7 +68,14 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
 			}
 		};
 		void fetchReceipts();
-	}, [bucketId, startDate, endDate]);
+	}, [
+		bucketId,
+		startDate,
+		endDate,
+		setActiveBucketId,
+		loadReceiptsForBucket,
+		getUnallocatedReceipts,
+	]);
 
 	const bucketName = useMemo(() => {
 		if (bucketId === UNALLOCATED_BUCKET_ID) return "Unallocated";

@@ -10,6 +10,7 @@ import React, {
 import { Timestamp } from "@bufbuild/protobuf";
 import type { Bucket, BucketSummary, Receipt } from "../types";
 import { client, getToken, dateToTimestamp } from "../api/client";
+import { UNALLOCATED_BUCKET_ID } from "../types";
 
 const slugify = (text: string) => {
 	return text
@@ -50,6 +51,8 @@ interface TaxosContextType {
 		startDate: Date,
 		endDate: Date,
 	) => Promise<Receipt[]>;
+	activeBucketId: string | null;
+	setActiveBucketId: (id: string | null) => void;
 }
 
 const TaxosContext = createContext<TaxosContextType | undefined>(undefined);
@@ -66,6 +69,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 	const [receipts, setReceipts] = useState<Record<string, Receipt>>({});
 	const [unallocatedReceipts, setUnallocatedReceipts] = useState<Receipt[]>([]);
 	const [currentReceiptsList, setCurrentReceiptsList] = useState<Receipt[]>([]);
+	const [activeBucketId, setActiveBucketId] = useState<string | null>(null);
 
 	// Track receipt hashes for O(1) duplicate detection
 	const receiptHashes = useMemo(() => {
@@ -107,6 +111,54 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 		}
 		return months;
 	};
+
+	const loadReceiptsForBucket = useCallback(
+		async (
+			bucketId: string,
+			startDate: Date,
+			endDate: Date,
+		): Promise<Receipt[]> => {
+			try {
+				const response = await client.listReceipts({
+					bucket: bucketId,
+					months: getMonthsInRange(startDate, endDate),
+				});
+
+				const bucketReceipts: Receipt[] = response.receipts.map((r) => ({
+					id: r.guid,
+					vendor: r.vendor,
+					total: r.total,
+					date: timestampToIso(r.date),
+					timezone: r.timezone,
+					allocations: r.allocations.map((a) => ({
+						bucketId: a.bucket,
+						amount: a.amount,
+					})),
+					ref: r.vendorRef || undefined,
+					notes: r.notes || undefined,
+					hash: r.hash || undefined,
+				}));
+
+				// Update source of truth for current view
+				setCurrentReceiptsList(bucketReceipts);
+
+				// Update cache
+				setReceipts((prev) => {
+					const updated = { ...prev };
+					for (const receipt of bucketReceipts) {
+						updated[receipt.id] = receipt;
+					}
+					return updated;
+				});
+
+				return bucketReceipts;
+			} catch (error) {
+				console.error("Failed to load receipts for bucket:", error);
+				return [];
+			}
+		},
+		[],
+	);
 
 	const refreshBuckets = useCallback(
 		async (startDate?: Date, endDate?: Date, force?: boolean) => {
@@ -199,8 +251,22 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					receiptCount: unallocatedCount,
 				});
 
-				// Default view is unallocated if no specific bucket is being loaded
-				setCurrentReceiptsList(apiUnallocatedReceipts);
+				// If we have an active bucket that ISN'T unallocated, reload that specific bucket's receipts
+				// Otherwise, show unallocated receipts (default dashboard view)
+				if (
+					activeBucketId &&
+					activeBucketId !== UNALLOCATED_BUCKET_ID &&
+					startDate &&
+					endDate
+				) {
+					console.log(`Refreshing active bucket: ${activeBucketId}`);
+					// We need to call loadReceiptsForBucket here to get the latest data for the specific bucket
+					// This effectively "refreshes" the view without switching back to unallocated
+					void loadReceiptsForBucket(activeBucketId, startDate, endDate);
+				} else {
+					// Default view is unallocated if no specific bucket is being loaded
+					setCurrentReceiptsList(apiUnallocatedReceipts);
+				}
 
 				// Update cache
 				setReceipts((prev) => {
@@ -216,7 +282,13 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				setLoading(false);
 			}
 		},
-		[authenticated, currentDateFilter, buckets.length],
+		[
+			authenticated,
+			currentDateFilter,
+			buckets.length,
+			activeBucketId,
+			loadReceiptsForBucket,
+		],
 	);
 
 	// Don't load buckets on mount - let Dashboard call refreshBuckets with date filter
@@ -404,54 +476,6 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 		}
 	};
 
-	const loadReceiptsForBucket = useCallback(
-		async (
-			bucketId: string,
-			startDate: Date,
-			endDate: Date,
-		): Promise<Receipt[]> => {
-			try {
-				const response = await client.listReceipts({
-					bucket: bucketId,
-					months: getMonthsInRange(startDate, endDate),
-				});
-
-				const bucketReceipts: Receipt[] = response.receipts.map((r) => ({
-					id: r.guid,
-					vendor: r.vendor,
-					total: r.total,
-					date: timestampToIso(r.date),
-					timezone: r.timezone,
-					allocations: r.allocations.map((a) => ({
-						bucketId: a.bucket,
-						amount: a.amount,
-					})),
-					ref: r.vendorRef || undefined,
-					notes: r.notes || undefined,
-					hash: r.hash || undefined,
-				}));
-
-				// Update source of truth for current view
-				setCurrentReceiptsList(bucketReceipts);
-
-				// Update cache
-				setReceipts((prev) => {
-					const updated = { ...prev };
-					for (const receipt of bucketReceipts) {
-						updated[receipt.id] = receipt;
-					}
-					return updated;
-				});
-
-				return bucketReceipts;
-			} catch (error) {
-				console.error("Failed to load receipts for bucket:", error);
-				return [];
-			}
-		},
-		[],
-	);
-
 	const getUnallocatedReceipts = useCallback(async (): Promise<Receipt[]> => {
 		// Dashboard handles the refresh which populates unallocatedReceipts
 		return unallocatedReceipts;
@@ -478,6 +502,8 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				refreshBuckets,
 				loadReceiptsForBucket,
 				getUnallocatedReceipts,
+				activeBucketId,
+				setActiveBucketId,
 			}}
 		>
 			{children}
