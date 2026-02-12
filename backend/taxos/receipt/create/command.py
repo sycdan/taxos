@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from hashlib import sha256
 from typing import Union
 
 from taxos.allocation.entity import Allocation
@@ -18,7 +17,7 @@ class CreateReceipt:
   notes: str = ""
   hash: str = field(
     default="",
-    metadata={"help": "SHA256 hash of the receipt file or data."},
+    metadata={"help": "SHA256 hash of the receipt file."},
   )
 
   def __post_init__(self):
@@ -31,9 +30,6 @@ class CreateReceipt:
     if not isinstance(self.date, datetime):
       self.date = parse_datetime(self.date, self.timezone)
     self.vendor_ref = str(self.vendor_ref or "").strip()
-    if not self.hash:
-      hash_parts = [self.vendor, self.date.isoformat(), self.vendor_ref]
-      self.hash = sha256("\n".join(hash_parts).encode()).hexdigest()
 
   def execute(self):
     from taxos.receipt.create.handler import handle
