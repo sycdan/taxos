@@ -14,6 +14,7 @@ from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.message import Message
 from google.protobuf.timestamp_pb2 import Timestamp
 from taxos.access.authenticate_tenant.command import AuthenticateTenant
+from taxos.allocation.entity import Allocation
 from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.delete.command import DeleteBucket
 from taxos.bucket.entity import Bucket, BucketRef
@@ -57,7 +58,7 @@ def get_request_message(message_type: type[T], ignore_unknown_fields=False) -> T
 def message_to_success_response(message: Message) -> Response:
   message_dict = MessageToDict(
     message,
-    preserving_proto_field_name=False, # frontend uses camelCase
+    preserving_proto_field_name=False,  # frontend uses camelCase
     always_print_fields_with_no_presence=True,
   )
   text = json.dumps(message_dict)
@@ -174,9 +175,7 @@ def rpc_endpoint(request_message_type: type[T]):
 
 
 def _parse_allocations(values: list[dict]) -> set:
-  """Convert API allocation dicts to domain Allocation objects."""
-  from taxos.allocation.entity import Allocation
-  from taxos.bucket.entity import BucketRef
+  """Converts API allocation dicts to domain Allocation objects."""
 
   allocations = set()
   for item in values or []:
@@ -276,11 +275,10 @@ def update_bucket(req: messages.UpdateBucketRequest):
 @rpc_endpoint(messages.ListReceiptsRequest)
 @require_auth
 def list_receipts(req: messages.ListReceiptsRequest):
-  bucket_guid = req.bucket
   months = list(req.months)
-  receipts = ListReceipts(months=months, bucket=bucket_guid).execute()
+  receipts = ListReceipts(months=months, bucket=req.bucket).execute()
   receipt_messages = [make_receipt_message(r) for r in receipts]
-  logger.info(f"Returning {len(receipt_messages)} receipts for bucket {bucket_guid}")
+  logger.info(f"Returning {len(receipt_messages)} receipts for bucket {req.bucket}")
   return messages.ListReceiptsResponse(receipts=receipt_messages)
 
 
