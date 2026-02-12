@@ -17,6 +17,8 @@ interface TaxosContextType {
   bucketSummaries: BucketSummary[];
   unallocatedSummary: { totalAmount: number; receiptCount: number };
   receipts: Record<string, Receipt>;
+  unallocatedReceipts: Receipt[];
+  currentReceiptsList: Receipt[];
   loading: boolean;
   authenticated: boolean;
   isNameTaken: (name: string, excludeId?: string) => boolean;
@@ -38,6 +40,9 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [bucketSummaries, setBucketSummaries] = useState<BucketSummary[]>([]);
   const [unallocatedSummary, setUnallocatedSummary] = useState<{ totalAmount: number; receiptCount: number }>({ totalAmount: 0, receiptCount: 0 });
   const [receipts, setReceipts] = useState<Record<string, Receipt>>({});
+  const [unallocatedReceipts, setUnallocatedReceipts] = useState<Receipt[]>([]);
+  const [currentReceiptsList, setCurrentReceiptsList] = useState<Receipt[]>([]);
+
   // Track receipt hashes for O(1) duplicate detection
   const receiptHashes = useMemo(() => {
     const hashes = new Set<string>();
@@ -76,15 +81,13 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return months;
   };
 
-
-
   const refreshBuckets = useCallback(async (startDate?: Date, endDate?: Date, force?: boolean) => {
     // Only refresh if dates have actually changed or it's the initial load
     const sameStart = (!startDate && !currentDateFilter.start) || (startDate && currentDateFilter.start && startDate.getTime() === currentDateFilter.start.getTime());
     const sameEnd = (!endDate && !currentDateFilter.end) || (endDate && currentDateFilter.end && endDate.getTime() === currentDateFilter.end.getTime());
 
     if (!force && sameStart && sameEnd && buckets.length > 0) {
-      console.log('Skipping ListBuckets - same date filter and buckets already loaded');
+      console.log('Skipping GetDashboard - same date filter and buckets already loaded');
       return;
     }
 
@@ -95,61 +98,78 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return;
       }
 
-      console.log('Making ListBuckets request with date filter change...');
+      console.log('Making GetDashboard request with date filter change...');
       setCurrentDateFilter({ start: startDate, end: endDate });
 
-      const response = await client.listBuckets({
+      const response = await client.getDashboard({
         months: getMonthsInRange(startDate, endDate),
       });
 
       const apiBuckets: Bucket[] = response.buckets.map(summary => ({
-        id: summary.bucket!.guid,
-        name: summary.bucket!.name
+        id: summary.guid,
+        name: summary.name
       }));
 
       const apiSummaries: BucketSummary[] = response.buckets.map(summary => ({
         bucket: {
-          id: summary.bucket!.guid,
-          name: summary.bucket!.name
+          id: summary.guid,
+          name: summary.name
         },
         totalAmount: summary.totalAmount,
         receiptCount: summary.receiptCount
       }));
 
+      const apiUnallocatedReceipts: Receipt[] = response.unallocatedReceipts.map(r => ({
+        id: r.guid,
+        vendor: r.vendor,
+        total: r.total,
+        date: timestampToIso(r.date),
+        timezone: r.timezone,
+        allocations: r.allocations.map(a => ({
+          bucketId: a.bucket,
+          amount: a.amount,
+        })),
+        ref: r.vendorRef || undefined,
+        notes: r.notes || undefined,
+        hash: r.hash || undefined,
+      }));
+
+      // Calculate unallocated portions for the pseudo-bucket summary
+      let unallocatedTotal = 0;
+      let unallocatedCount = 0;
+
+      for (const r of apiUnallocatedReceipts) {
+        const allocatedAmount = r.allocations.reduce((sum, a) => sum + a.amount, 0);
+        const unallocatedAmount = r.total - allocatedAmount;
+        if (unallocatedAmount > 0) {
+          unallocatedTotal += unallocatedAmount;
+          unallocatedCount++;
+        }
+      }
+
       setBuckets(apiBuckets);
       setBucketSummaries(apiSummaries);
+      setUnallocatedReceipts(apiUnallocatedReceipts);
+      setUnallocatedSummary({ totalAmount: unallocatedTotal, receiptCount: unallocatedCount });
+      
+      // Default view is unallocated if no specific bucket is being loaded
+      setCurrentReceiptsList(apiUnallocatedReceipts);
 
-      // Fetch unallocated summary with the same date filter
-      try {
-        const unallocatedResponse = await client.listReceipts({
-          // No bucket_guid = unallocated receipts
-          months: getMonthsInRange(startDate, endDate),
-        });
-
-        // Calculate unallocated amount (total - sum of allocations)
-        let totalAmount = 0;
-        let receiptCount = 0;
-
-        for (const r of unallocatedResponse.receipts) {
-          const allocatedAmount = r.allocations.reduce((sum, a) => sum + a.amount, 0);
-          const unallocatedAmount = r.total - allocatedAmount;
-          if (unallocatedAmount > 0) {
-            totalAmount += unallocatedAmount;
-            receiptCount++;
-          }
+      // Update cache
+      setReceipts(prev => {
+        const updated = { ...prev };
+        for (const r of apiUnallocatedReceipts) {
+          updated[r.id] = r;
         }
+        return updated;
+      });
 
-        setUnallocatedSummary({ totalAmount, receiptCount });
-      } catch (error) {
-        console.error('Failed to load unallocated summary:', error);
-        // Keep existing cached value on error
-      }
     } catch (error) {
-      console.error('Failed to load buckets:', error);
+      console.error('Failed to load dashboard:', error);
     } finally {
       setLoading(false);
     }
-  }, [authenticated, currentDateFilter, buckets.length]); // Include currentDateFilter and buckets.length
+  }, [authenticated, currentDateFilter, buckets.length]);
 
   // Don't load buckets on mount - let Dashboard call refreshBuckets with date filter
   useEffect(() => {
@@ -361,7 +381,10 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         hash: r.hash || undefined,
       }));
 
-      // Update localStorage cache
+      // Update source of truth for current view
+      setCurrentReceiptsList(bucketReceipts);
+
+      // Update cache
       setReceipts(prev => {
         const updated = { ...prev };
         for (const receipt of bucketReceipts) {
@@ -373,59 +396,14 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return bucketReceipts;
     } catch (error) {
       console.error('Failed to load receipts for bucket:', error);
-      // Fallback to client-side filtering from cache
-      return Object.values(receipts).filter(r => {
-        const rDate = new Date(r.date);
-        if (rDate < startDate || rDate > endDate) return false;
-        return r.allocations.some(a => a.bucketId === bucketId);
-      }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return [];
     }
-  }, [receipts]);
+  }, []);
 
-  const getUnallocatedReceipts = useCallback(async (startDate: Date, endDate: Date): Promise<Receipt[]> => {
-    try {
-      // Use listReceipts without bucket_guid to get unallocated receipts
-      const response = await client.listReceipts({
-        // No bucket_guid parameter = unallocated receipts
-        months: getMonthsInRange(startDate, endDate),
-      });
-
-      const unallocatedReceipts: Receipt[] = response.receipts.map(r => ({
-        id: r.guid,
-        vendor: r.vendor,
-        total: r.total,
-        date: timestampToIso(r.date),
-        timezone: r.timezone,
-        allocations: r.allocations.map(a => ({
-          bucketId: a.bucket,
-          amount: a.amount,
-        })),
-        ref: r.vendorRef || undefined,
-        notes: r.notes || undefined,
-        hash: r.hash || undefined,
-      }));
-
-      // Update localStorage cache
-      setReceipts(prev => {
-        const updated = { ...prev };
-        for (const receipt of unallocatedReceipts) {
-          updated[receipt.id] = receipt;
-        }
-        return updated;
-      });
-
-      return unallocatedReceipts;
-    } catch (error) {
-      console.error('Failed to load unallocated receipts:', error);
-      // Fallback to client-side filtering
-      return Object.values(receipts).filter(r => {
-        const rDate = new Date(r.date);
-        if (rDate < startDate || rDate > endDate) return false;
-        const totalAllocated = r.allocations.reduce((sum, a) => sum + a.amount, 0);
-        return totalAllocated < r.total || (r.total === 0 && r.allocations.length === 0);
-      }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }
-  }, [receipts]);
+  const getUnallocatedReceipts = useCallback(async (): Promise<Receipt[]> => {
+    // Dashboard handles the refresh which populates unallocatedReceipts
+    return unallocatedReceipts;
+  }, [unallocatedReceipts]);
 
   return (
     <TaxosContext.Provider value={{
@@ -433,6 +411,8 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       bucketSummaries,
       unallocatedSummary,
       receipts,
+      unallocatedReceipts,
+      currentReceiptsList,
       loading,
       authenticated,
       isNameTaken,

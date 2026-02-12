@@ -14,7 +14,7 @@ beforeAll(async () => {
 			console.log(
 				`⏳ Attempt ${retries + 1}/${maxRetries} to connect to backend...`,
 			);
-			const result = await apiClient.listBuckets();
+			const result = await apiClient.getDashboard();
 			console.log(
 				"✅ Backend is ready, received:",
 				JSON.stringify(result).slice(0, 100),

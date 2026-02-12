@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Receipt as ReceiptIcon, Calendar, Hash, Edit2, Trash2, Check, X } from 'lucide-react';
 import type { Bucket, Receipt } from '../types';
@@ -29,36 +29,31 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
   onEditReceipt,
   isNameTaken
 }) => {
-  const { loadReceiptsForBucket, getUnallocatedReceipts } = useTaxos();
+  const { loadReceiptsForBucket, currentReceiptsList, unallocatedSummary, unallocatedReceipts } = useTaxos();
   const [isEditing, setIsEditing] = React.useState(false);
   const [editName, setEditName] = React.useState('');
-  const [receiptsForBucket, setReceiptsForBucket] = useState<Receipt[]>([]);
-  const [loading, setLoading] = useState(false);
+
+  const getUnallocatedReceipts = useCallback(async (): Promise<Receipt[]> => {
+    // Dashboard handles the refresh which populates unallocatedReceipts
+    return unallocatedReceipts;
+  }, [unallocatedReceipts]);
 
   // Fetch receipts when bucket changes or date range changes
   useEffect(() => {
     const fetchReceipts = async () => {
-      setLoading(true);
       try {
         if (bucketId === UNALLOCATED_BUCKET_ID) {
-          const data = await getUnallocatedReceipts(startDate, endDate);
-          setReceiptsForBucket(data);
+          await getUnallocatedReceipts();
         } else {
-          const data = await loadReceiptsForBucket(bucketId, startDate, endDate);
-          setReceiptsForBucket(data);
+          await loadReceiptsForBucket(bucketId, startDate, endDate);
         }
       } catch (error) {
         console.error('Failed to fetch receipts:', error);
-        setReceiptsForBucket([]);
-      } finally {
-        setLoading(false);
       }
     };
     void fetchReceipts();
-    // Note: loadReceiptsForBucket and getUnallocatedReceipts are intentionally excluded from deps
-    // to prevent infinite loops since they depend on and update the same receipts state
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bucketId, startDate, endDate]);
+
   const bucketName = useMemo(() => {
     if (bucketId === UNALLOCATED_BUCKET_ID) return 'Unallocated';
     return buckets.find(b => b.id === bucketId)?.name || 'Unknown Bucket';
@@ -83,20 +78,17 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
   };
 
   const filteredReceipts = useMemo(() => {
-    return receiptsForBucket.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [receiptsForBucket]);
+    return [...currentReceiptsList].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [currentReceiptsList]);
 
   const bucketTotal = useMemo(() => {
+    if (bucketId === UNALLOCATED_BUCKET_ID) return unallocatedSummary.totalAmount;
+    
     return filteredReceipts.reduce((sum, r) => {
       const alloc = r.allocations.find(a => a.bucketId === bucketId);
-      if (alloc) return sum + alloc.amount;
-      if (bucketId === UNALLOCATED_BUCKET_ID) {
-        const allocated = r.allocations.reduce((s, a) => s + a.amount, 0);
-        return sum + (r.total - allocated);
-      }
-      return sum;
+      return sum + (alloc?.amount || 0);
     }, 0);
-  }, [filteredReceipts, bucketId]);
+  }, [filteredReceipts, bucketId, unallocatedSummary.totalAmount]);
 
   return (
     <motion.div

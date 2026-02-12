@@ -104,7 +104,6 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const bucketTotals = useMemo(() => {
-    // Add unallocated as a pseudo-bucket using cached summary
     return [
       ...bucketSummaries.map(summary => ({
         id: summary.bucket.id,
@@ -112,7 +111,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         total: summary.totalAmount,
         count: summary.receiptCount
       })),
-      // Unallocated bucket - use cached summary from context
       {
         id: UNALLOCATED_BUCKET_ID,
         name: 'Unallocated',
