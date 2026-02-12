@@ -13,6 +13,7 @@ class ListReceipts:
     },
   )
   months: list[str] = field(
+    default_factory=list,
     metadata={
       "help": "List of specific month to load, e.g. ['2024-01', '2024-02']. Default: all.",
     },
