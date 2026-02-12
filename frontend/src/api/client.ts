@@ -56,9 +56,7 @@ export class TaxosApiClient {
 	}
 
 	// Bucket methods
-	async getDashboard(params?: {
-		months?: string[];
-	}) {
+	async getDashboard(params?: { months?: string[] }) {
 		return await this.client.getDashboard(params || {});
 	}
 
@@ -84,12 +82,13 @@ export class TaxosApiClient {
 		vendor: string,
 		notes?: string,
 		allocations?: Array<{ bucket: string; amount: number }>,
+		date?: Date,
 	) {
-		const date = new Date();
+		const receiptDate = date || new Date();
 		return await this.client.createReceipt({
 			total,
 			vendor,
-			date: dateToTimestamp(date),
+			date: dateToTimestamp(receiptDate),
 			timezone: "UTC",
 			notes: notes || "",
 			allocations: allocations || [],
@@ -102,21 +101,20 @@ export class TaxosApiClient {
 		total?: number;
 		notes?: string;
 		allocations?: Array<{ bucket: string; amount: number }>;
+		date?: Date;
 	}) {
 		return await this.client.updateReceipt({
 			guid: params.guid,
 			vendor: params.vendor || "",
 			total: params.total || 0,
+			date: params.date ? dateToTimestamp(params.date) : undefined,
 			timezone: "UTC",
 			notes: params.notes || "",
 			allocations: params.allocations || [],
 		});
 	}
 
-	async listReceipts(params?: {
-		bucket?: string;
-		months?: string[];
-	}) {
+	async listReceipts(params?: { bucket?: string; months?: string[] }) {
 		return await this.client.listReceipts(params || {});
 	}
 
