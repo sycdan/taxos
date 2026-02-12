@@ -1,5 +1,6 @@
 import contextvars
 import logging
+from pathlib import Path
 from typing import Optional
 
 from taxos import DATA_DIR
@@ -17,11 +18,16 @@ logger = logging.getLogger(__name__)
 _context_var: contextvars.ContextVar[Optional[Context]] = contextvars.ContextVar("context", default=None)
 
 
+def get_default_context_file() -> Path:
+  context_file = DATA_DIR / "default_context.json"
+  return context_file
+
+
 def get_default_context() -> Context:
   """For CLI tools."""
   context = Context(tenant=None)
+  context_file = get_default_context_file()
 
-  context_file = DATA_DIR / "default_context.json"
   logger.debug(f"Loading default context from {context_file}")
   if context_file.exists():
     data = json.loads(context_file.read_text())
