@@ -19,7 +19,6 @@ class ReceiptRepo:
   def add(self, receipt: Receipt):
     """idempotent add/update of a receipt to the repo"""
     self.records[receipt.guid] = receipt
-
     month_key = _get_month_key(receipt.date)
     self.index_by_month.setdefault(month_key, set()).add(receipt.guid)
 
@@ -42,10 +41,13 @@ class ReceiptRepo:
 
   def remove(self, receipt: Receipt | ReceiptRef):
     """idempotent remove of a receipt from the repo"""
+    months_to_remove = set()
     if found := self.records.get(receipt.guid):
-      month_key = _get_month_key(found.date)
-      if month_key in self.index_by_month:
-        self.index_by_month[month_key].remove(found.guid)
-        if not self.index_by_month[month_key]:
-          del self.index_by_month[month_key]
+      for key, guids in self.index_by_month.items():
+        if found.guid in guids:
+          guids.remove(found.guid)
+          if not guids:
+            months_to_remove.add(key)
       del self.records[found.guid]
+    for key in months_to_remove:
+      del self.index_by_month[key]
