@@ -1,8 +1,8 @@
 import logging
 import pickle
-from pathlib import Path
 
-from taxos.context.tools import require_receipt, require_tenant
+from taxos.bucket.entity import Bucket
+from taxos.context.tools import require_bucket, require_receipt, require_tenant
 from taxos.receipt.entity import Receipt
 from taxos.receipt.repo.entity import ReceiptRepo
 from taxos.receipt.repo.load.command import LoadReceiptRepo
@@ -15,7 +15,7 @@ from taxos.tools.guid import parse_guid
 logger = logging.getLogger(__name__)
 
 
-def rebuild(tenant: Tenant, repo_file: Path) -> ReceiptRepo:
+def rebuild(tenant: Tenant) -> ReceiptRepo:
   logger.info(f"Rebuilding receipt repo for tenant {tenant.guid}")
   repo = ReceiptRepo()
   receipts_dir = get_receipts_dir(tenant.guid)
@@ -35,6 +35,12 @@ def rebuild(tenant: Tenant, repo_file: Path) -> ReceiptRepo:
 
     try:
       receipt = require_receipt(receipt_guid)
+      for allocation in receipt.allocations:
+        try:
+          require_bucket(allocation.bucket)
+        except Bucket.DoesNotExist as e:
+          allocation.amount = 0
+          logger.warning(f"Failed to get bucket for allocation in receipt {receipt_guid}: {e}")
       repo.add(receipt)
     except Receipt.DoesNotExist:
       logger.warning(f"Skipping missing receipt during rebuild: {receipt_guid}")
