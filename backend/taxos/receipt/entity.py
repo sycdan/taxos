@@ -4,6 +4,7 @@ from uuid import UUID
 
 from taxos.allocation.entity import Allocation
 from taxos.tools.guid import parse_guid
+from taxos.tools.time import parse_datetime
 
 
 @dataclass
@@ -28,7 +29,7 @@ class Receipt:
     if not isinstance(self.guid, UUID):
       self.guid = UUID(self.guid)
     if isinstance(self.date, str):
-      self.date = datetime.fromisoformat(self.date)
+      self.date = parse_datetime(self.date, self.timezone)
 
   def __hash__(self) -> int:
     return hash(self.guid)
