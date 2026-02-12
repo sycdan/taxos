@@ -57,7 +57,7 @@ def get_request_message(message_type: type[T], ignore_unknown_fields=False) -> T
 def message_to_success_response(message: Message) -> Response:
   message_dict = MessageToDict(
     message,
-    preserving_proto_field_name=False,
+    preserving_proto_field_name=False, # frontend uses camelCase
     always_print_fields_with_no_presence=True,
   )
   text = json.dumps(message_dict)
