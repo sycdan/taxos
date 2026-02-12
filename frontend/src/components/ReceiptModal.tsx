@@ -112,11 +112,12 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 	}, [isOpen, editingReceipt]);
 
 	const allocatedTotal = useMemo(() => {
-		return allocations.reduce((sum, a) => sum + a.amount, 0);
+		const sum = allocations.reduce((sum, a) => sum + a.amount, 0);
+		return Number(sum.toFixed(2));
 	}, [allocations]);
 
 	const unallocatedAmount = useMemo(() => {
-		return Math.max(0, total - allocatedTotal);
+		return Number(Math.max(0, total - allocatedTotal).toFixed(2));
 	}, [total, allocatedTotal]);
 
 	const updateSplits = (
@@ -229,7 +230,9 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 		try {
 			await downloadReceiptFile(fileHash);
 		} catch (error) {
-			setDownloadError(error instanceof Error ? error.message : "Download failed");
+			setDownloadError(
+				error instanceof Error ? error.message : "Download failed",
+			);
 		} finally {
 			setIsDownloading(false);
 		}
@@ -253,14 +256,22 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
 	// Handle file upload when uploadingFile prop changes
 	useEffect(() => {
-		if (uploadingFile && isOpen && uploadingFile.hash !== lastUploadedHashRef.current) {
+		if (
+			uploadingFile &&
+			isOpen &&
+			uploadingFile.hash !== lastUploadedHashRef.current
+		) {
 			const uploadFile = async () => {
 				setUploadError("");
 				setIsUploading(true);
 				setUploadProgress(0);
 
 				try {
-					await uploadReceiptFile(uploadingFile.file, uploadingFile.hash, setUploadProgress);
+					await uploadReceiptFile(
+						uploadingFile.file,
+						uploadingFile.hash,
+						setUploadProgress,
+					);
 
 					setUploadedFileHash(uploadingFile.hash);
 					setUploadedFileName(uploadingFile.file.name);
@@ -269,14 +280,16 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
 					// Set initial values based on uploaded file
 					if (!vendor) {
-						setVendor(uploadingFile.file.name.split('.')[0] || "");
+						setVendor(uploadingFile.file.name.split(".")[0] || "");
 					}
 
 					onFileUploadComplete?.(uploadingFile.hash, uploadingFile.file.name);
 				} catch (error) {
 					setIsUploading(false);
 					setUploadProgress(0);
-					setUploadError(error instanceof Error ? error.message : "Upload failed");
+					setUploadError(
+						error instanceof Error ? error.message : "Upload failed",
+					);
 				}
 			};
 
@@ -288,7 +301,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 	// Must be called before early return to avoid hook order violations
 	const bucketMap = useMemo(() => {
 		const map = new Map<string, Bucket>();
-		buckets.forEach(b => map.set(b.id, b));
+		buckets.forEach((b) => map.set(b.id, b));
 		return map;
 	}, [buckets]);
 
@@ -344,7 +357,9 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
 				<div className="space-y-6">
 					{/* Upload Progress Widget */}
-					{(isUploading || uploadError || (uploadedFileHash && uploadedFileName)) && (
+					{(isUploading ||
+						uploadError ||
+						(uploadedFileHash && uploadedFileName)) && (
 						<div className="mb-6">
 							<UploadProgressWidget
 								isUploading={isUploading}
@@ -361,8 +376,12 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 							<label className="label-caps">Attached File</label>
 							<div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
 								<div className="flex-1">
-									<p className="text-sm font-semibold">{editingReceipt.file || "Receipt file"}</p>
-									<p className="text-xs text-muted">Hash: {editingReceipt.hash.substring(0, 12)}...</p>
+									<p className="text-sm font-semibold">
+										{editingReceipt.file || "Receipt file"}
+									</p>
+									<p className="text-xs text-muted">
+										Hash: {editingReceipt.hash.substring(0, 12)}...
+									</p>
 								</div>
 								<button
 									className="btn btn-ghost flex items-center gap-2 px-4 py-2"
@@ -643,8 +662,9 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 						</button>
 					)}
 					<button
-						className={`btn btn-primary justify-center py-3 text-base ${editingReceipt ? 'flex-1' : 'w-full'
-							}`}
+						className={`btn btn-primary justify-center py-3 text-base ${
+							editingReceipt ? "flex-1" : "w-full"
+						}`}
 						onClick={handleSave}
 						disabled={!vendor || total <= 0 || isOverAllocated}
 					>
