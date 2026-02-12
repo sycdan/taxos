@@ -21,9 +21,9 @@ def handle(command: UpdateReceiptRepo) -> bool:
 
   try:
     repo: ReceiptRepo = LoadReceiptRepo().execute()
-    if command.remove:
-      repo.remove(receipt)
-    else:
+    # Remove first to ensure it is updated if it already exists.
+    repo.remove(receipt)
+    if not command.remove:
       repo.add(receipt)
     SaveReceiptRepo(repo).execute()
     return True
