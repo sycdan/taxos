@@ -78,3 +78,9 @@ def test_attach_file_to_receipt(test_context, tmp_path):
     assert test_file_path.name in zipf.namelist()
     extracted_content = zipf.read(test_file_path.name)
     assert extracted_content == test_file_content
+
+  # 7. Error should be raised if we try to attach another file
+  another_test_file_path = tmp_path / "another_test_file.txt"
+  another_test_file_path.write_bytes(b"Another test file content.")
+  with pytest.raises(FileExistsError):
+    AttachFile(receipt.guid.hex, another_test_file_path).execute()

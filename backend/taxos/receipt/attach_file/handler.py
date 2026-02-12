@@ -6,11 +6,8 @@ from pathlib import Path
 from taxos.context.tools import require_receipt, require_tenant
 from taxos.receipt.attach_file.command import AttachFile
 from taxos.receipt.entity import Receipt
-from taxos.receipt.repo.update.command import UpdateReceiptRepo
 from taxos.receipt.save.command import SaveReceipt
-from taxos.receipt.tools import get_state_file
 from taxos.tenant.tools import get_files_dir
-from taxos.tools import json
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +16,9 @@ def handle(command: AttachFile) -> Receipt:
   logger.info(f"Attaching file {command.filepath} to receipt {command.receipt_ref}")
   tenant = require_tenant()
   receipt = require_receipt(command.receipt_ref)
+
+  if receipt.hash:
+    raise FileExistsError(f"Receipt {receipt.guid} already has an attached file with hash {receipt.hash}")
 
   filepath = Path(command.filepath)
   if not filepath.exists():
