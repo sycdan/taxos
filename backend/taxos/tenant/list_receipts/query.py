@@ -7,14 +7,14 @@ from taxos.receipt.repo.entity import ReceiptRepo
 
 @dataclass
 class ListReceipts:
-  months: list[str] = field(
-    metadata={
-      "help": "List of specific month to load, e.g. ['2024-01', '2024-02'].",
-    },
-  )
   bucket: Union[Bucket, BucketRef, str] = field(
     metadata={
       "help": "Include only receipts allocated to this bucket.",
+    },
+  )
+  months: list[str] = field(
+    metadata={
+      "help": "List of specific month to load, e.g. ['2024-01', '2024-02']. Default: all.",
     },
   )
   repo: Optional[ReceiptRepo] = field(
