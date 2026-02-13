@@ -1,11 +1,12 @@
 from dataclasses import dataclass
+from typing import Union
 
 from taxos.bucket.entity import BucketRef
 
 
 @dataclass
 class UpdateBucket:
-  ref: BucketRef
+  ref: Union[BucketRef, str]
   name: str
 
   def execute(self):

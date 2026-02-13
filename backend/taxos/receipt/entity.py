@@ -9,7 +9,7 @@ from taxos.tools.time import parse_datetime
 
 @dataclass
 class Receipt:
-  class DoesNotExist(RuntimeError):
+  class DoesNotExist(FileNotFoundError):
     pass
 
   guid: UUID

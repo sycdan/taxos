@@ -1,11 +1,16 @@
 from dataclasses import dataclass
+from typing import Union
 
-from taxos.bucket.entity import BucketRef
+from taxos.bucket.entity import Bucket, BucketRef
 
 
 @dataclass
 class DeleteBucket:
-  ref: BucketRef
+  ref: Union[Bucket, BucketRef, str]
+
+  def __post_init__(self):
+    if not isinstance(self.ref, (Bucket, BucketRef)):
+      self.ref = BucketRef(str(self.ref).strip())
 
   def execute(self):
     from taxos.bucket.delete.handler import handle

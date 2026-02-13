@@ -9,7 +9,7 @@ from taxos.tools.guid import parse_guid
 
 @dataclass
 class Tenant:
-  class DoesNotExist(RuntimeError):
+  class DoesNotExist(FileNotFoundError):
     pass
 
   guid: UUID

@@ -1,7 +1,6 @@
 import hashlib
 import json
 import logging
-import os
 import zipfile
 from datetime import datetime, timezone
 from functools import wraps
@@ -10,24 +9,26 @@ from uuid import uuid4
 
 from flask import Flask, Response, request
 from flask_cors import CORS
-from google.protobuf.json_format import MessageToDict, ParseDict
+from google.protobuf.json_format import MessageToDict, ParseDict, ParseError
 from google.protobuf.message import Message
 from google.protobuf.timestamp_pb2 import Timestamp
 from taxos.access.authenticate_tenant.command import AuthenticateTenant
 from taxos.allocation.entity import Allocation
 from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.delete.command import DeleteBucket
-from taxos.bucket.entity import Bucket, BucketRef
+from taxos.bucket.entity import BucketRef
 from taxos.bucket.load.query import LoadBucket
 from taxos.bucket.update.command import UpdateBucket
 from taxos.context.entity import Context
-from taxos.context.tools import set_context
+from taxos.context.tools import require_tenant, set_context
 from taxos.receipt.create.command import CreateReceipt
 from taxos.receipt.delete.command import DeleteReceipt
+from taxos.receipt.download_file import DownloadFile
 from taxos.receipt.entity import ReceiptRef
 from taxos.receipt.update.command import UpdateReceipt
 from taxos.tenant.dashboard.get.query import GetDashboard
 from taxos.tenant.list_receipts.query import ListReceipts
+from taxos.tenant.tools import get_files_dir
 
 from api.v1 import taxos_service_pb2 as messages
 
@@ -154,18 +155,14 @@ def rpc_endpoint(request_message_type: type[T]):
     def decorated_function(*args, **kwargs):
       try:
         req = get_request_message(request_message_type, True)
-        result = f(req, *args, **kwargs)
-
-        # If result is already a Response, return it
-        if isinstance(result, Response):
-          return result
-
-        # Otherwise assume it's a protobuf message
-        return message_to_success_response(result)
-      except ValueError as e:
+        response_message = f(req, *args, **kwargs)
+        if isinstance(response_message, Response):
+          return response_message
+        return message_to_success_response(response_message)
+      except (ParseError, ValueError, TypeError) as e:
         return error_response(400, str(e))
-      except Bucket.DoesNotExist:
-        return error_response(404, "Bucket not found")
+      except FileNotFoundError as e:
+        return error_response(404, str(e))
       except Exception as e:
         return error_response(exception=e)
 
@@ -190,8 +187,8 @@ def _parse_allocations(values: list[dict]) -> set:
 
 
 @app.route("/taxos.v1.TaxosApi/GetDashboard", methods=["POST"])
-@rpc_endpoint(messages.GetDashboardRequest)
 @require_auth
+@rpc_endpoint(messages.GetDashboardRequest)
 def get_dashboard(req: messages.GetDashboardRequest):
   dashboard = GetDashboard(list(req.months)).execute()
   bucket_summaries = []
@@ -213,8 +210,8 @@ def get_dashboard(req: messages.GetDashboardRequest):
 
 
 @app.route("/taxos.v1.TaxosApi/CreateBucket", methods=["POST"])
-@rpc_endpoint(messages.CreateBucketRequest)
 @require_auth
+@rpc_endpoint(messages.CreateBucketRequest)
 def create_bucket(req: messages.CreateBucketRequest):
   bucket = CreateBucket(
     req.name or uuid4().hex[:8],
@@ -226,8 +223,8 @@ def create_bucket(req: messages.CreateBucketRequest):
 
 
 @app.route("/taxos.v1.TaxosApi/CreateReceipt", methods=["POST"])
-@rpc_endpoint(messages.CreateReceiptRequest)
 @require_auth
+@rpc_endpoint(messages.CreateReceiptRequest)
 def create_receipt(req: messages.CreateReceiptRequest):
   allocations = _parse_allocations([MessageToDict(a) for a in req.allocations])
 
@@ -246,8 +243,8 @@ def create_receipt(req: messages.CreateReceiptRequest):
 
 
 @app.route("/taxos.v1.TaxosApi/GetBucket", methods=["POST"])
-@rpc_endpoint(messages.GetBucketRequest)
 @require_auth
+@rpc_endpoint(messages.GetBucketRequest)
 def get_bucket(req: messages.GetBucketRequest):
   bucket_ref = BucketRef(req.guid)
   bucket = LoadBucket(ref=bucket_ref).execute()
@@ -259,8 +256,8 @@ def get_bucket(req: messages.GetBucketRequest):
 
 
 @app.route("/taxos.v1.TaxosApi/UpdateBucket", methods=["POST"])
-@rpc_endpoint(messages.UpdateBucketRequest)
 @require_auth
+@rpc_endpoint(messages.UpdateBucketRequest)
 def update_bucket(req: messages.UpdateBucketRequest):
   bucket_ref = BucketRef(req.guid)
   bucket = UpdateBucket(ref=bucket_ref, name=req.name).execute()
@@ -272,8 +269,8 @@ def update_bucket(req: messages.UpdateBucketRequest):
 
 
 @app.route("/taxos.v1.TaxosApi/ListReceipts", methods=["POST"])
-@rpc_endpoint(messages.ListReceiptsRequest)
 @require_auth
+@rpc_endpoint(messages.ListReceiptsRequest)
 def list_receipts(req: messages.ListReceiptsRequest):
   months = list(req.months)
   receipts = ListReceipts(months=months, bucket=req.bucket).execute()
@@ -283,8 +280,8 @@ def list_receipts(req: messages.ListReceiptsRequest):
 
 
 @app.route("/taxos.v1.TaxosApi/DeleteBucket", methods=["POST"])
-@rpc_endpoint(messages.DeleteBucketRequest)
 @require_auth
+@rpc_endpoint(messages.DeleteBucketRequest)
 def delete_bucket(req: messages.DeleteBucketRequest):
   bucket_ref = BucketRef(req.guid)
   success = DeleteBucket(ref=bucket_ref).execute()
@@ -292,8 +289,8 @@ def delete_bucket(req: messages.DeleteBucketRequest):
 
 
 @app.route("/taxos.v1.TaxosApi/UpdateReceipt", methods=["POST"])
-@rpc_endpoint(messages.UpdateReceiptRequest)
 @require_auth
+@rpc_endpoint(messages.UpdateReceiptRequest)
 def update_receipt(req: messages.UpdateReceiptRequest):
   allocations = _parse_allocations([MessageToDict(a) for a in req.allocations])
 
@@ -313,17 +310,12 @@ def update_receipt(req: messages.UpdateReceiptRequest):
 
 
 @app.route("/taxos.v1.TaxosApi/DeleteReceipt", methods=["POST"])
-@rpc_endpoint(messages.DeleteReceiptRequest)
 @require_auth
+@rpc_endpoint(messages.DeleteReceiptRequest)
 def delete_receipt(req: messages.DeleteReceiptRequest):
   receipt_ref = ReceiptRef(req.guid)
   success = DeleteReceipt(receipt_ref).execute()
   return messages.DeleteReceiptResponse(success=success)
-
-
-def _get_upload_directory():
-  """Get the uploads directory path."""
-  return os.path.join(os.path.dirname(__file__), "..", "data", "uploads")
 
 
 def _calculate_file_hash(file_data: bytes) -> str:
@@ -331,33 +323,9 @@ def _calculate_file_hash(file_data: bytes) -> str:
   return hashlib.sha256(file_data).hexdigest()
 
 
-def _get_file_path(file_hash: str) -> str:
-  """Get the file path for a given hash."""
-  upload_dir = _get_upload_directory()
-  return os.path.join(upload_dir, f"{file_hash}.zip")
-
-
-def _file_exists(file_hash: str) -> bool:
-  """Check if a file with the given hash already exists."""
-  return os.path.exists(_get_file_path(file_hash))
-
-
-def _save_file_as_zip(file_data: bytes, filename: str, file_hash: str) -> tuple[str, int]:
-  """Save file data as a zip file with the hash as the filename."""
-  zip_path = _get_file_path(file_hash)
-
-  # Ensure upload directory exists
-  os.makedirs(_get_upload_directory(), exist_ok=True)
-
-  with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-    zipf.writestr(filename, file_data)
-
-  return zip_path, os.path.getsize(zip_path)
-
-
 @app.route("/taxos.v1.TaxosApi/UploadReceiptFile", methods=["POST"])
-@rpc_endpoint(messages.UploadReceiptFileRequest)
 @require_auth
+@rpc_endpoint(messages.UploadReceiptFileRequest)
 def upload_receipt_file(req: messages.UploadReceiptFileRequest):
   client_hash = req.file_hash
   filename = req.filename
@@ -369,19 +337,23 @@ def upload_receipt_file(req: messages.UploadReceiptFileRequest):
   if not filename:
     return Response(json.dumps({"error": "filename is required"}), status=400, content_type="application/json")
 
+  # Get tenant's files directory
+  tenant = require_tenant()
+  files_dir = get_files_dir(tenant.guid)
+  zip_path = files_dir / f"{client_hash}.zip"
+
   # Check if file already exists
-  if _file_exists(client_hash):
+  if zip_path.exists():
     logger.info(f"File with hash {client_hash} already exists, returning existing info")
-    zip_path = _get_file_path(client_hash)
-    file_size = os.path.getsize(zip_path)
+    file_size = zip_path.stat().st_size
 
     # Get upload timestamp from file modification time
-    upload_timestamp = datetime.fromtimestamp(os.path.getmtime(zip_path), tz=timezone.utc)
+    upload_timestamp = datetime.fromtimestamp(zip_path.stat().st_mtime, tz=timezone.utc)
     ts = Timestamp()
     ts.FromDatetime(upload_timestamp)
 
     file_info = messages.UploadReceiptFileInfo(
-      file_hash=client_hash, filename=filename, file_path=zip_path, file_size=file_size, uploaded_at=ts
+      file_hash=client_hash, filename=filename, file_path=str(zip_path), file_size=file_size, uploaded_at=ts
     )
 
     return messages.UploadReceiptFileResponse(already_exists=True, file_info=file_info)
@@ -398,8 +370,12 @@ def upload_receipt_file(req: messages.UploadReceiptFileRequest):
     logger.warning(f"Hash mismatch: client={client_hash}, calculated={calculated_hash}")
     return Response(json.dumps({"error": "File hash validation failed"}), status=400, content_type="application/json")
 
-  # Save file as zip
-  zip_path, file_size = _save_file_as_zip(file_data, filename, client_hash)
+  # Ensure files directory exists and save file as zip
+  files_dir.mkdir(parents=True, exist_ok=True)
+  with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+    zipf.writestr(filename, file_data)
+
+  file_size = zip_path.stat().st_size
   logger.info(f"Saved file {filename} with hash {client_hash} as {zip_path}")
 
   # Create response
@@ -408,41 +384,20 @@ def upload_receipt_file(req: messages.UploadReceiptFileRequest):
   ts.FromDatetime(upload_timestamp)
 
   file_info = messages.UploadReceiptFileInfo(
-    file_hash=client_hash, filename=filename, file_path=zip_path, file_size=file_size, uploaded_at=ts
+    file_hash=client_hash, filename=filename, file_path=str(zip_path), file_size=file_size, uploaded_at=ts
   )
 
   return messages.UploadReceiptFileResponse(already_exists=False, file_info=file_info)
 
 
 @app.route("/taxos.v1.TaxosApi/DownloadReceiptFile", methods=["POST"])
-@rpc_endpoint(messages.DownloadReceiptFileRequest)
 @require_auth
-def download_receipt_file(req: messages.DownloadReceiptFileRequest):
-  file_hash = req.file_hash
-
-  if not file_hash:
-    return Response(json.dumps({"error": "file_hash is required"}), status=400, content_type="application/json")
-
-  # Check if file exists
-  if not _file_exists(file_hash):
-    logger.warning(f"File with hash {file_hash} not found")
-    return Response(json.dumps({"error": "File not found"}), status=404, content_type="application/json")
-
-  # Read file from zip
-  zip_path = _get_file_path(file_hash)
-  with zipfile.ZipFile(zip_path, "r") as zipf:
-    # Get the first (and should be only) file in the zip
-    filenames = zipf.namelist()
-    if not filenames:
-      return Response(json.dumps({"error": "Zip file is empty"}), status=500, content_type="application/json")
-
-    filename = filenames[0]
-    file_data = zipf.read(filename)
-
-  file_size = len(file_data)
-
-  logger.info(f"Downloaded file {filename} with hash {file_hash} ({file_size} bytes)")
-  return messages.DownloadReceiptFileResponse(filename=filename, file_data=file_data, file_size=file_size)
+@rpc_endpoint(messages.DownloadReceiptFileRequest)
+def download_receipt_file(req):
+  result = DownloadFile(req.file_hash).execute()
+  return messages.DownloadReceiptFileResponse(
+    filename=result.filename, file_data=result.file_data, file_size=result.file_size
+  )
 
 
 @app.route("/taxos.v1.TaxosApi/Authenticate", methods=["POST"])

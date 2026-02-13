@@ -6,7 +6,7 @@ from taxos.tools.guid import parse_guid
 
 @dataclass
 class Bucket:
-  class DoesNotExist(RuntimeError):
+  class DoesNotExist(FileNotFoundError):
     pass
 
   guid: UUID

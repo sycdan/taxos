@@ -2,13 +2,17 @@ from datetime import datetime
 
 import pytest
 from google.protobuf.timestamp_pb2 import Timestamp
-from scaf.cli import call
 from taxos.access.token.generate.command import GenerateAccessToken
 from taxos.access.token.revoke.command import RevokeToken
+from taxos.bucket.create.command import CreateBucket
+from taxos.bucket.delete.command import DeleteBucket
 from taxos.bucket.entity import Bucket
 from taxos.bucket.repo.entity import BucketRepo
+from taxos.bucket.repo.load.query import LoadBucketRepo
+from taxos.bucket.update.command import UpdateBucket
 from taxos.context.entity import Context
 from taxos.context.tools import set_context
+from taxos.receipt.create.command import CreateReceipt
 from taxos.receipt.delete.command import DeleteReceipt
 from taxos.receipt.entity import Receipt
 from taxos.receipt.repo.load.command import LoadReceiptRepo
@@ -18,8 +22,6 @@ from taxos.tenant.delete.command import DeleteTenant
 from taxos.tenant.entity import TenantRef
 from taxos.tenant.list_receipts.query import ListReceipts
 from taxos.tenant.unallocated_receipt.check.command import CheckUnallocatedReceipt
-
-from dev import BACKEND_ROOT
 
 MONTH_KEY = datetime.now().strftime("%Y-%m")
 
@@ -42,15 +44,10 @@ def test_context():
     print(f"Cleanup warning: {e}")
 
 
-def scaf(action: str, *args):
-  return call(BACKEND_ROOT, action, *args)
-
-
 def ensure_bucket_created(name: str) -> Bucket:
-  result: Bucket | None = scaf(
-    "taxos/bucket/create",
-    f"{name} {datetime.now().isoformat()}",
-  )
+  result: Bucket | None = CreateBucket(
+    name=f"{name} {datetime.now().isoformat()}",
+  ).execute()
   assert isinstance(result, Bucket), f"Expected Bucket instance, got {type(result)}"
   bucket: Bucket = result
   assert bucket.name.startswith(name)
@@ -58,11 +55,10 @@ def ensure_bucket_created(name: str) -> Bucket:
 
 
 def ensure_bucket_updated(original_bucket: Bucket) -> Bucket:
-  result = scaf(
-    "taxos/bucket/update",
+  result = UpdateBucket(
     original_bucket.guid.hex,
     f"Updated Test Bucket {datetime.now().isoformat()}",
-  )
+  ).execute()
   assert isinstance(result, Bucket), f"Expected Bucket instance, got {type(result)}"
   bucket: Bucket = result
   assert bucket.guid == original_bucket.guid
@@ -71,13 +67,13 @@ def ensure_bucket_updated(original_bucket: Bucket) -> Bucket:
 
 
 def ensure_bucket_exists(bucket: Bucket):
-  result = scaf("taxos/bucket/repo/load")
+  result = LoadBucketRepo().execute()
   assert isinstance(result, BucketRepo), f"Expected BucketRepo, got {type(result)}"
   bucket_list: list[Bucket] = list(result.index.values())
   assert any(b.guid == bucket.guid for b in bucket_list), "Created bucket not found in list"
 
 
-def get_receipt_list(month_key: str = MONTH_KEY, bucket=None) -> list[Receipt]:
+def get_receipt_list(month_key: str = MONTH_KEY, bucket="") -> list[Receipt]:
   result = ListReceipts(months=[month_key], bucket=bucket).execute()
   assert isinstance(result, list), f"Expected Receipt list, got {type(result)}"
   return result
@@ -94,16 +90,14 @@ def ensure_unallocated_receipt(receipt: Receipt, unallocated_amount: float = 0):
 def ensure_receipt_created(vendor: str, total: float, vendor_ref: str = "TEST-REF") -> Receipt:
   now = Timestamp()
   now.GetCurrentTime()
-  result = scaf(
-    "taxos/receipt/create",
+  result = CreateReceipt(
     vendor,
-    str(total),
+    total,
     now.ToJsonString(),
     "America/New_York",
-    f"--vendor-ref={vendor_ref}",
-    "--notes=Test receipt",
-    "--hash=test-hash",
-  )
+    vendor_ref=vendor_ref,
+    notes="Test receipt",
+  ).execute()
   assert isinstance(result, Receipt), f"Expected Receipt instance, got {type(result)}"
   receipt: Receipt = result
   assert receipt.vendor == vendor
@@ -120,7 +114,7 @@ def ensure_receipt_deleted(receipt: Receipt):
 
 
 def ensure_bucket_deleted(bucket: Bucket):
-  result = scaf("taxos/bucket/delete", bucket.guid.hex)
+  result = DeleteBucket(bucket.guid.hex).execute()
   assert result is True, f"Expected True from bucket delete, got {result}"
   try:
     ensure_bucket_exists(bucket)
