@@ -15,6 +15,7 @@ import {
 } from "date-fns";
 import type { Receipt } from "./types";
 import { sha256 } from "js-sha256";
+import { UNALLOCATED_BUCKET_ID } from "./types";
 
 type FilterMode = "year" | "month";
 
@@ -26,6 +27,7 @@ interface FilterConfig {
 const App: React.FC = () => {
 	const {
 		buckets,
+		bucketSummaries,
 		addReceipt,
 		updateReceipt,
 		deleteReceipt,
@@ -66,6 +68,13 @@ const App: React.FC = () => {
 	useEffect(() => {
 		localStorage.setItem("taxos_filter_config", JSON.stringify(filterConfig));
 	}, [filterConfig]);
+
+	// Calculate total allocated
+	const totalAllocated = useMemo(() => {
+		return bucketSummaries
+			.filter((summary) => summary.bucket.id !== UNALLOCATED_BUCKET_ID)
+			.reduce((sum, summary) => sum + summary.totalAmount, 0);
+	}, [bucketSummaries]);
 
 	// Derive start/end dates for the rest of the app
 	const dateRange = useMemo(() => {
@@ -213,6 +222,23 @@ const App: React.FC = () => {
 						<div className="text-sm font-bold uppercase tracking-wider text-muted">
 							{currentBucketId ? "Bucket Detail" : "Receipts"}
 						</div>
+						{!currentBucketId && (
+							<>
+								<div className="h-4 w-px bg-gray-600"></div>
+								<div className="flex items-center gap-2">
+									<span className="text-xs text-muted uppercase font-semibold">
+										Total Allocated
+									</span>
+									<span className="text-sm font-bold text-primary">
+										$
+										{totalAllocated.toLocaleString(undefined, {
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+										})}
+									</span>
+								</div>
+							</>
+						)}
 					</div>
 
 					<div className="flex items-center gap-4">

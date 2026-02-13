@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
 	Database,
-	TrendingUp,
 	ChevronRight,
 	Eye,
 	EyeOff,
@@ -143,12 +142,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 		return bucketTotals.reduce((sum, b) => sum + b.total, 0);
 	}, [bucketTotals]);
 
-	const totalAllocated = useMemo(() => {
-		return bucketTotals
-			.filter((b) => b.id !== UNALLOCATED_BUCKET_ID)
-			.reduce((sum, b) => sum + b.total, 0);
-	}, [bucketTotals]);
-
 	return (
 		<div
 			className="dashboard-outer"
@@ -163,24 +156,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 				animate={{ opacity: 1, y: 0 }}
 				className="dashboard"
 			>
-				<div className="flex justify-end items-center mb-8">
-					<div className="card flex items-center gap-4 py-3">
-						<TrendingUp className="text-primary" size={24} />
-						<div>
-							<div className="text-xs text-muted uppercase font-bold">
-								Total Allocated
-							</div>
-							<div className="text-2xl font-bold">
-								$
-								{totalAllocated.toLocaleString(undefined, {
-									minimumFractionDigits: 2,
-									maximumFractionDigits: 2,
-								})}
-							</div>
-						</div>
-					</div>
-				</div>
-
 				<div className="flex justify-between items-center mb-6">
 					<h2 className="text-xl">Spending Buckets</h2>
 					<div className="flex items-center gap-2">
@@ -189,7 +164,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 							onClick={() => setIsAddingBucket(true)}
 						>
 							<Plus size={16} />
-							<span>New Bucket</span>
+							<span>Add Bucket</span>
 						</button>
 						<button
 							className="btn btn-ghost btn-sm flex items-center gap-2"
