@@ -26,5 +26,11 @@ Receipt and bucket management system.
 Use `scaf` to invoke domain actions (command.py or query.py) from the workspace root:
 
 ```bash
-scaf . --call path/to/action/dir -- action args
+scaf . --call dev/action/dir -- action args
+```
+
+Or inside the backend container:
+
+```bash
+docker exec -it taxos-backend-1 scaf . -- call taxos/action/dir -- action args
 ```
