@@ -2,6 +2,4 @@
 
 ## Today's Task
 
-we need to move the logic for downloading receipt files out of the connectrpc api, in as much as possible, and into a domain action (e.g. tenant/receipt/download_file) and just call the domain action from the endpoint.
-
-also, we have stared saving attached files inside the tenant's data (tenants/<guid>/files) so we need to look there for the file instead of uploads.
+after we upload a file, the notification of "[checkmark] file upload: [file name]" remains present on all the edit receipt modal. so if i edit another receipt, it says i uploaded an unrelated file.
