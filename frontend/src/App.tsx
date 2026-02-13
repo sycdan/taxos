@@ -254,6 +254,7 @@ const App: React.FC = () => {
 								type="file"
 								id="file-upload"
 								className="hidden"
+								style={{ display: "none" }}
 								accept="image/*,application/pdf"
 								onChange={(e) => {
 									const files = e.target.files;
