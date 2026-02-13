@@ -76,6 +76,14 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 	// Reset form when opening
 	useEffect(() => {
 		if (isOpen) {
+			// Always reset upload state when opening modal to prevent stale upload notifications
+			setUploadedFileHash("");
+			setUploadedFileName("");
+			setUploadError("");
+			setIsUploading(false);
+			setUploadProgress(0);
+			lastUploadedHashRef.current = "";
+
 			if (editingReceipt) {
 				setVendor(editingReceipt.vendor);
 				setTotal(editingReceipt.total);
@@ -99,13 +107,6 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 				setNotes("");
 				setAllocations([]);
 				setManualAllocations(new Set());
-				// Reset upload state when opening fresh modal
-				setUploadedFileHash("");
-				setUploadedFileName("");
-				setUploadError("");
-				setIsUploading(false);
-				setUploadProgress(0);
-				lastUploadedHashRef.current = "";
 			}
 			setTimeout(() => vendorRef.current?.focus(), 100);
 		}
