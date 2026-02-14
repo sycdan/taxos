@@ -106,6 +106,7 @@ message GetDashboardRequest {
 message GetDashboardResponse {
   repeated BucketSummary buckets             = 1;
   repeated Receipt       unallocated_receipts = 2;
+  repeated string        vendor_names         = 3;
 }
 
 message BucketSummary {

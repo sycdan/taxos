@@ -15,3 +15,4 @@ class BucketSummary:
 class Dashboard:
   buckets: list[BucketSummary] = field(default_factory=list)
   unallocated: list[Receipt] = field(default_factory=list)
+  vendor_names: list[str] = field(default_factory=list)

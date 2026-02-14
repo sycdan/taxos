@@ -6,6 +6,7 @@ from taxos.receipt.repo.load.command import LoadReceiptRepo
 from taxos.tenant.dashboard.entity import BucketSummary, Dashboard
 from taxos.tenant.dashboard.get.query import GetDashboard
 from taxos.tenant.list_receipts.query import ListReceipts
+from taxos.vendor.list.query import ListVendors
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,12 @@ def handle(query: GetDashboard) -> Dashboard:
       if receipt.total > total_allocated:
         unallocated_receipts.append(receipt)
 
+  # Get all vendor names for typeahead
+  vendors = ListVendors().execute()
+  vendor_names = [vendor.name for vendor in vendors]
+
   return Dashboard(
     buckets=bucket_summaries,
     unallocated=unallocated_receipts,
+    vendor_names=vendor_names,
   )

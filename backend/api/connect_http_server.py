@@ -205,6 +205,7 @@ def get_dashboard(req: messages.GetDashboardRequest):
   return messages.GetDashboardResponse(
     buckets=bucket_summaries,
     unallocated_receipts=unallocated_receipt_messages,
+    vendor_names=dashboard.vendor_names,
   )
 
 
