@@ -1,33 +1,32 @@
 # Taxos
 
-## Dev Commands
+It is assumed that all work will be done within the devcontainer, not on your local host machine.
 
-Discover commands:
+## Development
 
-```bash
-source .venvrc
-```
+### Quick Start
 
-Run via alias:
+- Install the Dev Containers VSCode extension: `ms-vscode-remote.remote-containers`
+- From the palette, select: `Dev Containers: Reopen in Container`
 
-```bash
-dev.action-name plus args and --flags
-```
+### Dev Commands
 
-Run directly (from repo root):
+Aliases are available for Scaf commands within the devcontainer (sourced from `.venvrc`).
+
+You can also run them directly (from repo root):
 
 ```bash
 scaf . --call path/to/action/dir -- plus args and --flags
 ```
 
-## Testing
-
-From local, with devcontainers running:
-
-### Frontend
-
-Run a specific test in docker with verbose logging:
+### Adding Actions
 
 ```bash
-docker exec -it taxos-frontend-1 npm run test:integration -- --reporter=verbose -t "allocation"
+scaf.create-action path/to/new/action
+```
+
+## Testing
+
+```bash
+dev.test
 ```

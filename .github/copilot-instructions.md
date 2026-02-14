@@ -23,13 +23,19 @@ Receipt and bucket management system.
 
 ### Dev Commands
 
+Generate aliases:
+
+```bash
+source .venvrc
+```
+
 Use `scaf` to invoke domain actions (command.py or query.py) from the workspace root:
 
 ```bash
 scaf . --call dev/action/dir -- action args
 ```
 
-Or inside the backend container:
+Or inside the backend container: (if scaf in installed there manually)
 
 ```bash
 docker exec -it taxos-backend-1 scaf . -- call taxos/action/dir -- action args
