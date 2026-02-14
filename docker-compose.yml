@@ -7,7 +7,6 @@ services:
       - .:/workspaces/taxos
     working_dir: /workspaces/taxos
     command: sleep infinity
-    network_mode: service:backend
     depends_on:
       - backend
       - frontend
