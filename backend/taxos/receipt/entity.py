@@ -37,7 +37,7 @@ class Receipt:
 
 @dataclass
 class ReceiptRef:
-  key: str = field(compare=False)
+  key: str = field(compare=False, repr=False)
   guid: UUID = field(init=False)
 
   def __post_init__(self):
