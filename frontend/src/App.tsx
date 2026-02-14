@@ -28,6 +28,7 @@ const App: React.FC = () => {
 	const {
 		buckets,
 		bucketSummaries,
+		vendorNames,
 		addReceipt,
 		updateReceipt,
 		deleteReceipt,
@@ -343,6 +344,7 @@ const App: React.FC = () => {
 					}}
 					onDelete={deleteReceipt}
 					buckets={buckets}
+					vendorNames={vendorNames}
 					initialFile={uploadedFile}
 					editingReceipt={editingReceipt}
 					uploadingFile={uploadingFile}

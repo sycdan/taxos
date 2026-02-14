@@ -28,6 +28,7 @@ interface TaxosContextType {
 	receipts: Record<string, Receipt>;
 	unallocatedReceipts: Receipt[];
 	currentReceiptsList: Receipt[];
+	vendorNames: string[];
 	loading: boolean;
 	authenticated: boolean;
 	isNameTaken: (name: string, excludeId?: string) => boolean;
@@ -69,6 +70,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 	const [receipts, setReceipts] = useState<Record<string, Receipt>>({});
 	const [unallocatedReceipts, setUnallocatedReceipts] = useState<Receipt[]>([]);
 	const [currentReceiptsList, setCurrentReceiptsList] = useState<Receipt[]>([]);
+	const [vendorNames, setVendorNames] = useState<string[]>([]);
 	const [activeBucketId, setActiveBucketId] = useState<string | null>(null);
 
 	// Track receipt hashes for O(1) duplicate detection
@@ -246,6 +248,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				setBuckets(apiBuckets);
 				setBucketSummaries(apiSummaries);
 				setUnallocatedReceipts(apiUnallocatedReceipts);
+				setVendorNames(response.vendorNames || []);
 				setUnallocatedSummary({
 					totalAmount: unallocatedTotal,
 					receiptCount: unallocatedCount,
@@ -490,6 +493,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				receipts,
 				unallocatedReceipts,
 				currentReceiptsList,
+				vendorNames,
 				loading,
 				authenticated,
 				isNameTaken,

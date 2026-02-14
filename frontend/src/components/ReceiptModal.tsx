@@ -22,6 +22,7 @@ interface ReceiptModalProps {
 	onSave: (receipt: Omit<Receipt, "id">) => void;
 	onDelete: (id: string) => void;
 	buckets: Bucket[];
+	vendorNames?: string[];
 	initialFile?: string;
 	editingReceipt?: Receipt;
 	// File upload props
@@ -44,12 +45,14 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 	onSave,
 	onDelete,
 	buckets,
+	vendorNames = [],
 	initialFile,
 	editingReceipt,
 	uploadingFile,
 	onFileUploadComplete,
 }) => {
 	const [vendor, setVendor] = useState("");
+	const [isDeleting, setIsDeleting] = useState(false);
 	const [total, setTotal] = useState<number>(0);
 	const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
 	const [ref, setRef] = useState("");
@@ -86,6 +89,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
 			if (editingReceipt) {
 				setVendor(editingReceipt.vendor);
+				setIsDeleting(false);
 				setTotal(editingReceipt.total);
 				setDate(format(new Date(editingReceipt.date), "yyyy-MM-dd'T'HH:mm"));
 				setRef(editingReceipt.ref || "");
@@ -101,6 +105,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 				);
 			} else {
 				setVendor("");
+				setIsDeleting(false);
 				setTotal(0);
 				setDate(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
 				setRef("");
@@ -411,7 +416,63 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 									className="w-full text-lg font-semibold"
 									placeholder="e.g. Amazon"
 									value={vendor}
-									onChange={(e) => setVendor(e.target.value)}
+									onKeyDown={(e) => {
+										// Detect deletion keys
+										if (e.key === "Backspace" || e.key === "Delete") {
+											setIsDeleting(true);
+										} else {
+											setIsDeleting(false);
+										}
+
+										// Accept completion on Tab or Enter
+										if (e.key === "Tab" || e.key === "Enter") {
+											// Move cursor to end to accept completion
+											if (vendorRef.current) {
+												const cursorPos = vendorRef.current.selectionStart || 0;
+												const valueLength = vendor.length;
+												if (cursorPos < valueLength) {
+													e.preventDefault();
+													vendorRef.current.setSelectionRange(
+														valueLength,
+														valueLength,
+													);
+												}
+											}
+										}
+									}}
+									onChange={(e) => {
+										const inputValue = e.target.value;
+
+										setVendor(inputValue);
+
+										// Only apply autocomplete if not deleting and there's input
+										if (!isDeleting && inputValue.length > 0) {
+											const match = vendorNames.find((name) =>
+												name.toLowerCase().startsWith(inputValue.toLowerCase()),
+											);
+
+											if (
+												match &&
+												match.toLowerCase() !== inputValue.toLowerCase()
+											) {
+												// Set the full match as value
+												setVendor(match);
+
+												// Select the completion part
+												setTimeout(() => {
+													if (vendorRef.current) {
+														vendorRef.current.setSelectionRange(
+															inputValue.length,
+															match.length,
+														);
+													}
+												}, 0);
+											}
+										}
+
+										// Reset deleting flag after handling
+										setIsDeleting(false);
+									}}
 								/>
 							</div>
 							<div>
