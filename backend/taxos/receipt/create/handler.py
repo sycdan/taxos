@@ -7,6 +7,7 @@ from taxos.receipt.entity import Receipt
 from taxos.receipt.save.command import SaveReceipt
 from taxos.receipt.tools import get_state_file
 from taxos.tools import guid
+from taxos.vendor.find_or_create.command import FindOrCreateVendor
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,11 @@ def handle(command: CreateReceipt) -> Receipt:
   state_file = get_state_file(receipt_guid, tenant.guid)
   if state_file.exists() and state_file.stat().st_size > 0:
     raise RuntimeError(f"Receipt {receipt_guid} already exists.")
+
+  # Create or find vendor to enable typeahead functionality
+  if command.vendor:
+    vendor = FindOrCreateVendor(command.vendor).execute()
+    logger.debug(f"Vendor: {vendor.name} ({vendor.guid})")
 
   receipt = Receipt(
     receipt_guid,

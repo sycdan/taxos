@@ -11,6 +11,8 @@ from taxos.receipt.entity import Receipt, ReceiptRef
 from taxos.receipt.load.query import LoadReceipt
 from taxos.tenant.entity import Tenant, TenantRef
 from taxos.tools import json
+from taxos.vendor.entity import Vendor, VendorRef
+from taxos.vendor.load.query import LoadVendor
 
 logger = logging.getLogger(__name__)
 
@@ -114,3 +116,13 @@ def require_receipt(value) -> Receipt:
   elif not isinstance(value, ReceiptRef):
     value = ReceiptRef(value)
   return LoadReceipt(value).execute()
+
+
+def require_vendor(value) -> Vendor:
+  """Hydrates a VendorRef to a Vendor, or returns the Vendor if already hydrated.
+  Raises Vendor.DoesNotExist."""
+  if isinstance(value, Vendor):
+    return value
+  elif not isinstance(value, VendorRef):
+    value = VendorRef(value)
+  return LoadVendor(value).execute()

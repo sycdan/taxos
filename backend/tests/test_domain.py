@@ -22,6 +22,9 @@ from taxos.tenant.delete.command import DeleteTenant
 from taxos.tenant.entity import TenantRef
 from taxos.tenant.list_receipts.query import ListReceipts
 from taxos.tenant.unallocated_receipt.check.command import CheckUnallocatedReceipt
+from taxos.vendor.entity import Vendor
+from taxos.vendor.find_or_create.command import FindOrCreateVendor
+from taxos.vendor.list.query import ListVendors
 
 MONTH_KEY = datetime.now().strftime("%Y-%m")
 
@@ -143,3 +146,71 @@ def test_happy_path(test_context):
   ensure_receipt_deleted(receipt)
 
   ensure_bucket_deleted(created_bucket)
+
+
+@pytest.mark.integration
+def test_vendor_find_or_create(test_context):
+  """Test vendor find or create functionality"""
+  tenant = test_context.tenant
+  assert tenant is not None, "Tenant should be set in context"
+
+  # Create a vendor
+  vendor1 = FindOrCreateVendor("Acme Corporation").execute()
+  assert isinstance(vendor1, Vendor), f"Expected Vendor instance, got {type(vendor1)}"
+  assert vendor1.name == "Acme Corporation"
+
+  # Try to create the same vendor again (should return existing)
+  vendor2 = FindOrCreateVendor("Acme Corporation").execute()
+  assert vendor2.guid == vendor1.guid, "Should return the same vendor"
+  assert vendor2.name == vendor1.name
+
+  # Test case-insensitive matching
+  vendor3 = FindOrCreateVendor("acme corporation").execute()
+  assert vendor3.guid == vendor1.guid, "Should match case-insensitively"
+
+  # Create a different vendor
+  vendor4 = FindOrCreateVendor("Widget Industries").execute()
+  assert vendor4.guid != vendor1.guid, "Different vendor should have different GUID"
+  assert vendor4.name == "Widget Industries"
+
+  # List vendors
+  vendors = ListVendors().execute()
+  assert len(vendors) >= 2, "Should have at least 2 vendors"
+  vendor_names = [v.name for v in vendors]
+  assert "Acme Corporation" in vendor_names
+  assert "Widget Industries" in vendor_names
+
+  # Verify vendors are sorted by name
+  assert vendors == sorted(vendors, key=lambda v: v.name.lower()), "Vendors should be sorted by name"
+
+
+@pytest.mark.integration
+def test_vendor_created_with_receipt(test_context):
+  """Test that vendors are automatically created when receipts are created"""
+  tenant = test_context.tenant
+  assert tenant is not None, "Tenant should be set in context"
+
+  # Count initial vendors
+  initial_vendors = ListVendors().execute()
+  initial_count = len(initial_vendors)
+
+  # Create a receipt with a new vendor
+  receipt = ensure_receipt_created("New Vendor Store", 25.99)
+  assert receipt.vendor == "New Vendor Store"
+
+  # Verify vendor was created
+  vendors = ListVendors().execute()
+  assert len(vendors) == initial_count + 1, "Should have one more vendor"
+  vendor_names = [v.name for v in vendors]
+  assert "New Vendor Store" in vendor_names
+
+  # Create another receipt with the same vendor
+  receipt2 = ensure_receipt_created("New Vendor Store", 15.50)
+
+  # Verify no duplicate vendor was created
+  vendors = ListVendors().execute()
+  assert len(vendors) == initial_count + 1, "Should still have same number of vendors (no duplicate)"
+
+  # Clean up
+  ensure_receipt_deleted(receipt)
+  ensure_receipt_deleted(receipt2)

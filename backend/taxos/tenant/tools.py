@@ -26,3 +26,8 @@ def get_receipts_dir(tenant_guid: UUID) -> Path:
 def get_files_dir(tenant_guid: UUID) -> Path:
   tenant_dir = get_content_dir(tenant_guid)
   return tenant_dir / "files"
+
+
+def get_vendors_dir(tenant_guid: UUID) -> Path:
+  tenant_dir = get_content_dir(tenant_guid)
+  return tenant_dir / "vendors"

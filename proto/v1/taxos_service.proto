@@ -30,6 +30,8 @@ service TaxosApi {
   rpc DeleteBucket(DeleteBucketRequest) returns (DeleteBucketResponse);
   // Delete a receipt by GUID
   rpc DeleteReceipt(DeleteReceiptRequest) returns (DeleteReceiptResponse);
+  // List vendors for typeahead
+  rpc ListVendors(ListVendorsRequest) returns (ListVendorsResponse);
 }
 
 message AuthenticateRequest {
@@ -45,6 +47,11 @@ message Bucket {
   string                    name       = 2;
   google.protobuf.Timestamp created_at = 3;
   google.protobuf.Timestamp updated_at = 4;
+}
+
+message Vendor {
+  string guid = 1;
+  string name = 2;
 }
 
 message ReceiptAllocation {
@@ -168,4 +175,11 @@ message DeleteReceiptRequest {
 
 message DeleteReceiptResponse {
   bool success = 1;
+}
+
+message ListVendorsRequest {
+}
+
+message ListVendorsResponse {
+  repeated Vendor vendors = 1;
 }
