@@ -3,6 +3,8 @@ import os
 from image.build.command import BuildImage
 from proto.gen.command import GenProto
 
+from dev import BACKEND_ROOT, FRONTEND_ROOT
+
 REGISTRY = "htpc.lan:5000"
 BACKEND_IMAGE = f"{REGISTRY}/taxos-backend:latest"
 FRONTEND_IMAGE = f"{REGISTRY}/taxos-frontend:latest"
@@ -10,9 +12,11 @@ FRONTEND_IMAGE = f"{REGISTRY}/taxos-frontend:latest"
 
 def build_image():
   print("Building backend image...")
-  if os.system(f"docker build -t {BACKEND_IMAGE} -f backend/Dockerfile backend"):
+  os.chdir(BACKEND_ROOT)
+  if os.system(f"docker build -t {BACKEND_IMAGE} ."):
     raise RuntimeError("backend build failed")
-  if os.system(f"docker build -t {FRONTEND_IMAGE} -f frontend/Dockerfile frontend"):
+  os.chdir(FRONTEND_ROOT)
+  if os.system(f"docker build -t {FRONTEND_IMAGE} ."):
     raise RuntimeError("frontend build failed")
 
 
