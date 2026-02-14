@@ -413,6 +413,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 								<label className="label-caps">Vendor</label>
 								<input
 									ref={vendorRef}
+									tabIndex={1}
 									className="w-full text-lg font-semibold"
 									placeholder="e.g. Amazon"
 									value={vendor}
@@ -489,6 +490,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 										}}
 									/>
 									<input
+										tabIndex={4}
 										className="w-full text-sm"
 										style={{ paddingLeft: "2.5rem" }}
 										placeholder="Order / Invoice #"
@@ -517,6 +519,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 									<input
 										type="number"
 										step="0.01"
+										tabIndex={2}
 										className="w-full text-lg font-bold"
 										style={{ paddingLeft: "2.5rem" }}
 										placeholder="0.00"
@@ -542,6 +545,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 									/>
 									<input
 										type="datetime-local"
+										tabIndex={3}
 										className="w-full text-sm cursor-pointer"
 										style={{ paddingLeft: "2.5rem" }}
 										value={date}
@@ -707,6 +711,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 					<div>
 						<label className="label-caps">Notes</label>
 						<textarea
+							tabIndex={5}
 							className="w-full h-20 resize-none text-sm"
 							placeholder="Any additional details..."
 							value={notes}
@@ -725,6 +730,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 						</button>
 					)}
 					<button
+						tabIndex={6}
 						className={`btn btn-primary justify-center py-3 text-base ${
 							editingReceipt ? "flex-1" : "w-full"
 						}`}

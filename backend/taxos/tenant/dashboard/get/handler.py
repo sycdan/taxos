@@ -1,7 +1,7 @@
 import logging
 
-from taxos.receipt.entity import Receipt
 from taxos.bucket.repo.load.query import LoadBucketRepo
+from taxos.receipt.entity import Receipt
 from taxos.receipt.repo.load.command import LoadReceiptRepo
 from taxos.tenant.dashboard.entity import BucketSummary, Dashboard
 from taxos.tenant.dashboard.get.query import GetDashboard
