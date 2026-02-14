@@ -107,7 +107,7 @@ export class TaxosApiClient {
 			guid: params.guid,
 			vendor: params.vendor || "",
 			total: params.total || 0,
-			date: params.date ? dateToTimestamp(params.date) : undefined,
+			date: dateToTimestamp(params.date || new Date()),
 			timezone: "UTC",
 			notes: params.notes || "",
 			allocations: params.allocations || [],
