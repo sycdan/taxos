@@ -1,23 +1,31 @@
 import os
+import shlex
 
 import pytest
 
-from dev import BACKEND_ROOT, FRONTEND_ROOT
+from dev import BACKEND_ROOT, FRONTEND_ROOT, REPO_ROOT
 from dev.test.command import Test
 
 
-def handle(command: Test, *args):
-  cmd_args = ["--no-header", "--verbose", BACKEND_ROOT.as_posix()]
-  cmd_args.extend(args)
+def handle(command: Test, *tests):
+  pyt_args = ["--no-header", "--verbose", BACKEND_ROOT.as_posix()]
   if not command.no_integration:
-    cmd_args.append("--run-integration")
-  if command.test_pattern:
-    cmd_args.extend(["-k", command.test_pattern])
-  pytest.main(cmd_args)
+    pyt_args.append("--run-integration")
+  if tests:
+    pyt_args.extend(["-k", " or ".join(tests)])
+  pytest.main(pyt_args)
 
   if not command.no_integration:
-    os.chdir(FRONTEND_ROOT)
-    npm_cmd = "npm run test:integration"
-    if command.test_pattern:
-      npm_cmd += f" -- -t {command.test_pattern}"
+    npm_args = [
+      "npm",
+      "--prefix",
+      FRONTEND_ROOT.relative_to(REPO_ROOT).as_posix(),
+      "run",
+      "test:integration",
+      "--",
+      "--reporter=verbose",
+    ]
+    if tests:
+      npm_args.extend(["-t", shlex.quote("|".join(tests))])
+    npm_cmd = " ".join(npm_args)
     os.system(npm_cmd)
