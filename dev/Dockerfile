@@ -1,9 +1,9 @@
-FROM mcr.microsoft.com/devcontainers/python:1-3.12-bookworm
+FROM mcr.microsoft.com/devcontainers/base:bookworm
 
-# Copy and install dev requirements
-COPY dev/requirements.txt /tmp/dev-requirements.txt
-RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/dev-requirements.txt \
-  && rm /tmp/dev-requirements.txt
+# # Copy and install dev requirements
+# COPY requirements.txt /tmp/dev-requirements.txt
+# RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/dev-requirements.txt \
+#   && rm /tmp/dev-requirements.txt
 
 # Install Node.js 20
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \

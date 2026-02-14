@@ -3,12 +3,26 @@
 	"dockerComposeFile": [
 		"../docker-compose.yml"
 	],
-	"service": "devcontainer",
+	"service": "dev",
+	"remoteUser": "vscode",
 	"workspaceFolder": "/workspaces/taxos",
-	"postCreateCommand": "bash .devcontainer/bootstrap.sh",
+	"mounts": [
+		"source=${localEnv:USERPROFILE}/.config/git,target=/home/vscode/.config/git,type=bind,consistency=cached",
+		"source=${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
+	],
+	"containerEnv": {
+		"PYTHONPATH": "/workspaces/taxos/dev"
+	},
+	"postCreateCommand": "bash .devcontainer/on_create.sh",
+	"postStartCommand": "bash .devcontainer/on_start.sh",
+	"postAttachCommand": "bash .devcontainer/on_attach.sh",
 	"customizations": {
 		"vscode": {
 			"extensions": [
+				"GitHub.copilot",
+				"GitHub.copilot-chat",
+				"DrBlury.protobuf-vsc",
+				"charliermarsh.ruff",
 				"ms-python.python",
 				"ms-python.vscode-pylance",
 				"dbaeumer.vscode-eslint",
@@ -16,6 +30,11 @@
 			]
 		}
 	},
-	"features": {},
-	"remoteUser": "vscode"
+	"features": {
+		"ghcr.io/devcontainers/features/python:1": {
+			"version": "3.12"
+		},
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+	},
+	"shutdownAction": "none"
 }
