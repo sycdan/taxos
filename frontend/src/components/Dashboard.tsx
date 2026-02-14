@@ -47,7 +47,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 	React.useEffect(() => {
 		setActiveBucketId(UNALLOCATED_BUCKET_ID);
 		void refreshBuckets(startDate, endDate);
-	}, [startDate, endDate, setActiveBucketId, refreshBuckets]);
+	}, [startDate, endDate, setActiveBucketId]);
 
 	React.useEffect(() => {
 		const handleWindowDragOver = (e: DragEvent) => {

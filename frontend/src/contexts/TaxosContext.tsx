@@ -288,7 +288,6 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 		[
 			authenticated,
 			currentDateFilter,
-			buckets.length,
 			activeBucketId,
 			loadReceiptsForBucket,
 		],
