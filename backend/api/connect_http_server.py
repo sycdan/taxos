@@ -24,7 +24,6 @@ from taxos.context.tools import require_tenant, set_context
 from taxos.receipt.create.command import CreateReceipt
 from taxos.receipt.delete.command import DeleteReceipt
 from taxos.receipt.download_file import DownloadFile
-from taxos.receipt.entity import ReceiptRef
 from taxos.receipt.update.command import UpdateReceipt
 from taxos.tenant.dashboard.get.query import GetDashboard
 from taxos.tenant.list_receipts.query import ListReceipts
@@ -283,8 +282,7 @@ def list_receipts(req: messages.ListReceiptsRequest):
 @require_auth
 @rpc_endpoint(messages.DeleteBucketRequest)
 def delete_bucket(req: messages.DeleteBucketRequest):
-  bucket_ref = BucketRef(req.guid)
-  success = DeleteBucket(ref=bucket_ref).execute()
+  success = DeleteBucket(ref=req.guid).execute()
   return messages.DeleteBucketResponse(success=success)
 
 
@@ -313,8 +311,7 @@ def update_receipt(req: messages.UpdateReceiptRequest):
 @require_auth
 @rpc_endpoint(messages.DeleteReceiptRequest)
 def delete_receipt(req: messages.DeleteReceiptRequest):
-  receipt_ref = ReceiptRef(req.guid)
-  success = DeleteReceipt(receipt_ref).execute()
+  success = DeleteReceipt(ref=req.guid).execute()
   return messages.DeleteReceiptResponse(success=success)
 
 
