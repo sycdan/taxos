@@ -11,7 +11,7 @@
 		"source=${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
 	],
 	"containerEnv": {
-		"PYTHONPATH": "/workspaces/taxos/dev"
+		"PYTHONPATH": "/workspaces/taxos/backend:/workspaces/taxos/dev"
 	},
 	"postCreateCommand": "bash .devcontainer/on_create.sh",
 	"postStartCommand": "bash .devcontainer/on_start.sh",
