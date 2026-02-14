@@ -32,9 +32,7 @@ services:
     command: >
       bash -c "npm install &&
                npm run dev"
-
     ports:
       - "5173:5173"
     environment:
       - VITE_GRPC_API_URL=http://localhost:50051
-      - CHOKIDAR_USEPOLLING=true
