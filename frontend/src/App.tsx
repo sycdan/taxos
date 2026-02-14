@@ -343,7 +343,7 @@ const App: React.FC = () => {
 						}
 					}}
 					onDelete={deleteReceipt}
-					buckets={buckets}
+					bucketSummaries={bucketSummaries}
 					vendorNames={vendorNames}
 					initialFile={uploadedFile}
 					editingReceipt={editingReceipt}

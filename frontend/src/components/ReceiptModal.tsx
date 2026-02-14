@@ -11,7 +11,12 @@ import {
 	Unlock,
 	Download,
 } from "lucide-react";
-import type { Bucket, Receipt, ReceiptAllocation } from "../types";
+import type {
+	Bucket,
+	BucketSummary,
+	Receipt,
+	ReceiptAllocation,
+} from "../types";
 import { format } from "date-fns";
 import UploadProgressWidget from "./UploadProgressWidget";
 import { uploadReceiptFile, downloadReceiptFile } from "../api/client";
@@ -21,7 +26,7 @@ interface ReceiptModalProps {
 	onClose: () => void;
 	onSave: (receipt: Omit<Receipt, "id">) => void;
 	onDelete: (id: string) => void;
-	buckets: Bucket[];
+	bucketSummaries: BucketSummary[];
 	vendorNames?: string[];
 	initialFile?: string;
 	editingReceipt?: Receipt;
@@ -44,7 +49,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 	onClose,
 	onSave,
 	onDelete,
-	buckets,
+	bucketSummaries,
 	vendorNames = [],
 	initialFile,
 	editingReceipt,
@@ -308,13 +313,17 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 	// Must be called before early return to avoid hook order violations
 	const bucketMap = useMemo(() => {
 		const map = new Map<string, Bucket>();
-		buckets.forEach((b) => map.set(b.id, b));
+		bucketSummaries.forEach((s) => map.set(s.bucket.id, s.bucket));
 		return map;
-	}, [buckets]);
+	}, [bucketSummaries]);
 
-	const availableBuckets = buckets.filter(
-		(b) => !allocations.some((a) => a.bucketId === b.id),
-	);
+	// Sort buckets by receiptCount (descending) to show most-used first
+	const availableBuckets = useMemo(() => {
+		return bucketSummaries
+			.filter((s) => !allocations.some((a) => a.bucketId === s.bucket.id))
+			.sort((a, b) => b.receiptCount - a.receiptCount)
+			.map((s) => s.bucket);
+	}, [bucketSummaries, allocations]);
 	const isOverAllocated = allocatedTotal > total;
 
 	if (!isOpen) return null;
@@ -693,18 +702,30 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 							)}
 						</div>
 
-						{/* Quick Add Chips */}
-						<div className="mt-4 flex flex-wrap gap-1">
-							{availableBuckets.map((bucket) => (
-								<button
-									key={bucket.id}
-									className="chip"
-									onClick={() => handleAddBucket(bucket.id)}
-								>
-									<Plus size={12} />
-									{bucket.name}
-								</button>
-							))}
+						{/* Quick Add Chips - Styled for better handling of many buckets */}
+						<div
+							className="mt-4"
+							style={{
+								maxHeight: "200px",
+								overflowY: "auto",
+								padding: "0.5rem",
+								border: "1px solid rgba(255,255,255,0.1)",
+								borderRadius: "0.75rem",
+								backgroundColor: "rgba(255,255,255,0.02)",
+							}}
+						>
+							<div className="flex flex-wrap gap-1">
+								{availableBuckets.map((bucket) => (
+									<button
+										key={bucket.id}
+										className="chip"
+										onClick={() => handleAddBucket(bucket.id)}
+									>
+										<Plus size={12} />
+										{bucket.name}
+									</button>
+								))}
+							</div>
 						</div>
 					</div>
 
