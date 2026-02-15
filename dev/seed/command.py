@@ -2,10 +2,10 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Nuke:
+class Seed:
   """Reset the dev environment."""
 
   def execute(self):
-    from dev.nuke.handler import handle
+    from dev.seed.handler import handle
 
     handle(self)

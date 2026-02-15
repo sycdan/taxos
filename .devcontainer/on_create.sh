@@ -6,3 +6,5 @@ git clone https://github.com/sycdan/dotfiles.git ~/dotfiles \
   && bash ~/dotfiles/install.sh
 
 sudo echo "source .venvrc" >> ~/.bashrc
+
+scaf . --call dev/seed

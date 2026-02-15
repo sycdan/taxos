@@ -9,6 +9,8 @@ It is assumed that all work will be done within the devcontainer, not on your lo
 - Install the Dev Containers VSCode extension: `ms-vscode-remote.remote-containers`
 - From the palette, select: `Dev Containers: Reopen in Container`
 
+A dev tenant will be created along with the dev container.
+
 ### Dev Commands
 
 Aliases are available for Scaf commands within the devcontainer (sourced from `.venvrc`).
@@ -58,7 +60,7 @@ It is possible to debug either backend tests or endpoint hits via VSCode launch 
 			"justMyCode": false
 		},
 		{
-			"name": "Dev Test Domain",
+			"name": "Dev: Test Domain",
 			"type": "debugpy",
 			"request": "launch",
 			"module": "scaf",
