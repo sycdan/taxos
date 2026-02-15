@@ -1,18 +1,18 @@
-import subprocess
 import shutil
+import subprocess
+
+from taxos import DATA_DIR
 
 from dev.nuke.command import NukeDev
-from taxos import BUCKETS_DIR, RECEIPTS_DIR
 
 
 def handle(command: NukeDev):
-  print("💣 Nuking dev environment...")
+  print("💀 Killing app containers...")
+  subprocess.run(["docker", "compose", "down", "-v", "backend", "--remove-orphans"])
+  subprocess.run(["docker", "compose", "down", "-v", "frontend", "--remove-orphans"])
 
-  if command.include_data:
-    shutil.rmtree(BUCKETS_DIR,ignore_errors=True)
-    shutil.rmtree(RECEIPTS_DIR,ignore_errors=True)
+  print("💣 Nuking data...")
+  shutil.rmtree(DATA_DIR, ignore_errors=True)
+  DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-  result = subprocess.run(["docker", "compose", "down"], )
-  result = subprocess.run(["docker", "compose", "kill"])
-
-  print("✅ Dev environment nuked.")
+  print("✅ Dev environment nuked. You can now reload your dev container.")
