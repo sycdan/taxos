@@ -9,7 +9,9 @@ It is assumed that all work will be done within the devcontainer, not on your lo
 - Install the Dev Containers VSCode extension: `ms-vscode-remote.remote-containers`
 - From the palette, select: `Dev Containers: Reopen in Container`
 
-A dev tenant will be created along with the dev container.
+The frontend will be running on port 5173.
+
+A dev tenant will be created along with the dev container, and your access token is in `./backend/data/access_tokens`.
 
 ### Dev Commands
 

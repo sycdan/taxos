@@ -1,0 +1,1 @@
+scaf . --call dev/seed
