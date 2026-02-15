@@ -17,6 +17,10 @@ A dev tenant will be created along with the dev container, and your access token
 
 Aliases are available for Scaf commands within the devcontainer (sourced from `.venvrc`).
 
+```bash
+dev.seed
+```
+
 You can also run them directly (from repo root):
 
 ```bash
