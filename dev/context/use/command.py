@@ -1,4 +1,7 @@
+import sys
 from dataclasses import dataclass
+
+sys.path.append("./backend")
 
 from taxos.tenant.entity import TenantRef
 

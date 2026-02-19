@@ -1,5 +1,9 @@
-from backend.taxos.context.tools import get_default_context_file, require_tenant
-from backend.taxos.tools import json
+import sys
+
+sys.path.append("./backend")
+from taxos.context.tools import get_default_context_file, require_tenant
+from taxos.tools import json
+
 from dev.context.use.command import UseContext
 
 
