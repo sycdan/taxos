@@ -6,5 +6,3 @@ services:
     volumes:
       - .:/workspaces/taxos
       - /var/run/docker.sock:/var/run/docker.sock
-    working_dir: /workspaces/taxos
-    user: "vscode"

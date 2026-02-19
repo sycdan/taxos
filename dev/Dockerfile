@@ -58,6 +58,7 @@ RUN curl -sSL \
 ENV PATH="/home/vscode/.local/bin:${PATH}"
 ENV PYTHONPATH="/workspaces/taxos/backend:/workspaces/taxos/dev"
 
+WORKDIR /workspaces/taxos
+
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["sleep", "infinity"]
-# CMD ["docker", "compose", "up", "--watch"]
+CMD ["docker", "compose", "up", "--watch", "--force-recreate"]
