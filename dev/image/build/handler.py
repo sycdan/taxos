@@ -1,13 +1,15 @@
 import os
+import datetime as dt
 
 from image.build.command import BuildImage
 from proto.gen.command import GenProto
 
 from dev import BACKEND_ROOT, FRONTEND_ROOT
 
+DATE_VERSION = dt.datetime.now().strftime("%Y%m%d%H%M%S")
 REGISTRY = "htpc.lan:5000"
-BACKEND_IMAGE = f"{REGISTRY}/taxos-backend:latest"
-FRONTEND_IMAGE = f"{REGISTRY}/taxos-frontend:latest"
+BACKEND_IMAGE = f"{REGISTRY}/taxos-backend:{DATE_VERSION}"
+FRONTEND_IMAGE = f"{REGISTRY}/taxos-frontend:{DATE_VERSION}"
 
 
 def build_image():
