@@ -59,7 +59,7 @@ It is possible to debug either backend tests or endpoint hits via VSCode launch 
 			"type": "debugpy",
 			"request": "attach",
 			"connect": {
-				"host": "localhost",
+				"host": "backend",
 				"port": 5678
 			},
 			"pathMappings": [
