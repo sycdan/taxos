@@ -40,8 +40,11 @@ def setup_volume() -> None:
             "import sys\n"
             f"sys.path.insert(0, {DEBUGPY_VOL!r})\n"
             "import debugpy\n"
-            "debugpy.listen(('0.0.0.0', 5678))\n"
-            "print('[backend] debugpy listening on :5678')\n"
+            "try:\n"
+            "    debugpy.listen(('0.0.0.0', 5678))\n"
+            "    print('[backend] debugpy listening on :5678')\n"
+            "except RuntimeError:\n"
+            "    print('[backend] debugpy already listening, skipping')\n"
         )
     print(f"[sidecar] Wrote inject script to {INJECT_SCRIPT}")
 
@@ -134,6 +137,7 @@ def main() -> None:
     setup_volume()
 
     while True:
+      try:
         print("[sidecar] Waiting for backend process...")
         pid: int | None = None
         while pid is None:
@@ -147,6 +151,9 @@ def main() -> None:
         wait_for_exit(pid)
         print("[sidecar] Process exited — waiting for next backend process...")
         time.sleep(1)
+      except Exception as e:
+        print(f"[sidecar] Error in main loop: {e} - restarting")
+        time.sleep(3)
 
 
 if __name__ == "__main__":

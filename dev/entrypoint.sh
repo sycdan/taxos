@@ -3,7 +3,6 @@ set -e
 
 # One-time user setup: clone dotfiles
 if [ ! -d "$HOME/dotfiles" ]; then
-  echo "Cloning dotfiles..."
   git clone https://github.com/sycdan/dotfiles.git ~/dotfiles \
     && bash ~/dotfiles/install.sh
 fi
