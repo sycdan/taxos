@@ -17,6 +17,7 @@ def handle(command: Test, *tests):
 
   if not command.no_integration:
     npm_args = [
+      "VITE_GRPC_API_URL=http://backend:50051",
       "npm",
       "--prefix",
       FRONTEND_ROOT.relative_to(REPO_ROOT).as_posix(),
