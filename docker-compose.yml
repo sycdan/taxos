@@ -52,18 +52,40 @@ services:
       - SYS_PTRACE # required for gdb to inject into the backend process
     depends_on:
       - backend
+    # Mirror backend's watch paths so Compose restarts both services together,
+    # respecting depends_on order (backend first, then sidecar).
+    develop:
+      watch:
+        - action: restart
+          path: ./backend
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - data/
 
   frontend:
-    image: node:20-slim
-    volumes:
-      - ./frontend:/app
-    working_dir: /app
-    command: >
-      bash -c "npm install && npm run dev"
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    # No bind-mount of the whole dir — npm ci runs at build time and is layer-cached.
+    # Source changes are synced in by compose watch; Vite HMR picks them up instantly.
     ports:
       - "5173:5173"
     environment:
       - VITE_GRPC_API_URL=http://localhost:50051
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend/src
+          target: /app/src
+        - action: sync
+          path: ./frontend/public
+          target: /app/public
+        - action: sync
+          path: ./frontend/index.html
+          target: /app/index.html
+        - action: rebuild
+          path: ./frontend/package.json
 
 volumes:
   debugpy-vol: # ephemeral: sidecar copies debugpy here at startup

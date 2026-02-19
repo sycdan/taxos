@@ -1,4 +1,4 @@
-FROM node:20 AS build
+FROM node:20
 
 WORKDIR /app
 
@@ -10,16 +10,3 @@ RUN npm ci
 COPY . ./
 
 CMD ["npm", "run", "dev"]
-
-# Production stage - serve built files
-# FROM nginx:alpine
-
-# # Copy built files from build stage
-# COPY --from=build /app/dist /usr/share/nginx/html
-
-# # Copy nginx configuration
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# EXPOSE 80
-
-# CMD ["nginx", "-g", "daemon off;"]
