@@ -12,10 +12,8 @@ if ! grep -q 'source /workspaces/taxos/.venvrc' ~/.bashrc 2>/dev/null; then
   echo "source /workspaces/taxos/.venvrc" >> ~/.bashrc
 fi
 
-# Create docker alias that uses sudo (no password required)
-if ! grep -q 'alias docker=' ~/.bashrc 2>/dev/null; then
-  echo 'alias docker="sudo /usr/local/bin/docker"' >> ~/.bashrc
-fi
+# Fix docker socket permissions so vscode user can connect
+sudo chmod 666 /var/run/docker.sock 2>/dev/null || true
 
 # Seed dev data (idempotent)
 cd /workspaces/taxos

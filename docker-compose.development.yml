@@ -7,5 +7,4 @@ services:
       - .:/workspaces/taxos
       - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /workspaces/taxos
-    group_add:
-      - "999"  # Docker group GID in Docker Desktop VM
+    user: "vscode"
