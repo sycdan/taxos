@@ -1,8 +1,8 @@
 services:
   dev:
     build:
-      context: ./dev
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: dev/Dockerfile
     volumes:
       - .:/workspaces/taxos
     working_dir: /workspaces/taxos
