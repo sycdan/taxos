@@ -1,7 +1,10 @@
 import json
 import os
 import shutil
+import sys
 import uuid
+
+sys.path.append("./backend")
 
 from taxos import ACCESS_TOKENS_DIR, DATA_DIR, TENANTS_DIR
 

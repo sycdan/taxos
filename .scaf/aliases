@@ -4,5 +4,6 @@ DOMAIN_ROOT="$(dirname -- "$SCAF_FOLDER")"
 # Scaf domain action aliases (added as actions are called):
 alias dev.proto.gen="scaf call $DOMAIN_ROOT/dev/proto/gen"
 alias dev.scratch="scaf call $DOMAIN_ROOT/dev/scratch"
+alias dev.seed="scaf call $DOMAIN_ROOT/dev/seed"
 alias dev.test="scaf call $DOMAIN_ROOT/dev/test"
 alias dev.use-context="scaf call $DOMAIN_ROOT/dev/context/use"

@@ -15,7 +15,7 @@ A dev tenant will be created along with the dev container, and your access token
 
 ### Dev Commands
 
-Aliases are available for Scaf commands within the devcontainer (sourced from `.venvrc`).
+Aliases are available for [scaf](http://scaf.sycdan.com) commands within the devcontainer (sourced from `.venvrc`).
 
 ```bash
 # Reset data
@@ -28,14 +28,10 @@ dev.gen-proto
 You can also run them directly (from repo root):
 
 ```bash
-scaf . --call path/to/action/dir -- plus args and --flags
+scaf call path/to/action/dir plus args --flags
 ```
 
-### Adding Actions
-
-```bash
-scaf.create-action path/to/new/action
-```
+Scaf will create a called action if it does not exist.
 
 ## Testing
 
@@ -74,7 +70,7 @@ It is possible to debug either backend tests or endpoint hits via VSCode launch 
 			"type": "debugpy",
 			"request": "launch",
 			"module": "scaf",
-			"args": ["${workspaceFolder}", "--call=dev/test", "--", "happy"],
+			"args": ["${workspaceFolder}", "call", "dev/test", "happy"],
 			"env": {
 				"PYTHONPATH": "${workspaceFolder}"
 			},

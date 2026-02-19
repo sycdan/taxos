@@ -1,1 +1,1 @@
-scaf . --call dev/seed
+scaf call dev/seed
