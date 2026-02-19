@@ -4,6 +4,8 @@ It is assumed that all work will be done within the devcontainer, not on your lo
 
 ## Development
 
+**Note:** On Windows, you'll need to copy [env.example](env.example) to `.env` and update it based on the instructions inside.
+
 ### Quick Start
 
 - Install the Dev Containers VSCode extension: `ms-vscode-remote.remote-containers`
