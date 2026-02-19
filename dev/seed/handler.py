@@ -37,7 +37,7 @@ def handle(command: Seed):
   default_context_file = DATA_DIR / "default_context.json"
   if default_context_file.exists():
     print("⚠️  Dev environment already seeded. Skipping.")
-    print("💡 Run dev.nuke if you want to start over.")
+    print("💡 Add --nuke if you want to start over.")
     return print_access_token()
 
   tenant_guid = uuid.uuid4().hex
