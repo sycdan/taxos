@@ -45,12 +45,15 @@ dev.test time --no-integration
 
 It is possible to debug either backend tests or endpoint hits via VSCode launch commands:
 
+**.vscode/launch.json:**
+
 ```json
 {
 	"version": "0.2.0",
 	"configurations": [
 		{
 			"name": "Backend: Attach Debugger",
+			"preLaunchTask": "backend-debug",
 			"type": "debugpy",
 			"request": "attach",
 			"connect": {
@@ -70,12 +73,27 @@ It is possible to debug either backend tests or endpoint hits via VSCode launch 
 			"type": "debugpy",
 			"request": "launch",
 			"module": "scaf",
-			"args": ["${workspaceFolder}", "call", "dev/test", "happy"],
+			"args": ["call", "dev/test", "happy"],
 			"env": {
 				"PYTHONPATH": "${workspaceFolder}"
 			},
 			"justMyCode": false,
 			"console": "integratedTerminal"
+		}
+	]
+}
+```
+
+**.vscode/tasks.json:**
+
+```json
+{
+	"tasks": [
+		{
+			"label": "backend-debug",
+			"type": "shell",
+			"command": "docker compose up backend-debug -d --force-recreate",
+			"problemMatcher": []
 		}
 	]
 }

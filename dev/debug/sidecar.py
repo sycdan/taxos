@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Debug sidecar entrypoint.
 
-Copies debugpy into the shared /debugpy-vol so the backend can import it.
-Then loops: finds the backend Python process, injects debugpy via gdb so it
-listens on :5678, and waits for the process to exit before repeating
-(handles hot-reload container restarts automatically).
+Copies debugpy into the shared /debugpy-vol so the backend can import it,
+then finds the backend Python process and injects debugpy so it listens on
+:5678.  Exits immediately after injection — run again (via the VS Code
+launch task) whenever you need to re-attach after a hot-reload.
 """
 
 import os
@@ -117,43 +117,31 @@ def inject_debugpy(pid: int) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Process lifecycle
+# Main (single-shot)
 # ---------------------------------------------------------------------------
 
-def wait_for_exit(pid: int) -> None:
-    while True:
-        try:
-            os.kill(pid, 0)  # signal 0 = check existence
-            time.sleep(1)
-        except OSError:
-            break
+FIND_BACKEND_TIMEOUT = 30  # seconds
 
-
-# ---------------------------------------------------------------------------
-# Main loop
-# ---------------------------------------------------------------------------
 
 def main() -> None:
     setup_volume()
 
-    while True:
-      try:
-        print("[sidecar] Waiting for backend process...")
-        pid: int | None = None
-        while pid is None:
-            pid = find_backend_pid()
-            if pid is None:
-                time.sleep(1)
-
-        print(f"[sidecar] Found backend at PID {pid} — injecting debugpy on :5678")
-        inject_debugpy(pid)
-        print(f"[sidecar] Waiting for PID {pid} to exit...")
-        wait_for_exit(pid)
-        print("[sidecar] Process exited — waiting for next backend process...")
+    print("[sidecar] Waiting for backend process...")
+    deadline = time.time() + FIND_BACKEND_TIMEOUT
+    pid: int | None = None
+    while time.time() < deadline:
+        pid = find_backend_pid()
+        if pid is not None:
+            break
         time.sleep(1)
-      except Exception as e:
-        print(f"[sidecar] Error in main loop: {e} - restarting")
-        time.sleep(3)
+
+    if pid is None:
+        print(f"[sidecar] Backend not found within {FIND_BACKEND_TIMEOUT}s — giving up")
+        sys.exit(1)
+
+    print(f"[sidecar] Found backend at PID {pid} — injecting debugpy on :5678")
+    inject_debugpy(pid)
+    print("[sidecar] Done — debugpy listening on :5678. Re-run this task to re-attach.")
 
 
 if __name__ == "__main__":

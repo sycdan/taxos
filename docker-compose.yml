@@ -50,22 +50,12 @@ services:
     network_mode: "service:backend" # uses backend's network (port 5678 is mapped there)
     cap_add:
       - SYS_PTRACE # required for gdb to inject into the backend process
-    # Restart on unexpected crashes where backend container is unchanged (pid: still valid).
-    # Watch-triggered restarts (backend recreated) are handled by develop.watch below,
-    # which re-resolves pid: "service:backend" correctly via Compose orchestration.
-    restart: on-failure
+    # No automatic restart — the sidecar runs once per attach (via the VS Code
+    # launch task) and exits after injecting debugpy.  Re-run the task to re-attach
+    # after a hot-reload.
+    restart: "no"
     depends_on:
       - backend
-    # Mirror backend's watch paths so Compose restarts both services together,
-    # respecting depends_on order (backend first, then sidecar).
-    develop:
-      watch:
-        - action: restart
-          path: ./backend
-          ignore:
-            - __pycache__/
-            - "*.pyc"
-            - data/
 
   frontend:
     build:
