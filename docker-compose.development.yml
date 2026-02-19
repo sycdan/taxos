@@ -1,0 +1,11 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: dev/Dockerfile
+    volumes:
+      - .:/workspaces/taxos
+      - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /workspaces/taxos
+    group_add:
+      - "999"  # Docker group GID in Docker Desktop VM

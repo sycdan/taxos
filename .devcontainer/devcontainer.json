@@ -1,7 +1,7 @@
 {
 	"name": "Taxos",
 	"dockerComposeFile": [
-		"../docker-compose.yml"
+		"../docker-compose.development.yml"
 	],
 	"service": "dev",
 	"remoteUser": "vscode",
@@ -10,10 +10,7 @@
 		"source=${localEnv:USERPROFILE}/.config/git,target=/home/vscode/.config/git,type=bind,consistency=cached",
 		"source=${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
 	],
-	"containerEnv": {
-		"PYTHONPATH": "/workspaces/taxos/backend:/workspaces/taxos/dev"
-	},
-	// Removed postCreateCommand, postStartCommand, postAttachCommand for editor-agnostic setup
+	"containerEnv": {},
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -27,9 +24,6 @@
 				"esbenp.prettier-vscode"
 			]
 		}
-	},
-	"features": {
-		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
 	},
 	"shutdownAction": "none"
 }
