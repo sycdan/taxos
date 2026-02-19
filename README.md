@@ -22,7 +22,7 @@ Aliases are available for [scaf](http://scaf.sycdan.com) commands within the dev
 dev.seed [--nuke]
 
 # Make classes from proto
-dev.gen-proto
+dev.proto.gen
 ```
 
 You can also run them directly (from repo root):
