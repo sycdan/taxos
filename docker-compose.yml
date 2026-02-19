@@ -1,16 +1,4 @@
 services:
-  dev:
-    build:
-      context: .
-      dockerfile: dev/Dockerfile
-    volumes:
-      - .:/workspaces/taxos
-    working_dir: /workspaces/taxos
-    command: sleep infinity
-    depends_on:
-      - backend
-      - frontend
-
   backend:
     build:
       context: ./backend
