@@ -5,6 +5,7 @@ import React, {
 	useEffect,
 	useCallback,
 	useMemo,
+	useRef,
 	type ReactNode,
 } from "react";
 import { Timestamp } from "@bufbuild/protobuf";
@@ -83,6 +84,13 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 	}, [receipts]);
 	const [loading, setLoading] = useState(true);
 	const [authenticated] = useState(!!getToken());
+	// Use refs for date filter and activeBucketId so refreshBuckets doesn't
+	// recreate itself on every call (which would otherwise cause loop issues).
+	const currentDateFilterRef = useRef<{ start?: Date; end?: Date }>({});
+	const activeBucketIdRef = useRef<string | null>(null);
+	const isRefreshingRef = useRef(false);
+	// Keep a state copy so triggerRefresh (called after mutations) sees the
+	// latest dates without needing to be in refreshBuckets' dep array.
 	const [currentDateFilter, setCurrentDateFilter] = useState<{
 		start?: Date;
 		end?: Date;
@@ -164,17 +172,26 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 
 	const refreshBuckets = useCallback(
 		async (startDate?: Date, endDate?: Date, force?: boolean) => {
+			// Prevent concurrent requests
+			if (isRefreshingRef.current) {
+				console.log("Skipping GetDashboard - refresh already in flight");
+				return;
+			}
+
 			// Only refresh if dates have actually changed or it's the initial load
+			// Use the ref so this check is always against the latest value,
+			// even when called from a stale closure.
+			const currentFilter = currentDateFilterRef.current;
 			const sameStart =
-				(!startDate && !currentDateFilter.start) ||
+				(!startDate && !currentFilter.start) ||
 				(startDate &&
-					currentDateFilter.start &&
-					startDate.getTime() === currentDateFilter.start.getTime());
+					currentFilter.start &&
+					startDate.getTime() === currentFilter.start.getTime());
 			const sameEnd =
-				(!endDate && !currentDateFilter.end) ||
+				(!endDate && !currentFilter.end) ||
 				(endDate &&
-					currentDateFilter.end &&
-					endDate.getTime() === currentDateFilter.end.getTime());
+					currentFilter.end &&
+					endDate.getTime() === currentFilter.end.getTime());
 
 			if (!force && sameStart && sameEnd && buckets.length > 0) {
 				console.log(
@@ -183,6 +200,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				return;
 			}
 
+			isRefreshingRef.current = true;
 			try {
 				setLoading(true);
 				if (!authenticated) {
@@ -191,6 +209,9 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				}
 
 				console.log("Making GetDashboard request with date filter change...");
+				// Update both the ref (immediately visible to future calls) and
+				// the state (used by triggerRefresh after mutations).
+				currentDateFilterRef.current = { start: startDate, end: endDate };
 				setCurrentDateFilter({ start: startDate, end: endDate });
 
 				const response = await client.getDashboard({
@@ -256,16 +277,17 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 
 				// If we have an active bucket that ISN'T unallocated, reload that specific bucket's receipts
 				// Otherwise, show unallocated receipts (default dashboard view)
+				const currentActiveBucketId = activeBucketIdRef.current;
 				if (
-					activeBucketId &&
-					activeBucketId !== UNALLOCATED_BUCKET_ID &&
+					currentActiveBucketId &&
+					currentActiveBucketId !== UNALLOCATED_BUCKET_ID &&
 					startDate &&
 					endDate
 				) {
-					console.log(`Refreshing active bucket: ${activeBucketId}`);
+					console.log(`Refreshing active bucket: ${currentActiveBucketId}`);
 					// We need to call loadReceiptsForBucket here to get the latest data for the specific bucket
 					// This effectively "refreshes" the view without switching back to unallocated
-					void loadReceiptsForBucket(activeBucketId, startDate, endDate);
+					void loadReceiptsForBucket(currentActiveBucketId, startDate, endDate);
 				} else {
 					// Default view is unallocated if no specific bucket is being loaded
 					setCurrentReceiptsList(apiUnallocatedReceipts);
@@ -282,15 +304,15 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 			} catch (error) {
 				console.error("Failed to load dashboard:", error);
 			} finally {
+				isRefreshingRef.current = false;
 				setLoading(false);
 			}
 		},
-		[
-			authenticated,
-			currentDateFilter,
-			activeBucketId,
-			loadReceiptsForBucket,
-		],
+		// Intentionally omit currentDateFilter and activeBucketId: we read them
+		// via refs so that this callback stays stable and doesn't cause the
+		// Dashboard useEffect to re-fire in a loop.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[authenticated, loadReceiptsForBucket],
 	);
 
 	// Don't load buckets on mount - let Dashboard call refreshBuckets with date filter
