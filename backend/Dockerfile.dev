@@ -1,9 +1,8 @@
 FROM mcr.microsoft.com/devcontainers/python:3.0.4-3.14-bookworm
 
 COPY ./requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt \
-  && rm /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 RUN pip install --no-cache-dir debugpy
 
-CMD [ "python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "api/connect_http_server.py" ]
+CMD [ "python", "-Xfrozen_modules=off", "runserver.py" ]
