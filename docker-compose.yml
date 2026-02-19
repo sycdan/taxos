@@ -21,7 +21,7 @@ services:
     # The debug sidecar loop re-attaches debugpy automatically after each restart.
     develop:
       watch:
-        - action: restart
+        - action: rebuild
           path: ./backend
           ignore:
             - __pycache__/
