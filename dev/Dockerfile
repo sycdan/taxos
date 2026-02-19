@@ -59,4 +59,5 @@ ENV PATH="/home/vscode/.local/bin:${PATH}"
 ENV PYTHONPATH="/workspaces/taxos/backend:/workspaces/taxos/dev"
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["docker", "compose", "up", "--watch"]
+CMD ["sleep", "infinity"]
+# CMD ["docker", "compose", "up", "--watch"]

@@ -4,7 +4,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     volumes:
-      - ./backend:/app
+      - ${CODE_ROOT:-.}/backend:/app
       - debugpy-vol:/debugpy-vol # shared with sidecar: contains debugpy + inject script
     working_dir: /app
     ports:
