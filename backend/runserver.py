@@ -1,21 +1,14 @@
-"""Development only"""
+"""Dev-mode entrypoint.
 
-import debugpy
+Debugpy is injected by Dockerfile.dev via `python -m debugpy`, so this file
+just starts the app. Hot reload is provided by Flask's built-in reloader:
+any file change that lands in the container (via the bind mount) causes the
+server to restart automatically — no container restart needed.
 
-DEBUG_ADDR = ("0.0.0.0", 5678)
-
-if not debugpy.is_client_connected():
-  try:
-    debugpy.listen(DEBUG_ADDR)
-    print(f"Debugger listening on {DEBUG_ADDR[1]}")
-  except Exception as e:
-    print(f"Debugger already active or port in use: {e}")
-
-# Optional: wait for VS Code only if we successfully started listening
-if not debugpy.is_client_connected():
-  print("Waiting for debugger attach...")
-  debugpy.wait_for_client()
+To debug: use the "Backend: Attach Debugger" launch config in VS Code.
+"""
 
 import api.connect_http_server as server
 
 server.main()
+

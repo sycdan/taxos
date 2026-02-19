@@ -13,9 +13,7 @@
 	"containerEnv": {
 		"PYTHONPATH": "/workspaces/taxos/backend:/workspaces/taxos/dev"
 	},
-	"postCreateCommand": "bash .devcontainer/on_create.sh",
-	"postStartCommand": "bash .devcontainer/on_start.sh",
-	"postAttachCommand": "bash .devcontainer/on_attach.sh",
+	// Removed postCreateCommand, postStartCommand, postAttachCommand for editor-agnostic setup
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -31,9 +29,6 @@
 		}
 	},
 	"features": {
-		"ghcr.io/devcontainers/features/python:1": {
-			"version": "3.14"
-		},
 		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
 	},
 	"shutdownAction": "none"

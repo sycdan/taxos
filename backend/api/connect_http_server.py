@@ -411,7 +411,7 @@ def authenticate(req: messages.AuthenticateRequest):
 def main():
   logging.basicConfig(level=logging.DEBUG)
   logger.info("Starting ConnectRPC HTTP server on port 50051...")
-  app.run(host="0.0.0.0", port=50051, debug=True, use_reloader=True)
+  app.run(host="0.0.0.0", port=50051, debug=False, use_reloader=False)
 
 
 if __name__ == "__main__":

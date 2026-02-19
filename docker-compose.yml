@@ -7,7 +7,6 @@ services:
       - .:/workspaces/taxos
     working_dir: /workspaces/taxos
     command: sleep infinity
-    network_mode: service:backend
     depends_on:
       - backend
       - frontend
@@ -15,23 +14,56 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     volumes:
-      - .:/workspaces/taxos
-    working_dir: /workspaces/taxos/backend
+      - ./backend:/app
+      - debugpy-vol:/debugpy-vol # shared with sidecar: contains debugpy + inject script
+    working_dir: /app
     ports:
-      - "5678:5678"
       - "50051:50051"
+      - "5678:5678" # debugpy via sidecar (shares this network namespace)
+    environment:
+      - PYTHONPATH=/app:/debugpy-vol # /debugpy-vol populated by sidecar at runtime
+    # init: true ensures Python is NOT PID 1 — PID 1 cannot be ptrace'd by gdb
+    init: true
+    # -Xfrozen_modules=off is required for debugpy to instrument stdlib correctly
+    command: ["python", "-Xfrozen_modules=off", "api/connect_http_server.py"]
+    # Hot reload for dev: compose watch restarts the container when source files
+    # change. The bind mount means the new code is already in place on restart.
+    # The debug sidecar loop re-attaches debugpy automatically after each restart.
+    develop:
+      watch:
+        - action: restart
+          path: ./backend
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - data/
+
+  backend-debug:
+    build:
+      context: ./dev/debug
+      dockerfile: Dockerfile
+    volumes:
+      - debugpy-vol:/debugpy-vol # sidecar populates this; backend reads from it
+    pid: "service:backend" # share PID namespace so pgrep can see backend procs
+    network_mode: "service:backend" # uses backend's network (port 5678 is mapped there)
+    cap_add:
+      - SYS_PTRACE # required for gdb to inject into the backend process
+    depends_on:
+      - backend
 
   frontend:
-    image: mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm
+    image: node:20-slim
     volumes:
-      - .:/workspaces/taxos
-    working_dir: /workspaces/taxos/frontend
+      - ./frontend:/app
+    working_dir: /app
     command: >
-      bash -c "npm install &&
-               npm run dev"
+      bash -c "npm install && npm run dev"
     ports:
       - "5173:5173"
     environment:
       - VITE_GRPC_API_URL=http://localhost:50051
+
+volumes:
+  debugpy-vol: # ephemeral: sidecar copies debugpy here at startup
