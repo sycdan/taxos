@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 
-# One-time user setup: clone dotfiles
-if [ ! -d "$HOME/dotfiles" ]; then
-  git clone https://github.com/sycdan/dotfiles.git ~/dotfiles \
-    && bash ~/dotfiles/install.sh
+# One-time env setup
+if [ ! -d "$HOME/mi" ]; then
+  git clone https://github.com/sycdan/mi.git ~/mi \
+    && bash ~/mi/dotfiles/install.sh
 fi
 
 # Ensure .venvrc is sourced in interactive shells
