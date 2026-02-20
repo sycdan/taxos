@@ -157,7 +157,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 				className="dashboard"
 			>
 				<div className="flex justify-between items-center mb-6">
-					<h2 className="text-xl">Spending Buckets</h2>
+					<h2 className="text-xl">Buckets</h2>
 					<div className="flex items-center gap-2">
 						<button
 							className="btn btn-primary btn-sm flex items-center gap-1"
