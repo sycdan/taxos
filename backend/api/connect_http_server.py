@@ -437,9 +437,7 @@ def download_receipt_file(req):
 @rpc_endpoint(messages.ListVendorsRequest)
 def list_vendors(req: messages.ListVendorsRequest):
   vendors = ListVendors().execute()
-  vendor_messages = [
-    messages.Vendor(guid=v.guid.hex, name=v.name) for v in vendors
-  ]
+  vendor_messages = [messages.Vendor(guid=v.guid.hex, name=v.name) for v in vendors]
   return messages.ListVendorsResponse(vendors=vendor_messages)
 
 

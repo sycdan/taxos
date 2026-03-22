@@ -3,6 +3,7 @@ from uuid import UUID
 
 from taxos.tenant.tools import get_vendors_dir
 
+
 def get_content_dir(vendor_guid: UUID, tenant_guid: UUID) -> Path:
   vendors_dir = get_vendors_dir(tenant_guid)
   return vendors_dir / vendor_guid.hex

@@ -31,7 +31,7 @@ def _find_token_for_current_tenant() -> str | None:
 
 def handle(command: Test, *tests):
   os.chdir(REPO_ROOT)
-  
+
   pyt_args = ["--no-header", "-s", "--verbose", BACKEND_ROOT.as_posix()]
   if not command.no_integration:
     pyt_args.append("--run-integration")
