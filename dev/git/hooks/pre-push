@@ -3,6 +3,12 @@ set -e
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
+echo "==> Checking for clean working directory..."
+if [ -n "$(git -C "$REPO_ROOT" status --porcelain)" ]; then
+  echo "❌ Working directory is not clean. Commit or stash changes before pushing." >&2
+  exit 1
+fi
+
 echo "==> Checking Python format (ruff)..."
 ruff format --check "$REPO_ROOT/backend"
 ruff format --check "$REPO_ROOT/dev"
