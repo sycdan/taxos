@@ -20,8 +20,8 @@ A dev tenant will be created along with the dev container, and your access token
 Aliases are available for [scaf](http://scaf.sycdan.com) commands within the devcontainer (sourced from `.venvrc`).
 
 ```bash
-# Reset data
-dev.seed [--nuke]
+# Reset data (rebulding the devcontainer will re-seed)
+dev.nuke
 
 # Make classes from proto
 dev.proto.gen
