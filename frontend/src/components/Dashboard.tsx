@@ -6,6 +6,7 @@ import {
 	Eye,
 	EyeOff,
 	Plus,
+	TrendingUp,
 	X,
 } from "lucide-react";
 import { UNALLOCATED_BUCKET_ID } from "../types";

@@ -335,9 +335,9 @@ const App: React.FC = () => {
 				<ReceiptModal
 					isOpen={isModalOpen}
 					onClose={handleCloseModal}
-					onSave={(data: Receipt) => {
-						if (data.id) {
-							updateReceipt(data);
+					onSave={(data) => {
+						if (editingReceipt) {
+							updateReceipt({ ...data, id: editingReceipt.id });
 						} else {
 							addReceipt(data);
 						}
