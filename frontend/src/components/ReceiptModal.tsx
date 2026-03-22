@@ -307,7 +307,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
 			uploadFile();
 		}
-	}, [uploadingFile, isOpen]);
+	}, [uploadingFile, isOpen, onFileUploadComplete, vendor]);
 
 	// Create a bucket lookup map for O(1) access in allocation rendering
 	// Must be called before early return to avoid hook order violations

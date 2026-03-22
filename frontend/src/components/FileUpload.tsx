@@ -34,29 +34,24 @@ const FileUpload: React.FC<FileUploadProps> = ({
 	const [filePreview, setFilePreview] = useState<string | null>(null);
 	const [selectedFileName, setSelectedFileName] = useState<string>("");
 
-	const validateFile = (file: File): string | null => {
-		// Check file type
-		const isValidType = acceptedTypes.some((type) => {
-			if (type.endsWith("/*")) {
-				return file.type.startsWith(type.slice(0, -1));
-			}
-			return file.type === type;
-		});
-
-		if (!isValidType) {
-			return `File type not supported. Please upload: ${acceptedTypes.join(", ")}`;
-		}
-
-		// Check file size (max 10MB)
-		if (file.size > 10 * 1024 * 1024) {
-			return "File size must be less than 10MB";
-		}
-
-		return null;
-	};
-
 	const handleFile = useCallback(
 		async (file: File) => {
+			const validateFile = (f: File): string | null => {
+				const isValidType = acceptedTypes.some((type) => {
+					if (type.endsWith("/*")) {
+						return f.type.startsWith(type.slice(0, -1));
+					}
+					return f.type === type;
+				});
+				if (!isValidType) {
+					return `File type not supported. Please upload: ${acceptedTypes.join(", ")}`;
+				}
+				if (f.size > 10 * 1024 * 1024) {
+					return "File size must be less than 10MB";
+				}
+				return null;
+			};
+
 			const error = validateFile(file);
 			if (error) {
 				onUploadError?.(error);
@@ -84,7 +79,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 				onUploadError?.(`Failed to process file: ${err}`);
 			}
 		},
-		[onFileSelect, onUploadError, validateFile],
+		[onFileSelect, onUploadError, acceptedTypes],
 	);
 
 	const handleDrop = useCallback(
