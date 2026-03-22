@@ -4,7 +4,6 @@ import { createTestClient } from "../../utils/api-client";
 describe("Vendor Management Flow", () => {
 	const apiClient = createTestClient();
 	let createdReceiptGuids: string[] = [];
-	const currentMonth = new Date().toISOString().slice(0, 7);
 
 	beforeEach(async () => {
 		createdReceiptGuids = [];
