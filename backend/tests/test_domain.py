@@ -1,7 +1,7 @@
 import hashlib
 import zipfile
 from datetime import datetime
-
+import logging
 import pytest
 from google.protobuf.timestamp_pb2 import Timestamp
 from taxos.access.token.generate.command import GenerateAccessToken
@@ -22,13 +22,16 @@ from taxos.receipt.repo.load.command import LoadReceiptRepo
 from taxos.tenant.create.command import CreateTenant
 from taxos.tenant.dashboard.get.query import GetDashboard
 from taxos.tenant.delete.command import DeleteTenant
+from taxos.tenant.entity import TenantRef
 from taxos.tenant.list_receipts.query import ListReceipts
 from taxos.tenant.tools import get_files_dir
 from taxos.tenant.unallocated_receipt.check.command import CheckUnallocatedReceipt
 from taxos.vendor.entity import Vendor
 from taxos.vendor.find_or_create.command import FindOrCreateVendor
 from taxos.vendor.list.query import ListVendors
+from taxos.context.tools import clear_context
 
+logger = logging.getLogger(__name__)
 MONTH_KEY = datetime.now().strftime("%Y-%m")
 
 
@@ -43,18 +46,15 @@ def test_context():
   yield context
 
   # Cleanup
+  clear_context()
   try:
     RevokeToken(hash=access_token.key).execute()
   except Exception as e:
-    print(f"Cleanup warning (revoke token): {e}")
+    logger.error(f"Cleanup failed (revoke token): {e}")
   try:
-    DeleteTenant(tenant.guid.hex).execute()
+    DeleteTenant(TenantRef(tenant.guid.hex)).execute()
   except Exception as e:
-    print(f"Cleanup warning (delete tenant): {e}")
-  finally:
-    from taxos.context.tools import clear_context
-
-    clear_context()
+    logger.error(f"Cleanup failed (delete tenant): {e}")
 
 
 def ensure_bucket_created(name: str) -> Bucket:
