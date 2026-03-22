@@ -340,6 +340,15 @@ const App: React.FC = () => {
 							updateReceipt({ ...data, id: editingReceipt.id });
 						} else {
 							addReceipt(data);
+							const receiptDate = new Date(data.date);
+							const newValue =
+								filterConfig.mode === "year"
+									? String(receiptDate.getFullYear())
+									: format(receiptDate, "yyyy-MM");
+							setFilterConfig((prev: FilterConfig) => ({
+								...prev,
+								value: newValue,
+							}));
 						}
 					}}
 					onDelete={deleteReceipt}
