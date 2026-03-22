@@ -2,6 +2,7 @@ SCAF_FOLDER="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)
 DECK="$(dirname -- "$SCAF_FOLDER")"
 
 # Scaf domain action aliases (added as actions are called):
+alias dev.clean="scaf call $DECK/dev/clean"
 alias dev.context.use="scaf call $DECK/dev/context/use"
 alias dev.image.build="scaf call $DECK/dev/image/build"
 alias dev.nuke="scaf call $DECK/dev/nuke"
@@ -39,3 +40,4 @@ alias taxos.vendor.find-or-create="scaf call $DECK/backend/taxos/vendor/find_or_
 alias taxos.vendor.list="scaf call $DECK/backend/taxos/vendor/list"
 alias taxos.vendor.load="scaf call $DECK/backend/taxos/vendor/load"
 alias taxos.vendor.repo.load="scaf call $DECK/backend/taxos/vendor/repo/load"
+alias taxos.vendor.update="scaf call $DECK/backend/taxos/vendor/update"
