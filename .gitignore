@@ -1,5 +1,8 @@
+# Dev files
 scratch.sh
 dev/scratch
+bootstrap.sh
+.vscode/
 
 # User data
 .env

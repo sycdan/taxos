@@ -1,0 +1,5 @@
+# Install my dotfiles:
+# if [ ! -d "$HOME/mi" ]; then
+#   git clone https://github.com/sycdan/mi.git ~/mi \
+#     && bash ~/mi/dotfiles/install.sh
+# fi

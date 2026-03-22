@@ -18,4 +18,4 @@ def handle(command: Nuke):
   shutil.rmtree(DATA_DIR, ignore_errors=True)
 
   print("✅ Dev environment nuked")
-  print("💡 Run dev.seed to set up again.")
+  print("💡 Rebuild your devcontainer to re-seed.")

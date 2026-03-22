@@ -1,10 +1,9 @@
 #!/bin/bash
 set -e
 
-# One-time env setup
-if [ ! -d "$HOME/mi" ]; then
-  git clone https://github.com/sycdan/mi.git ~/mi \
-    && bash ~/mi/dotfiles/install.sh
+# Dev-specific env setup
+if [ -f /workspaces/taxos/bootstrap.sh ]; then
+  source /workspaces/taxos/bootstrap.sh
 fi
 
 # Ensure .venvrc is sourced in interactive shells
