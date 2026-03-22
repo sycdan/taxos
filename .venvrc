@@ -1,4 +1,3 @@
 # Load and display scaf aliases
 source .scaf/aliases
-source backend/.scaf/aliases
 alias | grep -P --color=always '^(alias \K[^=]+)(?=.+scaf )'
