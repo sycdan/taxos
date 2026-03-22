@@ -163,33 +163,27 @@ export class TaxosApiClient {
 	}
 
 	async downloadReceiptFile(fileHash: string) {
-		try {
-			const response = await this.client.downloadReceiptFile({
-				fileHash: fileHash,
-			});
+        const response = await this.client.downloadReceiptFile({
+            fileHash: fileHash,
+        });
 
-			// fileData is already a Uint8Array from protobuf
-			const blob = new Blob([response.fileData]);
+        // fileData is already a Uint8Array from protobuf
+        const blob = new Blob([response.fileData]);
 
-			// Create download link
-			const url = window.URL.createObjectURL(blob);
-			const link = document.createElement("a");
-			link.href = url;
-			link.download = response.filename;
-			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
-			window.URL.revokeObjectURL(url);
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = response.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
 
-			return {
-				filename: response.filename,
-				fileSize: Number(response.fileSize),
-			};
-		} catch (error) {
-			throw error;
-		}
-	}
-
+        return {
+            filename: response.filename,
+            fileSize: Number(response.fileSize),
+        };    }
 	// Direct access to underlying client for advanced usage
 	get rawClient() {
 		return this.client;

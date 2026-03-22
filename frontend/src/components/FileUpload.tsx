@@ -80,7 +80,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     } catch (err) {
       onUploadError?.(`Failed to process file: ${err}`);
     }
-  }, [onFileSelect, onUploadError]);
+  }, [onFileSelect, onUploadError, validateFile]);
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();

@@ -99,10 +99,10 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 	// Helper to convert Timestamp to ISO string
 	const timestampToIso = (ts?: Timestamp) => {
 		if (!ts) return new Date().toISOString();
-		const asAny = ts as any;
-		if (typeof asAny.toDate === "function") return asAny.toDate().toISOString();
-		const seconds = Number(asAny.seconds ?? 0);
-		const nanos = Number(asAny.nanos ?? 0);
+		const tsObj = ts as unknown as { toDate?: () => Date; seconds?: number | bigint; nanos?: number };
+		if (typeof tsObj.toDate === "function") return tsObj.toDate().toISOString();
+		const seconds = Number(tsObj.seconds ?? 0);
+		const nanos = Number(tsObj.nanos ?? 0);
 		return new Date(seconds * 1000 + nanos / 1_000_000).toISOString();
 	};
 
@@ -110,7 +110,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 	const getMonthsInRange = (start?: Date, end?: Date): string[] => {
 		if (!start || !end) return [];
 		const months: string[] = [];
-		let current = new Date(start.getFullYear(), start.getMonth(), 1);
+		const current = new Date(start.getFullYear(), start.getMonth(), 1);
 		const last = new Date(end.getFullYear(), end.getMonth(), 1);
 
 		while (current <= last) {
@@ -491,8 +491,9 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 		try {
 			await client.deleteReceipt({ guid: id });
 			setReceipts((prev) => {
-				const { [id]: _, ...rest } = prev;
-				return rest;
+				const next = { ...prev };
+				delete next[id];
+				return next;
 			});
 			triggerRefresh();
 		} catch (error) {
@@ -536,6 +537,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 	);
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useTaxos = () => {
 	const context = useContext(TaxosContext);
 	if (context === undefined) {

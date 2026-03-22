@@ -15,7 +15,7 @@ describe("Full Taxos API Integration Flow", () => {
 
 	afterEach(async () => {
 		if (createdReceiptGuids.length > 0) {
-			let cleanedReceipts = 0;
+			const cleanedReceipts = 0;
 			for (const receiptGuid of createdReceiptGuids) {
 				try {
 					await apiClient.deleteReceipt(receiptGuid);
@@ -29,7 +29,7 @@ describe("Full Taxos API Integration Flow", () => {
 		}
 
 		if (createdBucketGuids.length > 0) {
-			let cleanedBuckets = 0;
+			const cleanedBuckets = 0;
 			for (const bucketGuid of createdBucketGuids) {
 				try {
 					await apiClient.deleteBucket(bucketGuid);
@@ -76,7 +76,7 @@ describe("Full Taxos API Integration Flow", () => {
 		expect(updatedDashboard.buckets.length).toBe(initialBucketCount + 1);
 
 		const createdBucket = updatedDashboard.buckets.find(
-			(b: any) => b.guid === bucket.guid,
+			(b) => b.guid === bucket.guid,
 		);
 		expect(createdBucket).toBeDefined();
 		console.log("✅ Bucket found in list");
@@ -132,7 +132,7 @@ describe("Full Taxos API Integration Flow", () => {
 		expect(Array.isArray(finalDashboard.unallocatedReceipts)).toBe(true);
 
 		// Verify our created receipts are in the unallocated list via dashboard
-		const ourReceipts = finalDashboard.unallocatedReceipts.filter((r: any) =>
+		const ourReceipts = finalDashboard.unallocatedReceipts.filter((r) =>
 			createdReceiptGuids.includes(r.guid),
 		);
 		expect(ourReceipts.length).toBe(createdReceiptGuids.length);
@@ -219,10 +219,10 @@ describe("Full Taxos API Integration Flow", () => {
 		expect(receipt2.allocations.length).toBe(2);
 
 		const alloc1 = receipt2.allocations.find(
-			(a: any) => a.bucket === bucket1Guid,
+			(a) => a.bucket === bucket1Guid,
 		);
 		const alloc2 = receipt2.allocations.find(
-			(a: any) => a.bucket === bucket2Guid,
+			(a) => a.bucket === bucket2Guid,
 		);
 
 		expect(alloc1).toBeDefined();
@@ -255,7 +255,7 @@ describe("Full Taxos API Integration Flow", () => {
 		expect(bucket1Receipts.receipts).toBeDefined();
 		expect(bucket1Receipts.receipts.length).toBe(2); // receipt1 and receipt2
 
-		const guidsInBucket1 = bucket1Receipts.receipts.map((r: any) => r.guid);
+		const guidsInBucket1 = bucket1Receipts.receipts.map((r) => r.guid);
 		expect(guidsInBucket1).toContain(receipt1.guid);
 		expect(guidsInBucket1).toContain(receipt2.guid);
 		expect(guidsInBucket1).not.toContain(receipt3.guid);
@@ -271,7 +271,7 @@ describe("Full Taxos API Integration Flow", () => {
 		expect(bucket2Receipts.receipts).toBeDefined();
 		expect(bucket2Receipts.receipts.length).toBe(1); // only receipt2
 
-		const guidsInBucket2 = bucket2Receipts.receipts.map((r: any) => r.guid);
+		const guidsInBucket2 = bucket2Receipts.receipts.map((r) => r.guid);
 		expect(guidsInBucket2).toContain(receipt2.guid);
 		expect(guidsInBucket2).not.toContain(receipt1.guid);
 		expect(guidsInBucket2).not.toContain(receipt3.guid);
@@ -283,7 +283,7 @@ describe("Full Taxos API Integration Flow", () => {
 			months: [currentMonth],
 		});
 		const unallocatedGuids = finalDashboard.unallocatedReceipts.map(
-			(r: any) => r.guid,
+			(r) => r.guid,
 		);
 
 		expect(unallocatedGuids).toContain(receipt3.guid);
@@ -337,7 +337,7 @@ describe("Full Taxos API Integration Flow", () => {
 			months: [currentMonth],
 		});
 		const found = bucketReceipts.receipts.find(
-			(r: any) => r.guid === receipt.guid,
+			(r) => r.guid === receipt.guid,
 		);
 		expect(found).toBeDefined();
 		expect(found.vendor).toBe("Updated Vendor");
@@ -352,7 +352,7 @@ describe("Full Taxos API Integration Flow", () => {
 			months: [currentMonth],
 		});
 		const unallocatedGuids = finalDashboard.unallocatedReceipts.map(
-			(r: any) => r.guid,
+			(r) => r.guid,
 		);
 		expect(unallocatedGuids).not.toContain(receipt.guid);
 		console.log("✅ Updated receipt is not unallocated");
@@ -381,7 +381,7 @@ describe("Full Taxos API Integration Flow", () => {
 			months: [currentMonth],
 		});
 		const beforeGuids = beforeDelete.unallocatedReceipts.map(
-			(r: any) => r.guid,
+			(r) => r.guid,
 		);
 		expect(beforeGuids).toContain(receipt.guid);
 		console.log("✅ Receipt exists in unallocated list");
@@ -397,7 +397,7 @@ describe("Full Taxos API Integration Flow", () => {
 		const afterDelete = await apiClient.getDashboard({
 			months: [currentMonth],
 		});
-		const afterGuids = afterDelete.unallocatedReceipts.map((r: any) => r.guid);
+		const afterGuids = afterDelete.unallocatedReceipts.map((r) => r.guid);
 		expect(afterGuids).not.toContain(receipt.guid);
 		console.log("✅ Receipt no longer in unallocated list");
 
@@ -448,7 +448,7 @@ describe("Full Taxos API Integration Flow", () => {
 			months: [currentMonth],
 		});
 		const unallocatedGuids = finalDashboard.unallocatedReceipts.map(
-			(r: any) => r.guid,
+			(r) => r.guid,
 		);
 		expect(unallocatedGuids).toContain(receipt.guid);
 		console.log("✅ Receipt became unallocated after bucket deletion");

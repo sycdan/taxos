@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { LogIn } from "lucide-react";
 import { setToken } from "../api/client";
-import { createPromiseClient } from "@connectrpc/connect";
+import { createPromiseClient, type Interceptor } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { TaxosApi } from "../api/v1/taxos_service_connect";
 import { AuthenticateRequest } from "../api/v1/taxos_service_pb";
@@ -26,10 +26,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onLogin }) => {
         createConnectTransport({
           baseUrl,
           interceptors: [
-            (next: any) => async (req: any) => {
+            ((next) => async (req) => {
               req.header.set("Authorization", `Bearer ${tokenToValidate}`);
               return await next(req);
-            },
+            }) as Interceptor,
           ],
         })
       );
@@ -37,9 +37,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onLogin }) => {
       // Use the authenticate endpoint to validate the token
       await testClient.authenticate(new AuthenticateRequest({ token: tokenToValidate }));
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       // If it's a 401 or unauthenticated error, token is invalid
-      if (err?.code === "unauthenticated" || err?.status === 401) {
+      const e = err as { code?: string; status?: number };
+      if (e?.code === "unauthenticated" || e?.status === 401) {
         return false;
       }
       // Other errors might be due to network issues, so be lenient
@@ -69,7 +70,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onLogin }) => {
       // Token is valid, store it and proceed
       setToken(token);
       onLogin(token);
-    } catch (err) {
+    } catch {
       setError("Failed to validate token. Please try again.");
       setLoading(false);
     }

@@ -33,4 +33,4 @@ if ! (cd "$REPO_ROOT" && scaf call dev/test); then
   exit 1
 fi
 
-echo "==> All checks passed."
+echo "✅ All checks passed."

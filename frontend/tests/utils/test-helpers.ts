@@ -15,7 +15,7 @@ export const waitForCondition = async (
     throw new Error(`Condition not met within ${timeout}ms`)
 }
 
-export const generateTestData = (overrides: any = {}) => {
+export const generateTestData = (overrides: Record<string, unknown> = {}) => {
     return {
         name: `Test-${Date.now()}`,
         description: 'Generated test data',
@@ -23,7 +23,7 @@ export const generateTestData = (overrides: any = {}) => {
     }
 }
 
-export const assertApiResponse = (response: any, expectedFields: string[]) => {
+export const assertApiResponse = (response: Record<string, unknown>, expectedFields: string[]) => {
     expectedFields.forEach(field => {
         if (response[field] === undefined) {
             throw new Error(`Expected field '${field}' not found in response`)
@@ -31,7 +31,7 @@ export const assertApiResponse = (response: any, expectedFields: string[]) => {
     })
 }
 
-export const cleanupTestData = async (apiClient: any, resourceId: string, resourceType: string) => {
+export const cleanupTestData = async (apiClient: Record<string, (id: string) => Promise<unknown>>, resourceId: string, resourceType: string) => {
     try {
         switch (resourceType) {
             case 'taxonomy':

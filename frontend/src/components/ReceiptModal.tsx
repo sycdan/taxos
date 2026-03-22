@@ -262,7 +262,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 			notes: notes || undefined,
 			file: uploadedFileName || initialFile || editingReceipt?.file,
 			hash: uploadedFileHash || editingReceipt?.hash,
-		} as any);
+		} as Receipt);
 		onClose();
 	};
 
@@ -559,7 +559,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 										style={{ paddingLeft: "2.5rem" }}
 										value={date}
 										onChange={(e) => setDate(e.target.value)}
-										onClick={(e) => (e.target as any).showPicker?.()}
+										onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
 									/>
 								</div>
 							</div>
