@@ -41,21 +41,21 @@ RUN chmod +x /entrypoint.sh
 # Switch to the vscode user for user-level tool installs
 USER vscode
 
-RUN mkdir -p ~/.local/bin
+RUN mkdir -p $HOME/.local/bin
 
 # Install Buf
 RUN curl -sSL \
   "https://github.com/bufbuild/buf/releases/download/v1.34.0/buf-Linux-x86_64" \
-  -o ~/.local/bin/buf \
-  && chmod +x ~/.local/bin/buf
+  -o $HOME/.local/bin/buf \
+  && chmod +x $HOME/.local/bin/buf
 
 # Install grpcurl
 RUN curl -sSL \
   https://github.com/fullstorydev/grpcurl/releases/download/v1.9.1/grpcurl_1.9.1_linux_x86_64.tar.gz \
-  | tar -xz -C ~/.local/bin \
-  && chmod +x ~/.local/bin/grpcurl
+  | tar -xz -C $HOME/.local/bin \
+  && chmod +x $HOME/.local/bin/grpcurl
 
-ENV PATH="/home/vscode/.local/bin:${PATH}"
+ENV PATH="${HOME}/.local/bin:${PATH}"
 ENV PYTHONPATH="/workspaces/taxos/backend:/workspaces/taxos/dev"
 
 WORKDIR /workspaces/taxos

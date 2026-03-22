@@ -1,7 +1,7 @@
 # Dev files
 scratch.sh
 dev/scratch
-bootstrap.sh
+dev/bootstrap.sh
 .vscode/
 
 # User data

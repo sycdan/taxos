@@ -1,3 +1,5 @@
+# Copy this file to dev/bootstrap.sh and customize as necessary.
+
 # Install my dotfiles:
 # if [ ! -d "$HOME/mi" ]; then
 #   git clone https://github.com/sycdan/mi.git ~/mi \
