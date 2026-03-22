@@ -15,10 +15,11 @@ describe("Full Taxos API Integration Flow", () => {
 
 	afterEach(async () => {
 		if (createdReceiptGuids.length > 0) {
-			const cleanedReceipts = 0;
+			let cleanedReceipts = 0;
 			for (const receiptGuid of createdReceiptGuids) {
 				try {
 					await apiClient.deleteReceipt(receiptGuid);
+					cleanedReceipts++;
 				} catch {
 					console.warn(`⚠️ Failed to clean up receipt ${receiptGuid}`);
 				}
@@ -29,10 +30,11 @@ describe("Full Taxos API Integration Flow", () => {
 		}
 
 		if (createdBucketGuids.length > 0) {
-			const cleanedBuckets = 0;
+			let cleanedBuckets = 0;
 			for (const bucketGuid of createdBucketGuids) {
 				try {
 					await apiClient.deleteBucket(bucketGuid);
+					cleanedBuckets++;
 				} catch {
 					console.warn("⚠️ Failed to clean up bucket:", bucketGuid);
 				}
@@ -90,7 +92,7 @@ describe("Full Taxos API Integration Flow", () => {
 		console.log("✅ GetBucket returned correct data");
 
 		// Step 5: UpdateBucket
-		console.log("✏️ Step 5: Updating bucket name...");
+		console.log("✏️  Step 5: Updating bucket name...");
 		const updatedName = "Updated Business Expenses";
 		const updatedBucket = await apiClient.updateBucket(
 			bucket.guid,
@@ -142,7 +144,7 @@ describe("Full Taxos API Integration Flow", () => {
 	}, 300000); // 5 minutes for debugging
 
 	it("should handle error cases gracefully", async () => {
-		console.log("❌ Testing error handling...");
+		console.log("🧪 Testing error handling...");
 
 		// Test getting non-existent bucket
 		try {
@@ -295,7 +297,7 @@ describe("Full Taxos API Integration Flow", () => {
 	}, 300000); // 5 minutes for debugging
 
 	it("should update receipt details correctly", async () => {
-		console.log("✏️ Testing receipt update functionality...");
+		console.log("✏️  Testing receipt update functionality...");
 
 		// Create a bucket for allocations
 		const bucket = await apiClient.createBucket("Update Test Bucket");
@@ -313,7 +315,7 @@ describe("Full Taxos API Integration Flow", () => {
 		console.log(`✅ Created receipt: ${receipt.guid}`);
 
 		// Step 2: Update receipt with new details and allocations
-		console.log("✏️ Step 2: Updating receipt...");
+		console.log("✏️  Step 2: Updating receipt...");
 		const updatedReceipt = await apiClient.updateReceipt({
 			guid: receipt.guid,
 			vendor: "Updated Vendor",
@@ -361,7 +363,7 @@ describe("Full Taxos API Integration Flow", () => {
 	}, 300000);
 
 	it("should delete receipts correctly", async () => {
-		console.log("🗑️ Testing receipt deletion...");
+		console.log("🗑️  Testing receipt deletion...");
 
 		// Step 1: Create a receipt
 		console.log("🧾 Step 1: Creating receipt to delete...");
@@ -387,7 +389,7 @@ describe("Full Taxos API Integration Flow", () => {
 		console.log("✅ Receipt exists in unallocated list");
 
 		// Step 3: Delete it
-		console.log("🗑️ Step 3: Deleting receipt...");
+		console.log("🗑️  Step 3: Deleting receipt...");
 		const deleteResult = await apiClient.deleteReceipt(receipt.guid);
 		expect(deleteResult).toBeDefined();
 		console.log("✅ Delete returned successfully");
@@ -405,7 +407,7 @@ describe("Full Taxos API Integration Flow", () => {
 	}, 300000);
 
 	it("should handle bucket deletion with allocated receipts", async () => {
-		console.log("🗑️ Testing bucket deletion with allocated receipts...");
+		console.log("🗑️  Testing bucket deletion with allocated receipts...");
 
 		// Step 1: Create a bucket
 		console.log("📝 Step 1: Creating bucket...");
