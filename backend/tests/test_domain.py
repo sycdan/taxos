@@ -22,7 +22,6 @@ from taxos.receipt.repo.load.command import LoadReceiptRepo
 from taxos.tenant.create.command import CreateTenant
 from taxos.tenant.dashboard.get.query import GetDashboard
 from taxos.tenant.delete.command import DeleteTenant
-from taxos.tenant.entity import TenantRef
 from taxos.tenant.list_receipts.query import ListReceipts
 from taxos.tenant.tools import get_files_dir
 from taxos.tenant.unallocated_receipt.check.command import CheckUnallocatedReceipt
