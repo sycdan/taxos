@@ -1,6 +1,4 @@
 import json
-import os
-import shutil
 import sys
 import uuid
 
@@ -10,27 +8,12 @@ from taxos import ACCESS_TOKENS_DIR, DATA_DIR, TENANTS_DIR
 
 from dev.seed.command import Seed
 
-
-def nuke():
-  print("💀 Killing app containers...")
-  os.system("docker compose down -v backend --remove-orphans")
-  os.system("docker compose down -v frontend --remove-orphans")
-
-  print("💣 Nuking data...")
-  shutil.rmtree(DATA_DIR, ignore_errors=True)
-
-  print("✅ Dev environment nuked. Rebuild your dev container.")
-
-
 def print_access_token():
   token = next(ACCESS_TOKENS_DIR.iterdir())
   print(f"🗝️  Your access token is: {token.stem}")
 
 
 def handle(command: Seed):
-  if command.nuke:
-    return nuke()
-
   print("🌱 Seeding data...")
   DATA_DIR.mkdir(exist_ok=True, parents=True)
 

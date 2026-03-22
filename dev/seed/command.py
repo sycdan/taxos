@@ -1,14 +1,9 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
 class Seed:
-  """Reset the dev environment."""
-
-  nuke: bool = field(
-    default=False,
-    metadata={"help": "Whether to nuke the dev environment before seeding."},
-  )
+  """Seed the dev environment with a default tenant and access token."""
 
   def execute(self):
     from dev.seed.handler import handle
