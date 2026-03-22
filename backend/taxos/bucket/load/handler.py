@@ -1,4 +1,4 @@
-from taxos.bucket.entity import Bucket, BucketRef
+from taxos.bucket.entity import Bucket
 from taxos.bucket.load.query import LoadBucket
 from taxos.bucket.tools import get_state_file
 from taxos.context.tools import require_tenant

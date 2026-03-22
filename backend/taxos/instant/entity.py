@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime, tzinfo
 from zoneinfo import ZoneInfo
-import tzdata
 
 
 @dataclass
