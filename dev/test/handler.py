@@ -30,14 +30,14 @@ def _find_token_for_current_tenant() -> str | None:
 
 
 def handle(command: Test, *tests):
-  pyt_args = ["--no-header", "--verbose", BACKEND_ROOT.as_posix()]
+  pyt_args = ["--no-header", "-s", "--verbose", BACKEND_ROOT.as_posix()]
   if not command.no_integration:
     pyt_args.append("--run-integration")
   if tests:
     pyt_args.extend(["-k", " or ".join(tests)])
   pytest.main(pyt_args)
 
-  if not command.no_integration:
+  if not command.no_integration and not command.no_frontend:
     token = _find_token_for_current_tenant()
     npm_args = [
       "VITE_GRPC_API_URL=http://backend:50051",
