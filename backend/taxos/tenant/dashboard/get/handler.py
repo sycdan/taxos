@@ -45,7 +45,7 @@ def handle(query: GetDashboard) -> Dashboard:
   for month in query.months:
     for receipt in receipt_repo.iter_by_month(month):
       total_allocated = sum(a.amount for a in receipt.allocations)
-      if receipt.total > total_allocated:
+      if round(receipt.total, 2) > round(total_allocated, 2):
         unallocated_receipts.append(receipt)
 
   # Get all vendor names for typeahead

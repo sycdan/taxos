@@ -13,7 +13,7 @@ def calculate_unallocated_amount(receipt: Receipt) -> float:
     return receipt.total
 
   total_allocated = sum(a.amount for a in receipt.allocations)
-  return receipt.total - total_allocated
+  return round(receipt.total - total_allocated, 2)
 
 
 def handle(command: CheckUnallocatedReceipt) -> UnallocatedReceipt | None:
@@ -21,7 +21,7 @@ def handle(command: CheckUnallocatedReceipt) -> UnallocatedReceipt | None:
   receipt = require_receipt(command.receipt)
 
   unallocated_amount = calculate_unallocated_amount(receipt)
-  if unallocated_amount:
+  if unallocated_amount > 0:
     return UnallocatedReceipt(
       receipt,
       receipt.date.replace(day=1),
