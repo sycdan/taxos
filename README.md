@@ -43,6 +43,9 @@ dev.test
 
 # Run a specific unit test:
 dev.test time --no-integration
+
+# Run only the backend integration tests
+dev.test --no-frontend
 ```
 
 It is possible to debug either backend tests or endpoint hits via VSCode launch commands:
