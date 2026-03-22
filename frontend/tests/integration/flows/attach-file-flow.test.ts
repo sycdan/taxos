@@ -31,8 +31,11 @@ describe("File Attachment Flow", () => {
 		expect(receipt.guid).toBeDefined();
 		createdReceiptGuids.push(receipt.guid);
 
-		// Build a small in-memory file
-		const content = new TextEncoder().encode("Test file content for upload");
+		// Build a small in-memory file with unique content so re-runs don't
+		// collide with a file uploaded by a previous test run.
+		const content = new TextEncoder().encode(
+			`Test file content for upload (${Date.now()})`,
+		);
 		const file = new File([content], "test-receipt.txt", {
 			type: "text/plain",
 		});
