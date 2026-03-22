@@ -32,5 +32,9 @@ if ! (cd "$REPO_ROOT" && scaf call dev/test); then
   echo "❌ Tests failed. Run: dev.test" >&2
   exit 1
 fi
-
+echo "==> Building frontend..."
+if ! (cd "$REPO_ROOT/frontend" && npm run build); then
+  echo "❌ Frontend build failed. Run: cd frontend && npm run build" >&2
+  exit 1
+fi
 echo "✅ All checks passed."
