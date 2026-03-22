@@ -1,12 +1,12 @@
 import logging
 
 from taxos.context.tools import require_tenant
+from taxos.tenant.tools import get_vendors_dir
 from taxos.tools.guid import parse_guid
 from taxos.vendor.entity import Vendor
 from taxos.vendor.load.query import LoadVendor
 from taxos.vendor.repo.entity import VendorRepo
 from taxos.vendor.repo.load.query import LoadVendorRepo
-from taxos.vendor.tools import get_vendors_dir
 
 logger = logging.getLogger(__name__)
 
