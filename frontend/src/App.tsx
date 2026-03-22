@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Plus, LayoutDashboard, ArrowLeft, LogOut, Upload } from "lucide-react";
+import { Plus, LayoutDashboard, ArrowLeft, LogOut, Upload, Tag } from "lucide-react";
 import Dashboard from "./components/Dashboard";
 import BucketDetail from "./components/BucketDetail";
 import ReceiptModal from "./components/ReceiptModal";
 import LoginModal from "./components/LoginModal";
+import VendorManager from "./components/VendorManager";
 import { useTaxos } from "./contexts/TaxosContext";
 import { clearToken } from "./api/client";
 import {
@@ -29,6 +30,7 @@ const App: React.FC = () => {
 		buckets,
 		bucketSummaries,
 		vendorNames,
+		vendors,
 		addReceipt,
 		updateReceipt,
 		deleteReceipt,
@@ -37,8 +39,11 @@ const App: React.FC = () => {
 		deleteBucket,
 		isNameTaken,
 		authenticated,
+		refreshVendors,
+		updateVendor,
 	} = useTaxos();
 	const [currentBucketId, setCurrentBucketId] = useState<string | null>(null);
+	const [showVendors, setShowVendors] = useState(false);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [uploadedFile, setUploadedFile] = useState<string | undefined>(
 		undefined,
@@ -169,6 +174,12 @@ const App: React.FC = () => {
 
 	const navigateToDashboard = () => {
 		setCurrentBucketId(null);
+		setShowVendors(false);
+	};
+
+	const navigateToVendors = () => {
+		setCurrentBucketId(null);
+		setShowVendors(true);
 	};
 
 	if (!authenticated) {
@@ -187,11 +198,19 @@ const App: React.FC = () => {
 
 				<nav className="flex flex-col gap-2 flex-1">
 					<button
-						className={`btn ${!currentBucketId ? "btn-primary" : "btn-ghost"} justify-start w-full`}
+						className={`btn ${!showVendors && !currentBucketId ? "btn-primary" : "btn-ghost"} justify-start w-full`}
 						onClick={navigateToDashboard}
 					>
 						<LayoutDashboard size={20} />
 						<span>Receipts</span>
+					</button>
+
+					<button
+						className={`btn ${showVendors ? "btn-primary" : "btn-ghost"} justify-start w-full`}
+						onClick={navigateToVendors}
+					>
+						<Tag size={20} />
+						<span>Vendors</span>
 					</button>
 
 					{authenticated && (
@@ -221,9 +240,9 @@ const App: React.FC = () => {
 							</button>
 						)}
 						<div className="text-sm font-bold uppercase tracking-wider text-muted">
-							{currentBucketId ? "Bucket Detail" : "Receipts"}
-						</div>
-						{!currentBucketId && (
+						{currentBucketId ? "Bucket Detail" : showVendors ? "Vendors" : "Receipts"}
+					</div>
+					{!currentBucketId && !showVendors && (
 							<>
 								<div className="h-4 w-px bg-gray-600"></div>
 								<div className="flex items-center gap-2">
@@ -242,7 +261,7 @@ const App: React.FC = () => {
 						)}
 					</div>
 
-					<div className="flex items-center gap-4">
+					{!showVendors && <div className="flex items-center gap-4">
 						<div className="filter-group">
 							<button
 								className={`filter-mode-btn ${filterConfig.mode === "year" ? "active" : ""}`}
@@ -299,11 +318,17 @@ const App: React.FC = () => {
 								<span>Upload File</span>
 							</button>
 						</div>
-					</div>
+					</div>}
 				</header>
 
 				<main className="py-8">
-					{currentBucketId ? (
+					{showVendors ? (
+						<VendorManager
+							vendors={vendors}
+							onUpdateVendor={updateVendor}
+							onRefresh={refreshVendors}
+						/>
+					) : currentBucketId ? (
 						<BucketDetail
 							bucketId={currentBucketId}
 							buckets={buckets}

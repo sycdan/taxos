@@ -32,6 +32,8 @@ service TaxosApi {
   rpc DeleteReceipt(DeleteReceiptRequest) returns (DeleteReceiptResponse);
   // List vendors for typeahead
   rpc ListVendors(ListVendorsRequest) returns (ListVendorsResponse);
+  // Update a vendor's name
+  rpc UpdateVendor(UpdateVendorRequest) returns (Vendor);
 }
 
 message AuthenticateRequest {
@@ -183,4 +185,9 @@ message ListVendorsRequest {
 
 message ListVendorsResponse {
   repeated Vendor vendors = 1;
+}
+
+message UpdateVendorRequest {
+  string guid = 1;
+  string name = 2;
 }

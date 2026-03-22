@@ -3,6 +3,11 @@ export interface Bucket {
 	name: string;
 }
 
+export interface Vendor {
+	id: string;
+	name: string;
+}
+
 export interface BucketSummary {
 	bucket: Bucket;
 	totalAmount: number;

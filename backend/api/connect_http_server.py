@@ -28,6 +28,8 @@ from taxos.receipt.update.command import UpdateReceipt
 from taxos.tenant.dashboard.get.query import GetDashboard
 from taxos.tenant.list_receipts.query import ListReceipts
 from taxos.tenant.tools import get_files_dir
+from taxos.vendor.list.query import ListVendors
+from taxos.vendor.update.command import UpdateVendor
 
 from api.v1 import taxos_service_pb2 as messages
 
@@ -428,6 +430,25 @@ def download_receipt_file(req):
   return messages.DownloadReceiptFileResponse(
     filename=result.filename, file_data=result.file_data, file_size=result.file_size
   )
+
+
+@app.route("/taxos.v1.TaxosApi/ListVendors", methods=["POST"])
+@require_auth
+@rpc_endpoint(messages.ListVendorsRequest)
+def list_vendors(req: messages.ListVendorsRequest):
+  vendors = ListVendors().execute()
+  vendor_messages = [
+    messages.Vendor(guid=v.guid.hex, name=v.name) for v in vendors
+  ]
+  return messages.ListVendorsResponse(vendors=vendor_messages)
+
+
+@app.route("/taxos.v1.TaxosApi/UpdateVendor", methods=["POST"])
+@require_auth
+@rpc_endpoint(messages.UpdateVendorRequest)
+def update_vendor(req: messages.UpdateVendorRequest):
+  vendor = UpdateVendor(ref=req.guid, name=req.name).execute()
+  return messages.Vendor(guid=vendor.guid.hex, name=vendor.name)
 
 
 @app.route("/taxos.v1.TaxosApi/Authenticate", methods=["POST"])

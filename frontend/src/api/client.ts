@@ -185,6 +185,16 @@ export class TaxosApiClient {
 			fileSize: Number(response.fileSize),
 		};
 	}
+
+	// Vendor methods
+	async listVendors() {
+		return await this.client.listVendors({});
+	}
+
+	async updateVendor(guid: string, name: string) {
+		return await this.client.updateVendor({ guid, name });
+	}
+
 	// Direct access to underlying client for advanced usage
 	get rawClient() {
 		return this.client;

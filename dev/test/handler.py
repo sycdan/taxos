@@ -1,7 +1,7 @@
 import os
 import shlex
 import sys
-
+import subprocess
 import pytest
 
 from dev import BACKEND_ROOT, FRONTEND_ROOT, REPO_ROOT
@@ -30,6 +30,8 @@ def _find_token_for_current_tenant() -> str | None:
 
 
 def handle(command: Test, *tests):
+  os.chdir(REPO_ROOT)
+  
   pyt_args = ["--no-header", "-s", "--verbose", BACKEND_ROOT.as_posix()]
   if not command.no_integration:
     pyt_args.append("--run-integration")
@@ -53,4 +55,4 @@ def handle(command: Test, *tests):
     if tests:
       npm_args.extend(["-t", shlex.quote("|".join(tests))])
     npm_cmd = " ".join(npm_args)
-    os.system(npm_cmd)
+    subprocess.run(npm_cmd, shell=True, check=True)

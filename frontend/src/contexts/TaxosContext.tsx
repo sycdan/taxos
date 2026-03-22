@@ -9,7 +9,7 @@ import React, {
 	type ReactNode,
 } from "react";
 import { Timestamp } from "@bufbuild/protobuf";
-import type { Bucket, BucketSummary, Receipt } from "../types";
+import type { Bucket, BucketSummary, Receipt, Vendor } from "../types";
 import { client, getToken, dateToTimestamp } from "../api/client";
 import { UNALLOCATED_BUCKET_ID } from "../types";
 
@@ -30,6 +30,7 @@ interface TaxosContextType {
 	unallocatedReceipts: Receipt[];
 	currentReceiptsList: Receipt[];
 	vendorNames: string[];
+	vendors: Vendor[];
 	loading: boolean;
 	authenticated: boolean;
 	isNameTaken: (name: string, excludeId?: string) => boolean;
@@ -55,6 +56,8 @@ interface TaxosContextType {
 	) => Promise<Receipt[]>;
 	activeBucketId: string | null;
 	setActiveBucketId: (id: string | null) => void;
+	refreshVendors: () => Promise<void>;
+	updateVendor: (id: string, name: string) => Promise<Vendor | null>;
 }
 
 const TaxosContext = createContext<TaxosContextType | undefined>(undefined);
@@ -72,6 +75,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 	const [unallocatedReceipts, setUnallocatedReceipts] = useState<Receipt[]>([]);
 	const [currentReceiptsList, setCurrentReceiptsList] = useState<Receipt[]>([]);
 	const [vendorNames, setVendorNames] = useState<string[]>([]);
+	const [vendors, setVendors] = useState<Vendor[]>([]);
 	const [activeBucketId, setActiveBucketId] = useState<string | null>(null);
 
 	// Track receipt hashes for O(1) duplicate detection
@@ -506,6 +510,31 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 		return unallocatedReceipts;
 	}, [unallocatedReceipts]);
 
+	const refreshVendors = useCallback(async () => {
+		try {
+			const response = await client.listVendors({});
+			const apiVendors: Vendor[] = response.vendors.map((v) => ({
+				id: v.guid,
+				name: v.name,
+			}));
+			setVendors(apiVendors);
+		} catch (error) {
+			console.error("Failed to load vendors:", error);
+		}
+	}, []);
+
+	const updateVendor = useCallback(async (id: string, name: string): Promise<Vendor | null> => {
+		try {
+			const response = await client.updateVendor({ guid: id, name });
+			const updated: Vendor = { id: response.guid, name: response.name };
+			setVendors((prev) => prev.map((v) => (v.id === id ? updated : v)));
+			return updated;
+		} catch (error) {
+			console.error("Failed to update vendor:", error);
+			return null;
+		}
+	}, []);
+
 	return (
 		<TaxosContext.Provider
 			value={{
@@ -516,6 +545,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				unallocatedReceipts,
 				currentReceiptsList,
 				vendorNames,
+				vendors,
 				loading,
 				authenticated,
 				isNameTaken,
@@ -530,6 +560,8 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				getUnallocatedReceipts,
 				activeBucketId,
 				setActiveBucketId,
+				refreshVendors,
+				updateVendor,
 			}}
 		>
 			{children}
