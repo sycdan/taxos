@@ -1,7 +1,8 @@
 [tool.ruff]
 indent-width=2
 
-[tool.pytest]
+[tool.pytest.ini_options]
+python_files = ["tests.py", "*_tests.py"]
 markers = [
     "integration: tests real infrastructure",
     "unit: tests have no external dependencies",
