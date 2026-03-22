@@ -1,0 +1,21 @@
+#!/bin/bash
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+echo "==> Checking Python format (ruff)..."
+ruff format --check "$REPO_ROOT/backend"
+ruff format --check "$REPO_ROOT/dev"
+
+echo "==> Checking Python lint (ruff)..."
+ruff check "$REPO_ROOT/backend"
+ruff check "$REPO_ROOT/dev"
+
+echo "==> Checking frontend lint (eslint)..."
+cd "$REPO_ROOT/frontend" && npm run lint
+
+echo "==> Running tests..."
+cd "$REPO_ROOT"
+scaf call dev/test
+
+echo "==> All checks passed."
