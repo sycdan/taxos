@@ -10,18 +10,27 @@ if [ -n "$(git -C "$REPO_ROOT" status --porcelain)" ]; then
 fi
 
 echo "==> Checking Python format (ruff)..."
-ruff format --check "$REPO_ROOT/backend"
-ruff format --check "$REPO_ROOT/dev"
+if ! ruff format --check "$REPO_ROOT/backend" "$REPO_ROOT/dev"; then
+  echo "❌ Python formatting issues found. Run: ruff format backend dev" >&2
+  exit 1
+fi
 
 echo "==> Checking Python lint (ruff)..."
-ruff check "$REPO_ROOT/backend"
-ruff check "$REPO_ROOT/dev"
+if ! ruff check "$REPO_ROOT/backend" "$REPO_ROOT/dev"; then
+  echo "❌ Python lint issues found. Run: ruff check --fix backend dev" >&2
+  exit 1
+fi
 
 echo "==> Checking frontend lint (eslint)..."
-cd "$REPO_ROOT/frontend" && npm run lint
+if ! (cd "$REPO_ROOT/frontend" && npm run lint); then
+  echo "❌ Frontend lint issues found. Run: cd frontend && npm run lint" >&2
+  exit 1
+fi
 
 echo "==> Running tests..."
-cd "$REPO_ROOT"
-scaf call dev/test
+if ! (cd "$REPO_ROOT" && scaf call dev/test); then
+  echo "❌ Tests failed. Run: dev.test" >&2
+  exit 1
+fi
 
 echo "==> All checks passed."

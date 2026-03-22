@@ -21,7 +21,9 @@ def rebuild(tenant: Tenant) -> ReceiptRepo:
   receipts_dir = get_receipts_dir(tenant.guid)
 
   if not receipts_dir.exists():
-    logger.warning(f"Receipts directory does not exist for tenant {tenant.guid}: {receipts_dir}")
+    logger.warning(
+      f"Receipts directory does not exist for tenant {tenant.guid}: {receipts_dir}"
+    )
     return repo
 
   for receipt_dir in receipts_dir.iterdir():
@@ -40,7 +42,9 @@ def rebuild(tenant: Tenant) -> ReceiptRepo:
           require_bucket(allocation.bucket)
         except Bucket.DoesNotExist as e:
           allocation.amount = 0
-          logger.warning(f"Failed to get bucket for allocation in receipt {receipt_guid}: {e}")
+          logger.warning(
+            f"Failed to get bucket for allocation in receipt {receipt_guid}: {e}"
+          )
       repo.add(receipt)
     except Receipt.DoesNotExist:
       logger.warning(f"Skipping missing receipt during rebuild: {receipt_guid}")

@@ -71,10 +71,14 @@ def error_response(
   exception: Exception | None = None,
 ) -> Response:
   if exception:
-    logger.error("Request to %s raised %s: %s", request.path, type(exception).__name__, exception)
+    logger.error(
+      "Request to %s raised %s: %s", request.path, type(exception).__name__, exception
+    )
   else:
     logger.warning("Request to %s failed %s: %s", request.path, status, message)
-  return Response(json.dumps({"error": message}), status=status, content_type="application/json")
+  return Response(
+    json.dumps({"error": message}), status=status, content_type="application/json"
+  )
 
 
 def make_timestamp(value: datetime) -> Timestamp:
@@ -119,7 +123,9 @@ def get_end_date(data):
 
 
 def get_timezone(data):
-  return str(get_text(data, "timezone", "tz", "time zone", "timeZone", "timezone", default="UTC"))
+  return str(
+    get_text(data, "timezone", "tz", "time zone", "timeZone", "timezone", default="UTC")
+  )
 
 
 def require_auth(f):
@@ -177,7 +183,9 @@ def _parse_allocations(values: list[dict]) -> set:
   for item in values or []:
     if not isinstance(item, dict):
       continue
-    bucket_guid = item.get("bucket") or item.get("bucket_guid") or item.get("bucketGuid") or ""
+    bucket_guid = (
+      item.get("bucket") or item.get("bucket_guid") or item.get("bucketGuid") or ""
+    )
     if not bucket_guid:
       continue
     amount = float(item.get("amount", 0))
@@ -201,7 +209,9 @@ def get_dashboard(req: messages.GetDashboardRequest):
       )
     )
 
-  unallocated_receipt_messages = [make_receipt_message(r) for r in dashboard.unallocated]
+  unallocated_receipt_messages = [
+    make_receipt_message(r) for r in dashboard.unallocated
+  ]
   return messages.GetDashboardResponse(
     buckets=bucket_summaries,
     unallocated_receipts=unallocated_receipt_messages,
@@ -330,10 +340,18 @@ def upload_receipt_file(req: messages.UploadReceiptFileRequest):
   file_data = req.file_data
 
   if not client_hash:
-    return Response(json.dumps({"error": "file_hash is required"}), status=400, content_type="application/json")
+    return Response(
+      json.dumps({"error": "file_hash is required"}),
+      status=400,
+      content_type="application/json",
+    )
 
   if not filename:
-    return Response(json.dumps({"error": "filename is required"}), status=400, content_type="application/json")
+    return Response(
+      json.dumps({"error": "filename is required"}),
+      status=400,
+      content_type="application/json",
+    )
 
   # Get tenant's files directory
   tenant = require_tenant()
@@ -351,7 +369,11 @@ def upload_receipt_file(req: messages.UploadReceiptFileRequest):
     ts.FromDatetime(upload_timestamp)
 
     file_info = messages.UploadReceiptFileInfo(
-      file_hash=client_hash, filename=filename, file_path=str(zip_path), file_size=file_size, uploaded_at=ts
+      file_hash=client_hash,
+      filename=filename,
+      file_path=str(zip_path),
+      file_size=file_size,
+      uploaded_at=ts,
     )
 
     return messages.UploadReceiptFileResponse(already_exists=True, file_info=file_info)
@@ -359,14 +381,20 @@ def upload_receipt_file(req: messages.UploadReceiptFileRequest):
   # Decode file data is handled by protobuf already (bytes field)
   if not file_data:
     return Response(
-      json.dumps({"error": "file_data is required for new uploads"}), status=400, content_type="application/json"
+      json.dumps({"error": "file_data is required for new uploads"}),
+      status=400,
+      content_type="application/json",
     )
 
   # Validate hash
   calculated_hash = _calculate_file_hash(file_data)
   if calculated_hash != client_hash:
     logger.warning(f"Hash mismatch: client={client_hash}, calculated={calculated_hash}")
-    return Response(json.dumps({"error": "File hash validation failed"}), status=400, content_type="application/json")
+    return Response(
+      json.dumps({"error": "File hash validation failed"}),
+      status=400,
+      content_type="application/json",
+    )
 
   # Ensure files directory exists and save file as zip
   files_dir.mkdir(parents=True, exist_ok=True)
@@ -382,7 +410,11 @@ def upload_receipt_file(req: messages.UploadReceiptFileRequest):
   ts.FromDatetime(upload_timestamp)
 
   file_info = messages.UploadReceiptFileInfo(
-    file_hash=client_hash, filename=filename, file_path=str(zip_path), file_size=file_size, uploaded_at=ts
+    file_hash=client_hash,
+    filename=filename,
+    file_path=str(zip_path),
+    file_size=file_size,
+    uploaded_at=ts,
   )
 
   return messages.UploadReceiptFileResponse(already_exists=False, file_info=file_info)

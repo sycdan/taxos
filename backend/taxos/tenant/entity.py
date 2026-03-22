@@ -14,7 +14,9 @@ class Tenant:
 
   guid: UUID
   name: str
-  token_count: int = field(default=0, metadata={"help": "Number of access tokens issued to this tenant."})
+  token_count: int = field(
+    default=0, metadata={"help": "Number of access tokens issued to this tenant."}
+  )
 
   @cached_property
   def content_dir(self) -> Path:

@@ -41,7 +41,7 @@ def handle(command: Test, *tests):
     token = _find_token_for_current_tenant()
     npm_args = [
       "VITE_GRPC_API_URL=http://backend:50051",
-      *([ f"TAXOS_ACCESS_TOKEN={token}" ] if token else []),
+      *([f"TAXOS_ACCESS_TOKEN={token}"] if token else []),
       "npm",
       "--prefix",
       FRONTEND_ROOT.relative_to(REPO_ROOT).as_posix(),

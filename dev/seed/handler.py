@@ -8,6 +8,7 @@ from taxos import ACCESS_TOKENS_DIR, DATA_DIR, TENANTS_DIR
 
 from dev.seed.command import Seed
 
+
 def print_access_token():
   token = next(ACCESS_TOKENS_DIR.iterdir())
   print(f"🗝️  Your access token is: {token.stem}")

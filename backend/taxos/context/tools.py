@@ -17,7 +17,9 @@ from taxos.vendor.load.query import LoadVendor
 logger = logging.getLogger(__name__)
 
 # Context variables for request-scoped data
-_context_var: contextvars.ContextVar[Optional[Context]] = contextvars.ContextVar("context", default=None)
+_context_var: contextvars.ContextVar[Optional[Context]] = contextvars.ContextVar(
+  "context", default=None
+)
 
 
 def get_default_context_file() -> Path:
@@ -58,7 +60,9 @@ def require_context() -> Context:
   """Get the current context, raising an error if none is set."""
   context = get_context()
   if context is None:
-    raise RuntimeError("No context is currently set. Make sure to call set_context() first.")
+    raise RuntimeError(
+      "No context is currently set. Make sure to call set_context() first."
+    )
   return context
 
 

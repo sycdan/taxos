@@ -14,7 +14,9 @@ def _get_month_key(date: date) -> str:
 @dataclass
 class ReceiptRepo:
   records: dict[UUID, Receipt] = field(default_factory=dict, init=False)
-  index_by_month: dict[str, set[UUID]] = field(default_factory=dict, init=False, repr=False)
+  index_by_month: dict[str, set[UUID]] = field(
+    default_factory=dict, init=False, repr=False
+  )
 
   def add(self, receipt: Receipt):
     """idempotent add/update of a receipt to the repo"""

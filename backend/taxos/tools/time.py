@@ -7,7 +7,9 @@ DEFAULT_TIMEZONE = ZoneInfo("UTC")
 logger = logging.getLogger(__name__)
 
 
-def parse_datetime(when: datetime | str, where: ZoneInfo | str | None = None) -> datetime:
+def parse_datetime(
+  when: datetime | str, where: ZoneInfo | str | None = None
+) -> datetime:
   logger.debug(f"{when=}, {where=}")
   if not where:
     where = DEFAULT_TIMEZONE

@@ -27,7 +27,10 @@ def handle(query: GetDashboard) -> Dashboard:
       repo=receipt_repo,
     ).execute()
 
-    total_amount = sum(sum(a.amount for a in r.allocations if a.bucket.guid == bucket.guid) for r in receipts)
+    total_amount = sum(
+      sum(a.amount for a in r.allocations if a.bucket.guid == bucket.guid)
+      for r in receipts
+    )
     receipt_count = len(receipts)
 
     bucket_summaries.append(

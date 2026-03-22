@@ -32,12 +32,16 @@ def parse_allocations(data) -> set[Allocation]:
       logger.warning("Invalid allocation pair in receipt state data: %s", pair)
       continue
 
-    bucket_ref_key = pair.get("bucket", pair.get("bucket_guid", pair.get("bucket_ref", "")))
+    bucket_ref_key = pair.get(
+      "bucket", pair.get("bucket_guid", pair.get("bucket_ref", ""))
+    )
     amount = pair.get("amount")
     try:
       bucket_ref = BucketRef(bucket_ref_key)
     except ValueError as e:
-      logger.warning("Invalid bucket reference in allocation pair: %s (%s)", bucket_ref_key, e)
+      logger.warning(
+        "Invalid bucket reference in allocation pair: %s (%s)", bucket_ref_key, e
+      )
       continue
 
     if not isinstance(amount, (int, float)):
@@ -60,11 +64,15 @@ def parse_receipt(state_file: Path) -> Receipt | None:
     return None
 
   allocations_data = state.get("allocations", [])
-  logger.debug(f"Allocations data from file: {allocations_data}, type: {type(allocations_data)}")
+  logger.debug(
+    f"Allocations data from file: {allocations_data}, type: {type(allocations_data)}"
+  )
 
   # Backwards compat
   if "state_file" in state and "guid" not in state:
-    logger.debug("Found 'state_file' in receipt state, loading allocations from it for backwards compatibility")
+    logger.debug(
+      "Found 'state_file' in receipt state, loading allocations from it for backwards compatibility"
+    )
     legacy_state_file = Path(state["state_file"])
     state["guid"] = legacy_state_file.parent.name
 

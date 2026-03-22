@@ -21,7 +21,9 @@ def handle(query: ListReceipts) -> list[Receipt]:
 
   def should_include(receipt: Receipt) -> bool:
     has_allocation = any(a.bucket.guid == bucket.guid for a in receipt.allocations)
-    logger.debug(f"Receipt {receipt.guid} has allocation to bucket {bucket.guid}: {has_allocation}")
+    logger.debug(
+      f"Receipt {receipt.guid} has allocation to bucket {bucket.guid}: {has_allocation}"
+    )
     return has_allocation
 
   for month in month_keys:

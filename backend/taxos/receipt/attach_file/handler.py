@@ -18,7 +18,9 @@ def handle(command: AttachFile) -> Receipt:
   receipt = require_receipt(command.receipt_ref)
 
   if receipt.hash:
-    raise FileExistsError(f"Receipt {receipt.guid} already has an attached file with hash {receipt.hash}")
+    raise FileExistsError(
+      f"Receipt {receipt.guid} already has an attached file with hash {receipt.hash}"
+    )
 
   filepath = Path(command.filepath)
   if not filepath.exists():

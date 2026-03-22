@@ -76,7 +76,9 @@ def ensure_bucket_exists(bucket: Bucket):
   result = LoadBucketRepo().execute()
   assert isinstance(result, BucketRepo), f"Expected BucketRepo, got {type(result)}"
   bucket_list: list[Bucket] = list(result.index.values())
-  assert any(b.guid == bucket.guid for b in bucket_list), "Created bucket not found in list"
+  assert any(b.guid == bucket.guid for b in bucket_list), (
+    "Created bucket not found in list"
+  )
 
 
 def get_receipt_list(month_key: str = MONTH_KEY, bucket="") -> list[Receipt]:
@@ -90,10 +92,14 @@ def ensure_unallocated_receipt(receipt: Receipt, unallocated_amount: float = 0):
   assert receipt in dashboard.unallocated, "Receipt should be in unallocated list"
   unallocated_receipt = CheckUnallocatedReceipt(receipt).execute()
   assert unallocated_receipt is not None, "Receipt should be unallocated"
-  assert unallocated_receipt.unallocated_amount == unallocated_amount, "Unallocated amount should equal receipt total"
+  assert unallocated_receipt.unallocated_amount == unallocated_amount, (
+    "Unallocated amount should equal receipt total"
+  )
 
 
-def ensure_receipt_created(vendor: str, total: float, vendor_ref: str = "TEST-REF") -> Receipt:
+def ensure_receipt_created(
+  vendor: str, total: float, vendor_ref: str = "TEST-REF"
+) -> Receipt:
   now = Timestamp()
   now.GetCurrentTime()
   result = CreateReceipt(
@@ -133,13 +139,17 @@ def test_happy_path(test_context):
   """Full API integration test including tenant authentication"""
   tenant = test_context.tenant
   assert tenant is not None, "Tenant should be set in context"
-  assert tenant.name == "Test Tenant", f"Expected tenant name 'Test Tenant', got '{tenant.name}'"
+  assert tenant.name == "Test Tenant", (
+    f"Expected tenant name 'Test Tenant', got '{tenant.name}'"
+  )
   token = test_context.access_token
   assert token is not None, "Access token should be set in context"
 
   created_bucket = ensure_bucket_created("Test Bucket")
   updated_bucket = ensure_bucket_updated(created_bucket)
-  assert updated_bucket.guid == created_bucket.guid, "Bucket GUID should not change on update"
+  assert updated_bucket.guid == created_bucket.guid, (
+    "Bucket GUID should not change on update"
+  )
 
   ensure_bucket_exists(updated_bucket)
 
@@ -184,7 +194,9 @@ def test_vendor_find_or_create(test_context):
   assert "Widget Industries" in vendor_names
 
   # Verify vendors are sorted by name
-  assert vendors == sorted(vendors, key=lambda v: v.name.lower()), "Vendors should be sorted by name"
+  assert vendors == sorted(vendors, key=lambda v: v.name.lower()), (
+    "Vendors should be sorted by name"
+  )
 
 
 @pytest.mark.integration
@@ -212,7 +224,9 @@ def test_vendor_created_with_receipt(test_context):
 
   # Verify no duplicate vendor was created
   vendors = ListVendors().execute()
-  assert len(vendors) == initial_count + 1, "Should still have same number of vendors (no duplicate)"
+  assert len(vendors) == initial_count + 1, (
+    "Should still have same number of vendors (no duplicate)"
+  )
 
   # Clean up
   ensure_receipt_deleted(receipt)

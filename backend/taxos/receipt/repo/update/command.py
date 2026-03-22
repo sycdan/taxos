@@ -9,7 +9,9 @@ class UpdateReceiptRepo:
   receipt: Union[Receipt, ReceiptRef]
   remove: bool = field(
     default=False,
-    metadata={"help": "If True, remove the receipt from the repo instead of adding it."},
+    metadata={
+      "help": "If True, remove the receipt from the repo instead of adding it."
+    },
   )
 
   def __post_init__(self):

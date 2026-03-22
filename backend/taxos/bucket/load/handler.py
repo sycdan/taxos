@@ -15,5 +15,3 @@ def handle(command: LoadBucket):
     return Bucket(guid, state.get("name", guid))
 
   raise Bucket.DoesNotExist(guid)
-
-
