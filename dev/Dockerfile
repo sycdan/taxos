@@ -21,9 +21,9 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list \
   && rm -f /etc/apt/sources.list.d/*yarn* \
   && apt-get update
 
-# Install Node.js 20 (as root)
+# Install Node.js 20 and socat (as root)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-  && apt-get install -y nodejs \
+  && apt-get install -y nodejs socat \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Python requirements at build time so the container is ready immediately.
