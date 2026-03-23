@@ -45,11 +45,27 @@ def _ensure_test_node_modules():
     link.symlink_to(target)
 
 
+def _ensure_playwright_browsers():
+  """Install Playwright browser binaries if they are not already present."""
+  cache = Path.home() / ".cache" / "ms-playwright"
+  # Check for any chromium_headless_shell directory — the version suffix varies.
+  already_installed = (
+    any(cache.glob("chromium_headless_shell-*")) if cache.exists() else False
+  )
+  if not already_installed:
+    print("🎭 Installing Playwright browser binaries...")
+    subprocess.run(
+      [str(PLAYWRIGHT_BIN), "install", "--with-deps", "chromium"],
+      check=True,
+    )
+
+
 def handle(command: Test, *tests):
   os.chdir(REPO_ROOT)
 
   if command.flows:
     _ensure_test_node_modules()
+    _ensure_playwright_browsers()
     # The React app (served by the frontend container) calls the backend at
     # http://localhost:50051 (baked in by Vite from VITE_GRPC_API_URL).
     # From within the devcontainer, localhost:50051 isn't mapped to the backend
