@@ -75,12 +75,17 @@ def handle(command: Test, *tests):
       socat.wait()
     return
 
-  pyt_args = ["--no-header", "-s", "--verbose", BACKEND_ROOT.as_posix()]
-  if not command.no_integration:
-    pyt_args.append("--run-integration")
-  if tests:
-    pyt_args.extend(["-k", " or ".join(tests)])
-  pytest.main(pyt_args)
+  if not command.no_backend:
+    pyt_args = ["--no-header", "-s", "--verbose", BACKEND_ROOT.as_posix()]
+    if not command.no_integration:
+      pyt_args.append("--run-integration")
+    if tests:
+      pyt_args.extend(["-k", " or ".join(tests)])
+    try:
+      pytest.main(pyt_args)
+    except SystemExit as e:
+      if e.code != 0:
+        raise RuntimeError("Backend tests failed") from e
 
   if not command.no_integration and not command.no_frontend:
     token = _find_token_for_current_tenant()

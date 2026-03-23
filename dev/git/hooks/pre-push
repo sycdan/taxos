@@ -9,6 +9,12 @@ if [ -n "$(git -C "$REPO_ROOT" status --porcelain)" ]; then
   exit 1
 fi
 
+echo "==> Running backend tests..."
+if ! (cd "$REPO_ROOT" && scaf call dev/test --no-frontend); then
+  echo "❌ Backend tests failed." >&2
+  exit 1
+fi
+
 echo "==> Checking Python format (ruff)..."
 if ! ruff format --check "$REPO_ROOT/backend" "$REPO_ROOT/dev"; then
   echo "❌ Python formatting issues found. Run: ruff format backend dev" >&2
@@ -18,6 +24,12 @@ fi
 echo "==> Checking Python lint (ruff)..."
 if ! ruff check "$REPO_ROOT/backend" "$REPO_ROOT/dev"; then
   echo "❌ Python lint issues found. Run: ruff check --fix backend dev" >&2
+  exit 1
+fi
+
+echo "==> Running frontend tests..."
+if ! (cd "$REPO_ROOT" && scaf call dev/test --no-backend); then
+  echo "❌ Frontend tests failed." >&2
   exit 1
 fi
 
@@ -33,9 +45,9 @@ if ! (cd "$REPO_ROOT/frontend" && npm run lint); then
   exit 1
 fi
 
-echo "==> Running tests..."
-if ! (cd "$REPO_ROOT" && scaf call dev/test); then
-  echo "❌ Tests failed. Run: dev.test" >&2
+echo "==> Running flow tests..."
+if ! (cd "$REPO_ROOT" && scaf call dev/test --flows); then
+  echo "❌ Flow tests failed." >&2
   exit 1
 fi
 
