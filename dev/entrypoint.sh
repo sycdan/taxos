@@ -20,6 +20,7 @@ HOOKS_DST="/workspaces/taxos/.git/hooks"
 for hook in "$HOOKS_SRC"/*; do
   hook_name="$(basename "$hook")"
   ln -sf "$hook" "$HOOKS_DST/$hook_name"
+  chmod +x "$HOOKS_DST/$hook_name"
 done
 
 # Seed dev data
