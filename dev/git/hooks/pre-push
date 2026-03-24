@@ -10,7 +10,7 @@ if [ -n "$(git -C "$REPO_ROOT" status --porcelain)" ]; then
 fi
 
 echo "==> Running backend tests..."
-if ! (cd "$REPO_ROOT" && scaf call dev/test --no-integration); then
+if ! (cd "$REPO_ROOT" && scaf call dev/test); then
   echo "❌ Backend tests failed." >&2
   exit 1
 fi
@@ -28,7 +28,7 @@ if ! ruff check "$REPO_ROOT/backend" "$REPO_ROOT/dev"; then
 fi
 
 echo "==> Running flow tests..."
-if ! (cd "$REPO_ROOT" && scaf call dev/test --flows); then
+if ! (cd "$REPO_ROOT" && scaf call dev/test --flows --no-backend); then
   echo "❌ Flow tests failed." >&2
   exit 1
 fi

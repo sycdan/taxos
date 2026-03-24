@@ -44,6 +44,18 @@ def _ensure_playwright_browsers():
 def handle(command: Test, *tests):
   os.chdir(REPO_ROOT)
 
+  if not command.no_backend:
+    pyt_args = ["--no-header", "-s", "--verbose", BACKEND_ROOT.as_posix()]
+    if not command.no_integration:
+      pyt_args.append("--run-integration")
+    if tests:
+      pyt_args.extend(["-k", " or ".join(tests)])
+    try:
+      pytest.main(pyt_args)
+    except SystemExit as e:
+      if e.code != 0:
+        raise RuntimeError("Backend tests failed") from e
+
   if command.flows:
     _ensure_test_node_modules()
     _ensure_playwright_browsers()
@@ -62,16 +74,3 @@ def handle(command: Test, *tests):
       subprocess.run(pw_args, check=True)
     except subprocess.CalledProcessError as e:
       raise RuntimeError("Flow tests failed") from e
-    return
-
-  if not command.no_backend:
-    pyt_args = ["--no-header", "-s", "--verbose", BACKEND_ROOT.as_posix()]
-    if not command.no_integration:
-      pyt_args.append("--run-integration")
-    if tests:
-      pyt_args.extend(["-k", " or ".join(tests)])
-    try:
-      pytest.main(pyt_args)
-    except SystemExit as e:
-      if e.code != 0:
-        raise RuntimeError("Backend tests failed") from e
