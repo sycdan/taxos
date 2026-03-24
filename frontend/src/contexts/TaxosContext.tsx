@@ -98,12 +98,6 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 	// Monotonically-incrementing counter. triggerRefresh bumps it before firing
 	// a new fetch so any in-flight (pre-mutation) response can detect it is stale.
 	const refreshSeqRef = useRef(0);
-	// Keep a state copy so triggerRefresh (called after mutations) sees the
-	// latest dates without needing to be in refreshBuckets' dep array.
-	const [currentDateFilter, setCurrentDateFilter] = useState<{
-		start?: Date;
-		end?: Date;
-	}>({});
 
 	// Helper to convert Timestamp to ISO string
 	const timestampToIso = (ts?: Timestamp) => {
@@ -216,10 +210,8 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					return;
 				}
 
-				// Update both the ref (immediately visible to future calls) and
-				// the state (used by triggerRefresh after mutations).
+				// Update the ref so it is immediately visible to future calls.
 				currentDateFilterRef.current = { start: startDate, end: endDate };
-				setCurrentDateFilter({ start: startDate, end: endDate });
 
 				const response = await client.getDashboard({
 					months: getMonthsInRange(startDate, endDate),
@@ -324,9 +316,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				}
 			}
 		},
-		// Intentionally omit currentDateFilter and activeBucketId: we read them
-		// via refs so that this callback stays stable and doesn't cause the
-		// Dashboard useEffect to re-fire in a loop.
+		// Intentionally omit activeBucketId: we read it via a ref so that this
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[authenticated, loadReceiptsForBucket],
 	);
