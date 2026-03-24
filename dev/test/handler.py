@@ -13,6 +13,7 @@ TEST_DIR = REPO_ROOT / "test"
 FRONTEND_ROOT = REPO_ROOT / "frontend"
 PLAYWRIGHT_BIN = FRONTEND_ROOT / "node_modules" / ".bin" / "playwright"
 
+
 def _ensure_test_node_modules():
   """Ensure test/node_modules is a symlink to frontend/node_modules.
 
@@ -74,4 +75,3 @@ def handle(command: Test, *tests):
     except SystemExit as e:
       if e.code != 0:
         raise RuntimeError("Backend tests failed") from e
-
