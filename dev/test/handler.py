@@ -66,29 +66,21 @@ def handle(command: Test, *tests):
   if command.flows:
     _ensure_test_node_modules()
     _ensure_playwright_browsers()
-    # The React app (served by the frontend container) calls the backend at
-    # http://localhost:50051 (baked in by Vite from VITE_GRPC_API_URL).
-    # From within the devcontainer, localhost:50051 isn't mapped to the backend
-    # container, so we stand up a socat proxy for the duration of the test run.
-    socat = subprocess.Popen(
-      ["socat", "TCP-LISTEN:50051,fork,reuseaddr", "TCP:backend:50051"],
-      stdout=subprocess.DEVNULL,
-      stderr=subprocess.DEVNULL,
-    )
+    pw_args = [
+      str(PLAYWRIGHT_BIN),
+      "test",
+      "--config",
+      str(TEST_DIR / "playwright.config.ts"),
+    ]
+    if command.ui:
+      pw_args.append("--ui")
+    if tests:
+      # --grep accepts a JS regex; join multiple names with |
+      pw_args.extend(["--grep", "|".join(tests)])
     try:
-      pw_args = [
-        str(PLAYWRIGHT_BIN),
-        "test",
-        "--config",
-        str(TEST_DIR / "playwright.config.ts"),
-      ]
-      if tests:
-        # --grep accepts a JS regex; join multiple names with |
-        pw_args.extend(["--grep", "|".join(tests)])
       subprocess.run(pw_args, check=True)
-    finally:
-      socat.terminate()
-      socat.wait()
+    except subprocess.CalledProcessError as e:
+      raise RuntimeError("Flow tests failed") from e
     return
 
   if not command.no_backend:
@@ -119,4 +111,7 @@ def handle(command: Test, *tests):
     if tests:
       npm_args.extend(["-t", shlex.quote("|".join(tests))])
     npm_cmd = " ".join(npm_args)
-    subprocess.run(npm_cmd, shell=True, check=True)
+    try:
+      subprocess.run(npm_cmd, shell=True, check=True)
+    except subprocess.CalledProcessError as e:
+      raise RuntimeError("Frontend tests failed") from e

@@ -21,7 +21,7 @@ export class TaxosApiClient {
 		const baseUrl =
 			options?.baseUrl ||
 			import.meta.env.VITE_GRPC_API_URL ||
-			"http://localhost:8080";
+			(typeof window !== "undefined" ? window.location.origin : "");
 
 		// For testing: fixed token; for app: dynamic from localStorage
 		this.getToken = options?.getToken || (() => options?.token || null);

@@ -61,8 +61,11 @@ test.describe("Backdated Receipt Flow", () => {
 		// Fill in the backdated timestamp
 		await modal.locator('input[type="datetime-local"]').fill(backdatedDatetime);
 
-		// Allocate to the bucket via the chip
-		await modal.getByRole("button", { name: bucketNameRegex }).click();
+		// Allocate to the bucket via the chip — wait for it to appear first since
+		// bucketSummaries state may still be settling after bucket creation.
+		const bucketChip = modal.getByRole("button", { name: bucketNameRegex });
+		await expect(bucketChip).toBeVisible({ timeout: 15_000 });
+		await bucketChip.click();
 
 		// Save the receipt and close the modal
 		await modal.getByRole("button", { name: "Save Receipt" }).click();

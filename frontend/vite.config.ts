@@ -15,6 +15,15 @@ export default defineConfig({
     hmr: {
       host: 'localhost',
       port: 5173
-    }
+    },
+    proxy: {
+      // Forward Connect-RPC calls to the backend container.
+      // The browser always calls the same origin (:5173), so this works
+      // regardless of where the browser is — host, devcontainer, CI, etc.
+      '/taxos.v1': {
+        target: process.env.VITE_GRPC_API_URL || 'http://backend:50051',
+        changeOrigin: true,
+      },
+    },
   },
 })

@@ -19,7 +19,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onLogin }) => {
 	const validateToken = async (tokenToValidate: string): Promise<boolean> => {
 		try {
 			const baseUrl =
-				import.meta.env.VITE_GRPC_API_URL || "http://localhost:8080";
+				import.meta.env.VITE_GRPC_API_URL || window.location.origin;
 
 			// Create a temporary client with the test token
 			const testClient = createPromiseClient(

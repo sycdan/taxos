@@ -53,8 +53,7 @@ services:
       - ${CODE_ROOT:-.}/frontend:/app
     ports:
       - "5173:5173"
-    environment:
-      - VITE_GRPC_API_URL=http://localhost:50051
+    environment: []
 
 volumes:
   debugpy-vol: # ephemeral: sidecar copies debugpy here at startup

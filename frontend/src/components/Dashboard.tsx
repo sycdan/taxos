@@ -19,7 +19,7 @@ interface DashboardProps {
 	setShowEmpty: (show: boolean) => void;
 	startDate: Date;
 	endDate: Date;
-	onAddBucket: (name: string) => void;
+	onAddBucket: (name: string) => Promise<boolean>;
 	isNameTaken: (name: string) => boolean;
 }
 
@@ -106,10 +106,10 @@ const Dashboard: React.FC<DashboardProps> = ({
 		});
 	};
 
-	const handleCreateBucket = (e: React.FormEvent) => {
+	const handleCreateBucket = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (newBucketName.trim() && !isNameTaken(newBucketName.trim())) {
-			onAddBucket(newBucketName.trim());
+			await onAddBucket(newBucketName.trim());
 			setNewBucketName("");
 			setIsAddingBucket(false);
 		}

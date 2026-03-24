@@ -15,8 +15,7 @@ services:
     image: ${REGISTRY_HOST}/taxos-frontend:latest
     ports:
       - "${UI_PORT:-80}:5173"
-    environment:
-      - VITE_GRPC_API_URL=http://htpc.lan:50051
+    environment: []
     restart: unless-stopped
     depends_on:
       - taxos-backend

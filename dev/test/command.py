@@ -11,3 +11,4 @@ class Test:
   flows: bool = (
     False  # Run Playwright browser flow tests instead of unit/integration tests
   )
+  ui: bool = False  # Open the Playwright UI (interactive test runner in the browser)

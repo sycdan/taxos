@@ -9,9 +9,7 @@
 		"build": "tsc -b && vite build",
 		"lint": "eslint .",
 		"preview": "vite preview",
-		"test:integration": "vitest run --config vitest.config.integration.ts",
-		"test:integration:watch": "vitest --config vitest.config.integration.ts",
-		"test:integration:ui": "vitest --ui --config vitest.config.integration.ts"
+		"test:flows": "playwright test --config ../test/playwright.config.ts"
 	},
 	"dependencies": {
 		"@bufbuild/protobuf": "^1.10.1",

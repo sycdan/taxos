@@ -93,6 +93,11 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 	const currentDateFilterRef = useRef<{ start?: Date; end?: Date }>({});
 	const activeBucketIdRef = useRef<string | null>(null);
 	const isRefreshingRef = useRef(false);
+	// Holds dates for a refresh that was requested while one was already in-flight.
+	const pendingRefreshRef = useRef<{ start?: Date; end?: Date } | null>(null);
+	// Monotonically-incrementing counter. triggerRefresh bumps it before firing
+	// a new fetch so any in-flight (pre-mutation) response can detect it is stale.
+	const refreshSeqRef = useRef(0);
 	// Keep a state copy so triggerRefresh (called after mutations) sees the
 	// latest dates without needing to be in refreshBuckets' dep array.
 	const [currentDateFilter, setCurrentDateFilter] = useState<{
@@ -176,9 +181,10 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 
 	const refreshBuckets = useCallback(
 		async (startDate?: Date, endDate?: Date, force?: boolean) => {
-			// Prevent concurrent requests
+			// Prevent concurrent requests; queue the latest dates so we can
+			// re-run after the in-flight request completes.
 			if (isRefreshingRef.current) {
-				console.log("Skipping GetDashboard - refresh already in flight");
+				pendingRefreshRef.current = { start: startDate, end: endDate };
 				return;
 			}
 
@@ -198,13 +204,11 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					endDate.getTime() === currentFilter.end.getTime());
 
 			if (!force && sameStart && sameEnd && buckets.length > 0) {
-				console.log(
-					"Skipping GetDashboard - same date filter and buckets already loaded",
-				);
 				return;
 			}
 
 			isRefreshingRef.current = true;
+			const mySeq = refreshSeqRef.current;
 			try {
 				setLoading(true);
 				if (!authenticated) {
@@ -212,7 +216,6 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					return;
 				}
 
-				console.log("Making GetDashboard request with date filter change...");
 				// Update both the ref (immediately visible to future calls) and
 				// the state (used by triggerRefresh after mutations).
 				currentDateFilterRef.current = { start: startDate, end: endDate };
@@ -270,6 +273,12 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					}
 				}
 
+				// If triggerRefresh fired while this fetch was in-flight, discard
+				// this (now-stale) response so we don't overwrite optimistic state.
+				if (mySeq !== refreshSeqRef.current) {
+					return;
+				}
+
 				setBuckets(apiBuckets);
 				setBucketSummaries(apiSummaries);
 				setUnallocatedReceipts(apiUnallocatedReceipts);
@@ -288,9 +297,6 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					startDate &&
 					endDate
 				) {
-					console.log(`Refreshing active bucket: ${currentActiveBucketId}`);
-					// We need to call loadReceiptsForBucket here to get the latest data for the specific bucket
-					// This effectively "refreshes" the view without switching back to unallocated
 					void loadReceiptsForBucket(currentActiveBucketId, startDate, endDate);
 				} else {
 					// Default view is unallocated if no specific bucket is being loaded
@@ -310,6 +316,12 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 			} finally {
 				isRefreshingRef.current = false;
 				setLoading(false);
+				// If a refresh was requested while we were in-flight, run it now.
+				if (pendingRefreshRef.current) {
+					const pending = pendingRefreshRef.current;
+					pendingRefreshRef.current = null;
+					void refreshBuckets(pending.start, pending.end, true);
+				}
 			}
 		},
 		// Intentionally omit currentDateFilter and activeBucketId: we read them
@@ -329,10 +341,15 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 	}, [authenticated]);
 
 	const triggerRefresh = useCallback(() => {
-		if (currentDateFilter.start || currentDateFilter.end) {
-			void refreshBuckets(currentDateFilter.start, currentDateFilter.end, true);
+		// Read dates from the ref (updated synchronously inside refreshBuckets)
+		// rather than from state, which may lag by one render cycle.
+		const { start, end } = currentDateFilterRef.current;
+		if (start || end) {
+			// Bump seq so any in-flight (pre-mutation) response is discarded.
+			refreshSeqRef.current += 1;
+			void refreshBuckets(start, end, true);
 		}
-	}, [currentDateFilter, refreshBuckets]);
+	}, [refreshBuckets]);
 
 	const isNameTaken = (name: string, excludeId?: string) => {
 		const slug = slugify(name);
@@ -348,7 +365,15 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				id: response.guid,
 				name: response.name,
 			};
+			// Optimistically add an empty summary so the bucket chip appears in
+			// the receipt modal immediately, without waiting for triggerRefresh.
+			const newSummary: BucketSummary = {
+				bucket: newBucket,
+				totalAmount: 0,
+				receiptCount: 0,
+			};
 			setBuckets((prev) => [...prev, newBucket]);
+			setBucketSummaries((prev) => [...prev, newSummary]);
 			triggerRefresh();
 			return true;
 		} catch (error) {

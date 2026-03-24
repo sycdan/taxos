@@ -2,25 +2,9 @@
 
 ## Today's Task
 
-we need to start doing full e2e browser test flows that ensure the ui works as expected when hooked up to the real backend
+we would like to split the flow test files into smaller units inside each file, since they should run consecutively (so state from ealier tets can be sued in later ones, I assume). taht way we can more celarly see which unit of work failed.
 
-please suggest tools we could use
+we need to fix an issue with the backdated receipt test
 
-we want to bea be to write tests without a lot of boilerplate and put them in the (not created yet) ./test domain
+there is some sort of race condition, where when we switch the filter to the backdate, the getdashboard call comes back and updates the view, then another getdashboad call compeletes (from saving the receipt, presumably) and it overrides the view
 
-for example
-
-```
-dev.test --flows backdated
-# flows would be a boolean flag, backdated would be in the current arg list (*tests)
-```
-
-would run the tests matching "*backdated*" in ./test/flows
-
-we would create a new tenant for each flow, so they have a clean slate
-
-we would need helpers to make it easy to set up a testbed of data in a new tenant for the purposes of that specific test
-
-we will run these tests from the devcontainer, so http://frontend and http://backend urls should work (needs to be tested)
-
-we will move the existing backdated flow test from frontend to this higher level, since it really neesd the ui; the basic api integration tests can stay (we should remove the integration tests on the backend though, since they are probably duplicated by the FE ones -- but move any missing logic over)
