@@ -3,6 +3,7 @@ scratch.sh
 dev/scratch
 dev/bootstrap.sh
 .vscode/
+test/node_modules
 
 # User data
 .env
