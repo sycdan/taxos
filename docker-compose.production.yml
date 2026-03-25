@@ -1,7 +1,7 @@
 services:
   taxos-backend:
     container_name: taxos_backend
-    image: ${REGISTRY_HOST}/taxos-backend:latest
+    image: ${REGISTRY_HOST}/taxos-backend:{TAXOS_VERSION}
     ports:
       - "50051:50051"
     environment:
@@ -12,7 +12,7 @@ services:
 
   taxos-frontend:
     container_name: taxos_frontend
-    image: ${REGISTRY_HOST}/taxos-frontend:latest
+    image: ${REGISTRY_HOST}/taxos-frontend:{TAXOS_VERSION}
     ports:
       - "${UI_PORT:-80}:5173"
     environment: []
