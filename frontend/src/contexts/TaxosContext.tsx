@@ -37,7 +37,7 @@ interface TaxosContextType {
 	addBucket: (name: string) => Promise<boolean>;
 	updateBucket: (id: string, name: string) => Promise<boolean>;
 	deleteBucket: (id: string) => Promise<void>;
-	addReceipt: (receipt: Omit<Receipt, "id">) => Promise<void>;
+	addReceipt: (receipt: Omit<Receipt, "id">, refreshDates?: { start: Date; end: Date }) => Promise<void>;
 	updateReceipt: (receipt: Receipt) => Promise<void>;
 	deleteReceipt: (id: string) => Promise<void>;
 	refreshBuckets: (
@@ -412,7 +412,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 		}
 	};
 
-	const addReceipt = async (receipt: Omit<Receipt, "id">) => {
+	const addReceipt = async (receipt: Omit<Receipt, "id">, refreshDates?: { start: Date; end: Date }) => {
 		try {
 			const response = await client.createReceipt({
 				vendor: receipt.vendor,
@@ -451,7 +451,12 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				return;
 			}
 			setReceipts((prev) => ({ ...prev, [createdReceipt.id]: createdReceipt }));
-			triggerRefresh();
+			if (refreshDates) {
+				refreshSeqRef.current += 1;
+				void refreshBuckets(refreshDates.start, refreshDates.end, true);
+			} else {
+				triggerRefresh();
+			}
 		} catch (error) {
 			console.error("Failed to create receipt:", error);
 		}

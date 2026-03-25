@@ -364,19 +364,22 @@ const App: React.FC = () => {
 						if (editingReceipt) {
 							updateReceipt({ ...data, id: editingReceipt.id });
 						} else {
-							// Await the receipt save before updating the filter so that
-							// the subsequent dashboard refresh sees the new receipt.
-							addReceipt(data).then(() => {
-								const receiptDate = new Date(data.date);
-								const newValue =
-									filterConfig.mode === "year"
-										? String(receiptDate.getFullYear())
-										: format(receiptDate, "yyyy-MM");
-								setFilterConfig((prev: FilterConfig) => ({
-									...prev,
-									value: newValue,
-								}));
-							});
+							const receiptDate = new Date(data.date);
+							const newValue =
+								filterConfig.mode === "year"
+									? String(receiptDate.getFullYear())
+									: format(receiptDate, "yyyy-MM");
+							// Compute the date range for the receipt's period so the
+							// dashboard refresh targets the correct months.
+							const refreshDates =
+								filterConfig.mode === "year"
+									? { start: startOfYear(receiptDate), end: endOfYear(receiptDate) }
+									: { start: startOfMonth(receiptDate), end: endOfMonth(receiptDate) };
+							setFilterConfig((prev: FilterConfig) => ({
+								...prev,
+								value: newValue,
+							}));
+							addReceipt(data, refreshDates);
 						}
 					}}
 					onDelete={deleteReceipt}
