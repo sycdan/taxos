@@ -17,7 +17,7 @@ class CreateReceipt:
   notes: str = ""
   hash: str = field(
     default="",
-    metadata={"help": "SHA256 hash of the receipt file."},
+    doc="SHA256 hash of the receipt file.",
   )
 
   def __post_init__(self):

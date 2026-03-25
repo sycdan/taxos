@@ -24,11 +24,11 @@ class Vendor:
 class VendorRef:
   key: str = field(
     repr=False,
-    metadata={"help": "A plain-text reference to a vendor within the current tenant."},
+    doc="A plain-text reference to a vendor within the current tenant.",
   )
   guid: UUID = field(
     init=False,
-    metadata={"help": "A unique identifier for a vendor."},
+    doc="A unique identifier for a vendor.",
   )
 
   def __post_init__(self):

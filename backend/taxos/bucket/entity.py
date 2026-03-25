@@ -24,11 +24,11 @@ class Bucket:
 class BucketRef:
   key: str = field(
     repr=False,
-    metadata={"help": "A plain-text reference to a bucket within the current tenant."},
+    doc="A plain-text reference to a bucket within the current tenant.",
   )
   guid: UUID = field(
     init=False,
-    metadata={"help": "A unique identifier for a bucket."},
+    doc="A unique identifier for a bucket.",
   )
 
   def __post_init__(self):

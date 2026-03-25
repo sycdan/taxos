@@ -19,7 +19,7 @@ class Receipt:
   timezone: str
   allocations: set[Allocation] = field(
     default_factory=set,
-    metadata={"help": "How much of the total is assigned to which buckets."},
+    doc="How much of the total is assigned to which buckets.",
   )
   vendor_ref: str = ""
   notes: str = ""

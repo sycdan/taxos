@@ -7,9 +7,9 @@ class BuildImage:
 
   no_proto: bool = field(
     default=False,
-    metadata={"help": "Skip generating proto files."},
+    doc="Skip generating proto files.",
   )
   no_push: bool = field(
     default=False,
-    metadata={"help": "Skip pushing to docker registry."},
+    doc="Skip pushing to docker registry.",
   )

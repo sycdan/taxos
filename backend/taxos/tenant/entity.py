@@ -15,7 +15,7 @@ class Tenant:
   guid: UUID
   name: str
   token_count: int = field(
-    default=0, metadata={"help": "Number of access tokens issued to this tenant."}
+    default=0, doc="Number of access tokens issued to this tenant."
   )
 
   @cached_property
@@ -36,7 +36,7 @@ class Tenant:
 
 @dataclass
 class TenantRef:
-  key: str = field(metadata={"help": "A unique identifier for a tenant."})
+  key: str = field(doc="A unique identifier for a tenant.")
   guid: UUID = field(init=False)
 
   def __post_init__(self):
