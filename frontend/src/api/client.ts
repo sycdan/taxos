@@ -18,10 +18,7 @@ export class TaxosApiClient {
 		getToken?: () => string | null;
 		onUnauthorized?: () => void;
 	}) {
-		const baseUrl =
-			options?.baseUrl ||
-			import.meta.env.VITE_GRPC_API_URL ||
-			(typeof window !== "undefined" ? window.location.origin : "");
+		const baseUrl = options?.baseUrl || window.location.origin;
 
 		// For testing: fixed token; for app: dynamic from localStorage
 		this.getToken = options?.getToken || (() => options?.token || null);
