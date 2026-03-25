@@ -7,7 +7,7 @@ services:
     environment:
       - PYTHONPATH=/app
     volumes:
-      - /mnt/x/srv/taxos:/app/data
+      - ${DATA_PATH}:/app/data
     restart: unless-stopped
 
   taxos-frontend:
