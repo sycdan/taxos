@@ -1,238 +1,354 @@
-import { createClient, type Interceptor, Code } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-web";
-import { TaxosApi } from "./v1/taxos_service_connect";
+import {
+  ApolloClient,
+  InMemoryCache,
+  HttpLink,
+  ApolloLink,
+  from,
+  gql,
+} from "@apollo/client";
 
-const logoutOnUnauthorized = () => {
-	localStorage.removeItem("taxos_token");
-	window.location.href = "/";
-};
+// ---------------------------------------------------------------------------
+// Auth helpers
+// ---------------------------------------------------------------------------
 
-export class TaxosApiClient {
-	private client: ReturnType<typeof createClient<typeof TaxosApi>>;
-	private getToken: () => string | null;
-	private onUnauthorized?: () => void;
-
-	constructor(options?: {
-		baseUrl?: string;
-		token?: string;
-		getToken?: () => string | null;
-		onUnauthorized?: () => void;
-	}) {
-		const baseUrl = options?.baseUrl || window.location.origin;
-
-		// For testing: fixed token; for app: dynamic from localStorage
-		this.getToken = options?.getToken || (() => options?.token || null);
-		this.onUnauthorized = options?.onUnauthorized;
-
-		// Create an interceptor that adds the token to requests
-		const tokenInterceptor: Interceptor = (next) => async (req) => {
-			const token = this.getToken();
-			if (token) {
-				req.header.set("Authorization", `Bearer ${token}`);
-			}
-
-			try {
-				return await next(req);
-			} catch (error: unknown) {
-				const err = error as { code?: Code; status?: number } | null;
-				// Check if it's a 401/Unauthenticated error
-				if (err?.code === Code.Unauthenticated || err?.status === 401) {
-					this.onUnauthorized?.();
-				}
-				throw error;
-			}
-		};
-
-		this.client = createClient(
-			TaxosApi,
-			createConnectTransport({
-				baseUrl,
-				interceptors: [tokenInterceptor],
-			}),
-		);
-	}
-
-	// Bucket methods
-	async getDashboard(params?: { months?: string[] }) {
-		return await this.client.getDashboard(params || {});
-	}
-
-	async createBucket(name: string) {
-		return await this.client.createBucket({ name });
-	}
-
-	async getBucket(guid: string) {
-		return await this.client.getBucket({ guid });
-	}
-
-	async updateBucket(guid: string, name: string) {
-		return await this.client.updateBucket({ guid, name });
-	}
-
-	async deleteBucket(guid: string) {
-		return await this.client.deleteBucket({ guid });
-	}
-
-	// Receipt methods
-	async createReceipt(
-		total: number,
-		vendor: string,
-		notes?: string,
-		allocations?: Array<{ bucket: string; amount: number }>,
-		date?: Date,
-	) {
-		const receiptDate = date || new Date();
-		return await this.client.createReceipt({
-			total,
-			vendor,
-			date: dateToTimestamp(receiptDate),
-			timezone: "UTC",
-			notes: notes || "",
-			allocations: allocations || [],
-		});
-	}
-
-	async updateReceipt(params: {
-		guid: string;
-		vendor?: string;
-		total?: number;
-		notes?: string;
-		allocations?: Array<{ bucket: string; amount: number }>;
-		date?: Date;
-	}) {
-		return await this.client.updateReceipt({
-			guid: params.guid,
-			vendor: params.vendor || "",
-			total: params.total || 0,
-			date: dateToTimestamp(params.date || new Date()),
-			timezone: "UTC",
-			notes: params.notes || "",
-			allocations: params.allocations || [],
-		});
-	}
-
-	async listReceipts(params?: { bucket?: string; months?: string[] }) {
-		return await this.client.listReceipts(params || {});
-	}
-
-	async deleteReceipt(guid: string) {
-		return await this.client.deleteReceipt({ guid });
-	}
-
-	// File upload/download with browser-specific logic
-	async uploadReceiptFile(
-		file: File,
-		hash: string,
-		onProgress?: (progress: number) => void,
-	) {
-		try {
-			// Convert file to Uint8Array for protobuf bytes field
-			const fileBuffer = await file.arrayBuffer();
-			const fileBytes = new Uint8Array(fileBuffer);
-
-			// Simulate progress for the encoding step
-			onProgress?.(25);
-
-			const response = await this.client.uploadReceiptFile({
-				fileHash: hash,
-				filename: file.name,
-				fileData: fileBytes,
-			});
-
-			onProgress?.(100);
-
-			return {
-				alreadyExists: response.alreadyExists,
-				fileInfo: response.fileInfo
-					? {
-							fileHash: response.fileInfo.fileHash,
-							filename: response.fileInfo.filename,
-							filePath: response.fileInfo.filePath,
-							fileSize: Number(response.fileInfo.fileSize),
-							uploadedAt: response.fileInfo.uploadedAt,
-						}
-					: undefined,
-			};
-		} catch (error) {
-			onProgress?.(0);
-			throw error;
-		}
-	}
-
-	async downloadReceiptFile(fileHash: string) {
-		const response = await this.client.downloadReceiptFile({
-			fileHash: fileHash,
-		});
-
-		// fileData is already a Uint8Array from protobuf
-		const blob = new Blob([response.fileData]);
-
-		// Create download link
-		const url = window.URL.createObjectURL(blob);
-		const link = document.createElement("a");
-		link.href = url;
-		link.download = response.filename;
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-		window.URL.revokeObjectURL(url);
-
-		return {
-			filename: response.filename,
-			fileSize: Number(response.fileSize),
-		};
-	}
-
-	// Vendor methods
-	async listVendors() {
-		return await this.client.listVendors({});
-	}
-
-	async updateVendor(guid: string, name: string) {
-		return await this.client.updateVendor({ guid, name });
-	}
-
-	// Direct access to underlying client for advanced usage
-	get rawClient() {
-		return this.client;
-	}
-}
-
-// Default client instance for the app
-const defaultClient = new TaxosApiClient({
-	getToken: () => localStorage.getItem("taxos_token"),
-	onUnauthorized: logoutOnUnauthorized,
-});
-
-// Export the raw Connect-RPC client for contexts that expect it
-export const client = defaultClient.rawClient;
-
-// Helper to convert Date to Timestamp
-export const dateToTimestamp = (date: Date) => {
-	const seconds = BigInt(Math.floor(date.getTime() / 1000));
-	const nanos = (date.getTime() % 1000) * 1_000_000;
-	return { seconds, nanos };
-};
-
-// Convenience exports for the default client instance
 export const getToken = () => localStorage.getItem("taxos_token");
 
 export const setToken = (token: string) => {
-	localStorage.setItem("taxos_token", token);
-	window.location.reload();
+  localStorage.setItem("taxos_token", token);
+  window.location.reload();
 };
 
 export const clearToken = () => {
-	localStorage.removeItem("taxos_token");
-	window.location.reload();
+  localStorage.removeItem("taxos_token");
+  window.location.reload();
 };
 
-// Re-export file upload/download methods as standalone functions
-export const uploadReceiptFile = (
-	file: File,
-	hash: string,
-	onProgress?: (progress: number) => void,
-) => defaultClient.uploadReceiptFile(file, hash, onProgress);
+// ---------------------------------------------------------------------------
+// Apollo Client
+// ---------------------------------------------------------------------------
 
-export const downloadReceiptFile = (fileHash: string) =>
-	defaultClient.downloadReceiptFile(fileHash);
+const authLink = new ApolloLink((operation, forward) => {
+  const token = getToken();
+  if (token) {
+    operation.setContext(({ headers = {} }) => ({
+      headers: { ...headers, Authorization: `Bearer ${token}` },
+    }));
+  }
+  return forward(operation);
+});
+
+const httpLink = new HttpLink({ uri: "/graphql" });
+
+const apolloClient = new ApolloClient({
+  link: from([authLink, httpLink]),
+  cache: new InMemoryCache(),
+  defaultOptions: {
+    query: { fetchPolicy: "no-cache" },
+    mutate: { fetchPolicy: "no-cache" },
+  },
+});
+
+// ---------------------------------------------------------------------------
+// GraphQL documents
+// ---------------------------------------------------------------------------
+
+const DASHBOARD_QUERY = gql`
+  query GetDashboard($months: [String!]) {
+    dashboard(months: $months) {
+      buckets { guid name totalAmount receiptCount }
+      unallocated { guid vendor total date timezone notes hash reference
+        allocations { amount bucket { guid } } }
+    }
+    vendors { name }
+  }
+`;
+
+const LIST_RECEIPTS_QUERY = gql`
+  query ListReceipts($bucketGuid: ID, $months: [String!]) {
+    receipts(bucketGuid: $bucketGuid, months: $months) {
+      guid vendor total date timezone notes hash reference
+      allocations { amount bucket { guid } }
+    }
+  }
+`;
+
+const CREATE_BUCKET_MUTATION = gql`
+  mutation CreateBucket($name: String!) {
+    createBucket(name: $name) { guid name }
+  }
+`;
+
+const UPDATE_BUCKET_MUTATION = gql`
+  mutation UpdateBucket($guid: ID!, $name: String!) {
+    updateBucket(guid: $guid, name: $name) { guid name }
+  }
+`;
+
+const DELETE_BUCKET_MUTATION = gql`
+  mutation DeleteBucket($guid: ID!) {
+    deleteBucket(guid: $guid)
+  }
+`;
+
+const RECEIPT_FIELDS = `
+  guid vendor total date timezone notes hash reference
+  allocations { amount bucket { guid } }
+`;
+
+const CREATE_RECEIPT_MUTATION = gql`
+  mutation CreateReceipt($input: ReceiptInput!) {
+    createReceipt(input: $input) { ${RECEIPT_FIELDS} }
+  }
+`;
+
+const UPDATE_RECEIPT_MUTATION = gql`
+  mutation UpdateReceipt($guid: ID!, $input: ReceiptInput!) {
+    updateReceipt(guid: $guid, input: $input) { ${RECEIPT_FIELDS} }
+  }
+`;
+
+const DELETE_RECEIPT_MUTATION = gql`
+  mutation DeleteReceipt($guid: ID!) {
+    deleteReceipt(guid: $guid)
+  }
+`;
+
+const LIST_VENDORS_QUERY = gql`
+  query ListVendors {
+    vendors { guid name }
+  }
+`;
+
+const UPDATE_VENDOR_MUTATION = gql`
+  mutation UpdateVendor($guid: ID!, $name: String!) {
+    updateVendor(guid: $guid, name: $name) { guid name }
+  }
+`;
+
+const UPLOAD_FILE_MUTATION = gql`
+  mutation UploadReceiptFile($hash: String!, $filename: String!, $data: String!) {
+    uploadReceiptFile(hash: $hash, filename: $filename, data: $data) {
+      hash filename alreadyExists
+    }
+  }
+`;
+
+// ---------------------------------------------------------------------------
+// Typed API wrapper — same call signatures TaxosContext expects
+// ---------------------------------------------------------------------------
+
+type AllocationInput = { bucket: string; amount: number };
+type GQLAlloc = { amount: number; bucket: { guid: string } };
+
+function mapAllocationsInput(
+  allocations: AllocationInput[],
+): { bucketGuid: string; amount: number }[] {
+  return allocations.map((a) => ({ bucketGuid: a.bucket, amount: a.amount }));
+}
+
+function mapReceiptResponse(r: {
+  guid: string;
+  vendor: string;
+  total: number;
+  date: string;
+  timezone: string;
+  notes?: string | null;
+  hash?: string | null;
+  reference?: string | null;
+  allocations: GQLAlloc[];
+}) {
+  return {
+    guid: r.guid,
+    vendor: r.vendor,
+    total: r.total,
+    date: r.date,
+    timezone: r.timezone,
+    notes: r.notes ?? "",
+    hash: r.hash ?? "",
+    vendorRef: r.reference ?? "",
+    allocations: r.allocations.map((a) => ({
+      bucket: a.bucket.guid,
+      amount: a.amount,
+    })),
+  };
+}
+
+export const client = {
+  async getDashboard(params?: { months?: string[] }) {
+    const { data } = await apolloClient.query({
+      query: DASHBOARD_QUERY,
+      variables: { months: params?.months },
+    });
+    return {
+      buckets: data.dashboard.buckets as {
+        guid: string;
+        name: string;
+        totalAmount: number;
+        receiptCount: number;
+      }[],
+      unallocatedReceipts: data.dashboard.unallocated.map(mapReceiptResponse),
+      vendorNames: (data.vendors as { name: string }[]).map((v) => v.name),
+    };
+  },
+
+  async listReceipts(params?: { bucket?: string; months?: string[] }) {
+    const { data } = await apolloClient.query({
+      query: LIST_RECEIPTS_QUERY,
+      variables: { bucketGuid: params?.bucket, months: params?.months },
+    });
+    return { receipts: data.receipts.map(mapReceiptResponse) };
+  },
+
+  async createBucket(args: { name: string }) {
+    const { data } = await apolloClient.mutate({
+      mutation: CREATE_BUCKET_MUTATION,
+      variables: { name: args.name },
+    });
+    return data!.createBucket as { guid: string; name: string };
+  },
+
+  async updateBucket(args: { guid: string; name: string }) {
+    const { data } = await apolloClient.mutate({
+      mutation: UPDATE_BUCKET_MUTATION,
+      variables: args,
+    });
+    return data!.updateBucket as { guid: string; name: string };
+  },
+
+  async deleteBucket(args: { guid: string }) {
+    await apolloClient.mutate({
+      mutation: DELETE_BUCKET_MUTATION,
+      variables: args,
+    });
+  },
+
+  async createReceipt(args: {
+    vendor: string;
+    total: number;
+    date: Date;
+    timezone: string;
+    allocations?: AllocationInput[];
+    vendorRef?: string;
+    notes?: string;
+    hash?: string;
+  }) {
+    const dateIso = args.date.toISOString();
+    const { data } = await apolloClient.mutate({
+      mutation: CREATE_RECEIPT_MUTATION,
+      variables: {
+        input: {
+          vendor: args.vendor,
+          total: args.total,
+          date: dateIso,
+          timezone: args.timezone,
+          allocations: mapAllocationsInput(args.allocations ?? []),
+          reference: args.vendorRef ?? "",
+          notes: args.notes ?? "",
+          hash: args.hash ?? "",
+        },
+      },
+    });
+    return mapReceiptResponse(data!.createReceipt);
+  },
+
+  async updateReceipt(args: {
+    guid: string;
+    vendor: string;
+    total: number;
+    date: Date;
+    timezone: string;
+    allocations?: AllocationInput[];
+    vendorRef?: string;
+    notes?: string;
+    hash?: string;
+  }) {
+    const dateIso = args.date.toISOString();
+    const { data } = await apolloClient.mutate({
+      mutation: UPDATE_RECEIPT_MUTATION,
+      variables: {
+        guid: args.guid,
+        input: {
+          vendor: args.vendor,
+          total: args.total,
+          date: dateIso,
+          timezone: args.timezone,
+          allocations: mapAllocationsInput(args.allocations ?? []),
+          reference: args.vendorRef ?? "",
+          notes: args.notes ?? "",
+          hash: args.hash ?? "",
+        },
+      },
+    });
+    return mapReceiptResponse(data!.updateReceipt);
+  },
+
+  async deleteReceipt(args: { guid: string }) {
+    await apolloClient.mutate({
+      mutation: DELETE_RECEIPT_MUTATION,
+      variables: args,
+    });
+  },
+
+  async listVendors(_?: unknown) {
+    const { data } = await apolloClient.query({ query: LIST_VENDORS_QUERY });
+    return {
+      vendors: data.vendors as { guid: string; name: string }[],
+    };
+  },
+
+  async updateVendor(args: { guid: string; name: string }) {
+    const { data } = await apolloClient.mutate({
+      mutation: UPDATE_VENDOR_MUTATION,
+      variables: args,
+    });
+    return data!.updateVendor as { guid: string; name: string };
+  },
+};
+
+// ---------------------------------------------------------------------------
+// File upload / download
+// ---------------------------------------------------------------------------
+
+export const uploadReceiptFile = async (
+  file: File,
+  hash: string,
+  onProgress?: (progress: number) => void,
+): Promise<{ alreadyExists: boolean }> => {
+  onProgress?.(25);
+  const fileBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(fileBuffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  const base64 = btoa(binary);
+  onProgress?.(60);
+  const { data } = await apolloClient.mutate({
+    mutation: UPLOAD_FILE_MUTATION,
+    variables: { hash, filename: file.name, data: base64 },
+  });
+  onProgress?.(100);
+  return { alreadyExists: data!.uploadReceiptFile.alreadyExists };
+};
+
+export const downloadReceiptFile = async (fileHash: string): Promise<{ filename: string; fileSize: number }> => {
+  const token = getToken();
+  const response = await fetch(`/files/${fileHash}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) throw new Error(`Download failed: ${response.statusText}`);
+
+  const contentDisposition = response.headers.get("Content-Disposition") ?? "";
+  const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+  const filename = filenameMatch?.[1] ?? fileHash;
+  const blob = await response.blob();
+
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+
+  return { filename, fileSize: blob.size };
+};

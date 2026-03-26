@@ -380,6 +380,21 @@ schema = make_executable_schema(
 )
 
 
+@app.route("/files/<file_hash>", methods=["GET"])
+@require_auth
+def download_file_endpoint(file_hash):
+  from taxos.receipt.download_file.command import DownloadFile
+  try:
+    result = DownloadFile(file_hash=file_hash).execute()
+    return Response(
+      result.file_data,
+      content_type="application/octet-stream",
+      headers={"Content-Disposition": f'attachment; filename="{result.filename}"'},
+    )
+  except FileNotFoundError:
+    return Response('{"errors":[{"message":"File not found"}]}', status=404, content_type="application/json")
+
+
 @app.route("/graphql", methods=["POST"])
 @require_auth
 def graphql_endpoint():

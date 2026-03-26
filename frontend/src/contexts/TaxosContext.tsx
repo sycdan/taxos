@@ -8,9 +8,8 @@ import React, {
 	useRef,
 	type ReactNode,
 } from "react";
-import { Timestamp } from "@bufbuild/protobuf";
 import type { Bucket, BucketSummary, Receipt, Vendor } from "../types";
-import { client, getToken, dateToTimestamp } from "../api/client";
+import { client, getToken } from "../api/client";
 import { UNALLOCATED_BUCKET_ID } from "../types";
 
 const slugify = (text: string) => {
@@ -99,16 +98,6 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 	// a new fetch so any in-flight (pre-mutation) response can detect it is stale.
 	const refreshSeqRef = useRef(0);
 
-	// Helper to convert Timestamp to ISO string
-	const timestampToIso = (ts?: Timestamp) => {
-		if (!ts) return new Date().toISOString();
-		const tsObj = ts as unknown as { toDate?: () => Date; seconds?: number | bigint; nanos?: number };
-		if (typeof tsObj.toDate === "function") return tsObj.toDate().toISOString();
-		const seconds = Number(tsObj.seconds ?? 0);
-		const nanos = Number(tsObj.nanos ?? 0);
-		return new Date(seconds * 1000 + nanos / 1_000_000).toISOString();
-	};
-
 	// Helper to generate "yyyy-mm" strings for a range
 	const getMonthsInRange = (start?: Date, end?: Date): string[] => {
 		if (!start || !end) return [];
@@ -141,7 +130,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					id: r.guid,
 					vendor: r.vendor,
 					total: r.total,
-					date: timestampToIso(r.date),
+					date: r.date,
 					timezone: r.timezone,
 					allocations: r.allocations.map((a) => ({
 						bucketId: a.bucket,
@@ -238,7 +227,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 						id: r.guid,
 						vendor: r.vendor,
 						total: r.total,
-						date: timestampToIso(r.date),
+						date: r.date,
 						timezone: r.timezone,
 						allocations: r.allocations.map((a) => ({
 							bucketId: a.bucket,
@@ -417,7 +406,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 			const response = await client.createReceipt({
 				vendor: receipt.vendor,
 				total: receipt.total,
-				date: dateToTimestamp(new Date(receipt.date)),
+				date: new Date(receipt.date),
 				timezone: receipt.timezone,
 				allocations: receipt.allocations.map((a) => ({
 					bucket: a.bucketId,
@@ -432,7 +421,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				id: response.guid,
 				vendor: response.vendor,
 				total: response.total,
-				date: timestampToIso(response.date),
+				date: response.date,
 				timezone: response.timezone,
 				allocations: response.allocations.map((a) => ({
 					bucketId: a.bucket,
@@ -474,7 +463,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				guid: receipt.id,
 				vendor: receipt.vendor,
 				total: receipt.total,
-				date: dateToTimestamp(new Date(receipt.date)),
+				date: new Date(receipt.date),
 				timezone: receipt.timezone,
 				allocations: receipt.allocations.map((a) => ({
 					bucket: a.bucketId,
@@ -489,7 +478,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				id: response.guid,
 				vendor: response.vendor,
 				total: response.total,
-				date: timestampToIso(response.date),
+				date: response.date,
 				timezone: response.timezone,
 				allocations: response.allocations.map((a) => ({
 					bucketId: a.bucket,
