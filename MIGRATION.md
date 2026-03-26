@@ -240,7 +240,7 @@ are no longer needed.
 
 ---
 
-### Phase 3 — Vendor handlers
+### Phase 3 — Vendor handlers ✅
 
 **`vendor/find_or_create/handler.py`**:
 ```python
@@ -309,7 +309,7 @@ def handle(command: UpdateVendor) -> Vendor:
 
 ---
 
-### Phase 4 — Receipt handlers
+### Phase 4 — Receipt handlers ✅
 
 `receipt/save/handler.py` is the central write path (used by both create and update).
 It replaces JSON file write with three Cypher operations: upsert node, link vendor,
@@ -407,7 +407,7 @@ from `tenant.content_dir`.
 
 ---
 
-### Phase 5 — Dashboard query
+### Phase 5 — Dashboard query ✅ (done as part of Phase 4)
 
 Replace the file-walking aggregation with a single Cypher query:
 
