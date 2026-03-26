@@ -1,26 +1,21 @@
 """Integration tests for the GraphQL schema — exercises resolvers against real Neo4j."""
 from unittest.mock import patch
-from uuid import UUID
 
 import pytest
 
-from taxos.allocation.entity import Allocation
-from taxos.bucket.entity import BucketRef
-from taxos.tenant.entity import Tenant
-
 
 @pytest.fixture()
-def gql_client(tmp_path):
-  """Returns a (execute, teardown) tuple.
+def gql(tmp_path):
+  """Yields an execute(query, variables) helper bound to a fresh tenant.
 
-  execute(query, variables=None) → dict  (the 'data' key)
-  Sets up a fresh tenant + Flask test client wired to the GraphQL server.
+  After each test the tenant and its Neo4j database are torn down.
+  Asserts no GraphQL errors so tests fail loudly on resolver exceptions.
   """
   from taxos.tenant.create.command import CreateTenant
   from taxos.tenant.delete.command import DeleteTenant
   from taxos.context.entity import Context
   from taxos.context.tools import set_context
-  from api.graphql_server import app, schema
+  from api.graphql_server import schema
   from ariadne.graphql import graphql_sync
 
   with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
@@ -36,73 +31,119 @@ def gql_client(tmp_path):
   yield execute
 
   with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
-    from taxos.tenant.delete.command import DeleteTenant
     DeleteTenant(tenant=tenant).execute()
 
 
+# ---------------------------------------------------------------------------
+# Buckets
+# ---------------------------------------------------------------------------
+
 @pytest.mark.integration
-class TestGraphQLBuckets:
-  def test_create_and_query_bucket(self, gql_client):
-    data = gql_client("""
-      mutation { createBucket(name: "Travel") { guid name } }
-    """)
-    bucket = data["createBucket"]
-    assert bucket["name"] == "Travel"
-    assert bucket["guid"]
+class TestBuckets:
+  def test_create_persists(self, gql):
+    guid = gql('mutation { createBucket(name: "Travel") { guid } }')["createBucket"]["guid"]
 
-    data = gql_client(f"""
-      query {{ bucket(guid: "{bucket['guid']}") {{ guid name }} }}
-    """)
-    assert data["bucket"]["name"] == "Travel"
+    fetched = gql(f'query {{ bucket(guid: "{guid}") {{ guid name }} }}')["bucket"]
+    assert fetched["name"] == "Travel"
+    assert fetched["guid"] == guid
 
-  def test_update_bucket(self, gql_client):
-    data = gql_client('mutation { createBucket(name: "Old") { guid } }')
-    guid = data["createBucket"]["guid"]
+  def test_update_persists(self, gql):
+    guid = gql('mutation { createBucket(name: "Old") { guid } }')["createBucket"]["guid"]
 
-    data = gql_client(f'mutation {{ updateBucket(guid: "{guid}", name: "New") {{ name }} }}')
-    assert data["updateBucket"]["name"] == "New"
+    gql(f'mutation {{ updateBucket(guid: "{guid}", name: "New") {{ name }} }}')
 
-  def test_delete_bucket(self, gql_client):
-    data = gql_client('mutation { createBucket(name: "Temp") { guid } }')
-    guid = data["createBucket"]["guid"]
+    fetched = gql(f'query {{ bucket(guid: "{guid}") {{ name }} }}')["bucket"]
+    assert fetched["name"] == "New"
 
-    data = gql_client(f'mutation {{ deleteBucket(guid: "{guid}") }}')
-    assert data["deleteBucket"] is True
+  def test_delete_removes_from_db(self, gql):
+    guid = gql('mutation { createBucket(name: "Temp") { guid } }')["createBucket"]["guid"]
 
-  def test_list_buckets(self, gql_client):
-    gql_client('mutation { createBucket(name: "Alpha") { guid } }')
-    gql_client('mutation { createBucket(name: "Beta") { guid } }')
+    result = gql(f'mutation {{ deleteBucket(guid: "{guid}") }}')
+    assert result["deleteBucket"] is True
 
-    data = gql_client("query { buckets { name } }")
-    names = [b["name"] for b in data["buckets"]]
+    fetched = gql(f'query {{ bucket(guid: "{guid}") {{ guid }} }}')["bucket"]
+    assert fetched is None
+
+  def test_list_returns_all(self, gql):
+    gql('mutation { createBucket(name: "Alpha") { guid } }')
+    gql('mutation { createBucket(name: "Beta") { guid } }')
+
+    names = [b["name"] for b in gql("query { buckets { name } }")["buckets"]]
     assert "Alpha" in names
     assert "Beta" in names
 
+  def test_bucket_total_amount_and_receipt_count(self, gql):
+    bucket_guid = gql('mutation { createBucket(name: "Expenses") { guid } }')["createBucket"]["guid"]
+
+    gql(f"""
+      mutation {{
+        createReceipt(input: {{
+          vendor: "Acme"
+          total: 80.0
+          date: "2024-03-01T00:00:00"
+          timezone: "UTC"
+          allocations: [{{ bucketGuid: "{bucket_guid}", amount: 80.0 }}]
+        }}) {{ guid }}
+      }}
+    """)
+
+    bucket = gql(f"""
+      query {{ bucket(guid: "{bucket_guid}") {{ totalAmount receiptCount }} }}
+    """)["bucket"]
+    assert bucket["totalAmount"] == 80.0
+    assert bucket["receiptCount"] == 1
+
+  def test_bucket_receipts_field(self, gql):
+    bucket_guid = gql('mutation { createBucket(name: "Office") { guid } }')["createBucket"]["guid"]
+
+    gql(f"""
+      mutation {{
+        createReceipt(input: {{
+          vendor: "Staples"
+          total: 30.0
+          date: "2024-03-01T00:00:00"
+          timezone: "UTC"
+          allocations: [{{ bucketGuid: "{bucket_guid}", amount: 30.0 }}]
+        }}) {{ guid }}
+      }}
+    """)
+
+    receipts = gql(f"""
+      query {{ bucket(guid: "{bucket_guid}") {{ receipts {{ vendor total }} }} }}
+    """)["bucket"]["receipts"]
+    assert len(receipts) == 1
+    assert receipts[0]["vendor"] == "Staples"
+    assert receipts[0]["total"] == 30.0
+
+
+# ---------------------------------------------------------------------------
+# Receipts
+# ---------------------------------------------------------------------------
 
 @pytest.mark.integration
-class TestGraphQLReceipts:
-  def test_create_and_load_receipt(self, gql_client):
-    data = gql_client("""
+class TestReceipts:
+  def test_create_persists(self, gql):
+    guid = gql("""
       mutation {
         createReceipt(input: {
           vendor: "Acme"
           total: 100.0
           date: "2024-03-15T12:00:00"
           timezone: "UTC"
-        }) { guid vendor total date }
+          notes: "business lunch"
+        }) { guid }
       }
-    """)
-    r = data["createReceipt"]
-    assert r["vendor"] == "Acme"
-    assert r["total"] == 100.0
+    """)["createReceipt"]["guid"]
 
-    data = gql_client(f'query {{ receipt(guid: "{r["guid"]}") {{ guid vendor total }} }}')
-    assert data["receipt"]["vendor"] == "Acme"
+    fetched = gql(f'query {{ receipt(guid: "{guid}") {{ vendor total notes }} }}')["receipt"]
+    assert fetched["vendor"] == "Acme"
+    assert fetched["total"] == 100.0
+    assert fetched["notes"] == "business lunch"
 
-  def test_create_receipt_with_allocation(self, gql_client):
-    bucket_guid = gql_client('mutation { createBucket(name: "Travel") { guid } }')["createBucket"]["guid"]
+  def test_create_with_allocation_persists(self, gql):
+    bucket_guid = gql('mutation { createBucket(name: "Travel") { guid } }')["createBucket"]["guid"]
 
-    data = gql_client(f"""
+    guid = gql(f"""
       mutation {{
         createReceipt(input: {{
           vendor: "Hotel"
@@ -110,31 +151,202 @@ class TestGraphQLReceipts:
           date: "2024-03-15T12:00:00"
           timezone: "UTC"
           allocations: [{{ bucketGuid: "{bucket_guid}", amount: 200.0 }}]
-        }}) {{ guid allocations {{ amount bucket {{ name }} }} }}
+        }}) {{ guid }}
+      }}
+    """)["createReceipt"]["guid"]
+
+    fetched = gql(f"""
+      query {{ receipt(guid: "{guid}") {{ allocations {{ amount bucket {{ name }} }} }} }}
+    """)["receipt"]
+    assert len(fetched["allocations"]) == 1
+    assert fetched["allocations"][0]["amount"] == 200.0
+    assert fetched["allocations"][0]["bucket"]["name"] == "Travel"
+
+  def test_update_persists(self, gql):
+    guid = gql("""
+      mutation {
+        createReceipt(input: {
+          vendor: "Old Vendor"
+          total: 50.0
+          date: "2024-03-01T00:00:00"
+          timezone: "UTC"
+        }) { guid }
+      }
+    """)["createReceipt"]["guid"]
+
+    gql(f"""
+      mutation {{
+        updateReceipt(guid: "{guid}", input: {{
+          vendor: "New Vendor"
+          total: 75.0
+          date: "2024-03-01T00:00:00"
+          timezone: "UTC"
+          notes: "updated"
+        }}) {{ guid }}
       }}
     """)
-    allocs = data["createReceipt"]["allocations"]
-    assert len(allocs) == 1
-    assert allocs[0]["amount"] == 200.0
-    assert allocs[0]["bucket"]["name"] == "Travel"
 
-  def test_delete_receipt(self, gql_client):
-    data = gql_client("""
+    fetched = gql(f'query {{ receipt(guid: "{guid}") {{ vendor total notes }} }}')["receipt"]
+    assert fetched["vendor"] == "New Vendor"
+    assert fetched["total"] == 75.0
+    assert fetched["notes"] == "updated"
+
+  def test_update_replaces_allocations(self, gql):
+    b1 = gql('mutation { createBucket(name: "A") { guid } }')["createBucket"]["guid"]
+    b2 = gql('mutation { createBucket(name: "B") { guid } }')["createBucket"]["guid"]
+
+    guid = gql(f"""
+      mutation {{
+        createReceipt(input: {{
+          vendor: "X"
+          total: 100.0
+          date: "2024-03-01T00:00:00"
+          timezone: "UTC"
+          allocations: [{{ bucketGuid: "{b1}", amount: 100.0 }}]
+        }}) {{ guid }}
+      }}
+    """)["createReceipt"]["guid"]
+
+    gql(f"""
+      mutation {{
+        updateReceipt(guid: "{guid}", input: {{
+          vendor: "X"
+          total: 100.0
+          date: "2024-03-01T00:00:00"
+          timezone: "UTC"
+          allocations: [{{ bucketGuid: "{b2}", amount: 100.0 }}]
+        }}) {{ guid }}
+      }}
+    """)
+
+    allocs = gql(f'query {{ receipt(guid: "{guid}") {{ allocations {{ bucket {{ name }} }} }} }}')["receipt"]["allocations"]
+    assert len(allocs) == 1
+    assert allocs[0]["bucket"]["name"] == "B"
+
+  def test_delete_removes_from_db(self, gql):
+    guid = gql("""
       mutation {
         createReceipt(input: { vendor: "X", total: 1.0, date: "2024-01-01T00:00:00", timezone: "UTC" }) { guid }
       }
-    """)
-    guid = data["createReceipt"]["guid"]
-    data = gql_client(f'mutation {{ deleteReceipt(guid: "{guid}") }}')
-    assert data["deleteReceipt"] is True
+    """)["createReceipt"]["guid"]
 
+    result = gql(f'mutation {{ deleteReceipt(guid: "{guid}") }}')
+    assert result["deleteReceipt"] is True
+
+    fetched = gql(f'query {{ receipt(guid: "{guid}") {{ guid }} }}')["receipt"]
+    assert fetched is None
+
+  def test_receipts_query_filtered_by_bucket(self, gql):
+    b1 = gql('mutation { createBucket(name: "Food") { guid } }')["createBucket"]["guid"]
+    b2 = gql('mutation { createBucket(name: "Travel") { guid } }')["createBucket"]["guid"]
+
+    gql(f"""
+      mutation {{
+        createReceipt(input: {{
+          vendor: "Restaurant"
+          total: 30.0
+          date: "2024-01-01T00:00:00"
+          timezone: "UTC"
+          allocations: [{{ bucketGuid: "{b1}", amount: 30.0 }}]
+        }}) {{ guid }}
+      }}
+    """)
+    gql(f"""
+      mutation {{
+        createReceipt(input: {{
+          vendor: "Airline"
+          total: 500.0
+          date: "2024-01-02T00:00:00"
+          timezone: "UTC"
+          allocations: [{{ bucketGuid: "{b2}", amount: 500.0 }}]
+        }}) {{ guid }}
+      }}
+    """)
+
+    receipts = gql(f'query {{ receipts(bucketGuid: "{b1}") {{ vendor }} }}')["receipts"]
+    assert len(receipts) == 1
+    assert receipts[0]["vendor"] == "Restaurant"
+
+  def test_receipts_query_filtered_by_months(self, gql):
+    gql("""
+      mutation {
+        createReceipt(input: { vendor: "Jan", total: 1.0, date: "2024-01-15T00:00:00", timezone: "UTC" }) { guid }
+      }
+    """)
+    gql("""
+      mutation {
+        createReceipt(input: { vendor: "Feb", total: 1.0, date: "2024-02-15T00:00:00", timezone: "UTC" }) { guid }
+      }
+    """)
+
+    receipts = gql('query { receipts(months: ["2024-01"]) { vendor } }')["receipts"]
+    vendors = [r["vendor"] for r in receipts]
+    assert "Jan" in vendors
+    assert "Feb" not in vendors
+
+
+# ---------------------------------------------------------------------------
+# Vendors
+# ---------------------------------------------------------------------------
 
 @pytest.mark.integration
-class TestGraphQLDashboard:
-  def test_dashboard_buckets_and_unallocated(self, gql_client):
-    bucket_guid = gql_client('mutation { createBucket(name: "Travel") { guid } }')["createBucket"]["guid"]
+class TestVendors:
+  def test_create_via_receipt_and_list(self, gql):
+    gql("""
+      mutation {
+        createReceipt(input: { vendor: "Acme Corp", total: 10.0, date: "2024-01-01T00:00:00", timezone: "UTC" }) { guid }
+      }
+    """)
 
-    gql_client(f"""
+    vendors = gql("query { vendors { guid name } }")["vendors"]
+    assert any(v["name"] == "Acme Corp" for v in vendors)
+
+  def test_update_persists(self, gql):
+    gql("""
+      mutation {
+        createReceipt(input: { vendor: "Old Name", total: 10.0, date: "2024-01-01T00:00:00", timezone: "UTC" }) { guid }
+      }
+    """)
+    vendors = gql("query { vendors { guid name } }")["vendors"]
+    guid = next(v["guid"] for v in vendors if v["name"] == "Old Name")
+
+    gql(f'mutation {{ updateVendor(guid: "{guid}", name: "New Name") {{ name }} }}')
+
+    vendors = gql("query { vendors { guid name } }")["vendors"]
+    names = [v["name"] for v in vendors]
+    assert "New Name" in names
+    assert "Old Name" not in names
+
+  def test_vendor_receipts_field(self, gql):
+    gql("""
+      mutation {
+        createReceipt(input: { vendor: "Staples", total: 25.0, date: "2024-01-01T00:00:00", timezone: "UTC" }) { guid }
+      }
+    """)
+    gql("""
+      mutation {
+        createReceipt(input: { vendor: "Staples", total: 40.0, date: "2024-02-01T00:00:00", timezone: "UTC" }) { guid }
+      }
+    """)
+
+    vendors = gql("query { vendors { guid name } }")["vendors"]
+    guid = next(v["guid"] for v in vendors if v["name"] == "Staples")
+
+    receipts = gql(f'query {{ vendor(guid: "{guid}") {{ receipts {{ total }} }} }}')["vendor"]["receipts"]
+    totals = sorted(r["total"] for r in receipts)
+    assert totals == [25.0, 40.0]
+
+
+# ---------------------------------------------------------------------------
+# Dashboard
+# ---------------------------------------------------------------------------
+
+@pytest.mark.integration
+class TestDashboard:
+  def test_bucket_totals_and_unallocated(self, gql):
+    bucket_guid = gql('mutation { createBucket(name: "Travel") { guid } }')["createBucket"]["guid"]
+
+    gql(f"""
       mutation {{
         createReceipt(input: {{
           vendor: "Acme"
@@ -145,37 +357,59 @@ class TestGraphQLDashboard:
         }}) {{ guid }}
       }}
     """)
-    gql_client("""
+    gql("""
       mutation {
         createReceipt(input: { vendor: "Misc", total: 50.0, date: "2024-03-20T00:00:00", timezone: "UTC" }) { guid }
       }
     """)
 
-    data = gql_client("""
+    dashboard = gql("""
       query {
         dashboard {
           buckets { name totalAmount receiptCount }
-          unallocated { vendor }
+          unallocated { vendor total }
         }
       }
+    """)["dashboard"]
+
+    travel = next(b for b in dashboard["buckets"] if b["name"] == "Travel")
+    assert travel["totalAmount"] == 100.0
+    assert travel["receiptCount"] == 1
+
+    assert len(dashboard["unallocated"]) == 1
+    assert dashboard["unallocated"][0]["vendor"] == "Misc"
+    assert dashboard["unallocated"][0]["total"] == 50.0
+
+  def test_dashboard_month_filter(self, gql):
+    bucket_guid = gql('mutation { createBucket(name: "Office") { guid } }')["createBucket"]["guid"]
+
+    gql(f"""
+      mutation {{
+        createReceipt(input: {{
+          vendor: "Jan Vendor"
+          total: 100.0
+          date: "2024-01-15T00:00:00"
+          timezone: "UTC"
+          allocations: [{{ bucketGuid: "{bucket_guid}", amount: 100.0 }}]
+        }}) {{ guid }}
+      }}
     """)
-    assert data["dashboard"]["buckets"][0]["name"] == "Travel"
-    assert data["dashboard"]["buckets"][0]["totalAmount"] == 100.0
-    assert len(data["dashboard"]["unallocated"]) == 1
-    assert data["dashboard"]["unallocated"][0]["vendor"] == "Misc"
-
-
-@pytest.mark.integration
-class TestGraphQLVendors:
-  def test_vendor_list_and_update(self, gql_client):
-    gql_client("""
-      mutation {
-        createReceipt(input: { vendor: "Acme Corp", total: 10.0, date: "2024-01-01T00:00:00", timezone: "UTC" }) { guid }
-      }
+    gql(f"""
+      mutation {{
+        createReceipt(input: {{
+          vendor: "Feb Vendor"
+          total: 200.0
+          date: "2024-02-15T00:00:00"
+          timezone: "UTC"
+          allocations: [{{ bucketGuid: "{bucket_guid}", amount: 200.0 }}]
+        }}) {{ guid }}
+      }}
     """)
 
-    data = gql_client("query { vendors { guid name } }")
-    vendor = next(v for v in data["vendors"] if v["name"] == "Acme Corp")
+    jan_dashboard = gql("""
+      query { dashboard(months: ["2024-01"]) { buckets { totalAmount receiptCount } } }
+    """)["dashboard"]
 
-    data = gql_client(f'mutation {{ updateVendor(guid: "{vendor["guid"]}", name: "Acme Ltd") {{ name }} }}')
-    assert data["updateVendor"]["name"] == "Acme Ltd"
+    office = jan_dashboard["buckets"][0]
+    assert office["totalAmount"] == 100.0
+    assert office["receiptCount"] == 1

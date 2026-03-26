@@ -15,7 +15,12 @@ def handle(command: UpdateReceipt) -> Receipt:
   logger.debug(f"{command=}")
   require_tenant()
 
-  ref = command.ref if isinstance(command.ref, ReceiptRef) else ReceiptRef(str(command.ref.guid))
+  if isinstance(command.ref, ReceiptRef):
+    ref = command.ref
+  elif isinstance(command.ref, str):
+    ref = ReceiptRef(command.ref)
+  else:
+    ref = ReceiptRef(str(command.ref.guid))
   receipt = LoadReceipt(ref=ref).execute()
 
   receipt.vendor = command.vendor
