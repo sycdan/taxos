@@ -8,7 +8,7 @@ services:
       - debugpy-vol:/debugpy-vol # shared with sidecar: contains debugpy + inject script
     working_dir: /app
     ports:
-      - "50051:50051"
+      - "50052:50052"
       - "5678:5678" # debugpy via sidecar (shares this network namespace)
     environment:
       - PYTHONPATH=/app:/debugpy-vol # /debugpy-vol populated by sidecar at runtime
@@ -20,7 +20,7 @@ services:
     # init: true ensures Python is NOT PID 1 — PID 1 cannot be ptrace'd by gdb
     init: true
     # -Xfrozen_modules=off is required for debugpy to instrument stdlib correctly
-    command: ["python", "-Xfrozen_modules=off", "api/connect_http_server.py"]
+    command: ["python", "-Xfrozen_modules=off", "api/graphql_server.py"]
     # Hot reload for dev: compose watch restarts the container when source files
     # change. The bind mount means the new code is already in place on restart.
     # The debug sidecar loop re-attaches debugpy automatically after each restart.

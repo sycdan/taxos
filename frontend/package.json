@@ -13,9 +13,6 @@
 	},
 	"dependencies": {
 		"@apollo/client": "^4.1.6",
-		"@bufbuild/protobuf": "^1.10.1",
-		"@connectrpc/connect": "^1.7.0",
-		"@connectrpc/connect-web": "^1.7.0",
 		"date-fns": "^4.1.0",
 		"framer-motion": "^12.29.2",
 		"graphql": "^16.13.2",

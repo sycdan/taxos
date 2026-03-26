@@ -1,8 +1,7 @@
 from dataclasses import dataclass, field
-from typing import Optional, Union
+from typing import Union
 
 from taxos.bucket.entity import Bucket, BucketRef
-from taxos.receipt.repo.entity import ReceiptRepo
 
 
 @dataclass
@@ -16,13 +15,6 @@ class ListReceipts:
     default_factory=list,
     metadata={
       "help": "List of specific month to load, e.g. ['2024-01', '2024-02']. Default: all.",
-    },
-  )
-  repo: Optional[ReceiptRepo] = field(
-    default=None,
-    repr=False,
-    metadata={
-      "help": "Optional pre-loaded receipt repo to use.",
     },
   )
 

@@ -8,6 +8,6 @@ server to restart automatically — no container restart needed.
 To debug: use the "Backend: Attach Debugger" launch config in VS Code.
 """
 
-import api.connect_http_server as server
+import api.graphql_server as server
 
 server.main()
