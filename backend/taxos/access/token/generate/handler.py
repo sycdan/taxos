@@ -7,6 +7,7 @@ from taxos.access.token.entity import AccessToken
 from taxos.access.token.generate.command import GenerateAccessToken
 from taxos.access.token.tools import get_token_file
 from taxos.context.tools import require_tenant
+from taxos.tenant.tools import get_state_file
 from taxos.tools import json
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ def handle(command: GenerateAccessToken) -> AccessToken:
   tenant.token_count = new_token_count
 
   json.dump({"tenant": tenant.guid.hex}, token_file)
-  json.dump(tenant, tenant.state_file)
+  json.dump(tenant, get_state_file(tenant.guid))
 
   if new_token_count > 1:
     delete_old_token(tenant.guid, new_token_count)
