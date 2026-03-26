@@ -1,0 +1,88 @@
+type Query {
+  vendors: [Vendor!]!
+  vendor(guid: ID!): Vendor
+  buckets: [Bucket!]!
+  bucket(guid: ID!): Bucket
+  receipts(vendorGuid: ID, bucketGuid: ID, months: [String!]): [Receipt!]!
+  receipt(guid: ID!): Receipt
+  dashboard(months: [String!]): Dashboard
+}
+
+type Mutation {
+  createBucket(name: String!): Bucket!
+  updateBucket(guid: ID!, name: String!): Bucket!
+  deleteBucket(guid: ID!): Boolean!
+
+  createReceipt(input: ReceiptInput!): Receipt!
+  updateReceipt(guid: ID!, input: ReceiptInput!): Receipt!
+  deleteReceipt(guid: ID!): Boolean!
+
+  updateVendor(guid: ID!, name: String!): Vendor!
+
+  uploadReceiptFile(hash: String!, filename: String!, data: String!): FileInfo!
+}
+
+type Vendor {
+  guid: ID!
+  name: String!
+  receipts: [Receipt!]!
+}
+
+type Bucket {
+  guid: ID!
+  name: String!
+  totalAmount: Float!
+  receiptCount: Int!
+  receipts(months: [String!]): [Receipt!]!
+}
+
+type Receipt {
+  guid: ID!
+  vendor: String!
+  total: Float!
+  date: String!
+  timezone: String!
+  notes: String!
+  hash: String!
+  reference: String!
+  allocations: [Allocation!]!
+}
+
+type Allocation {
+  amount: Float!
+  bucket: Bucket!
+}
+
+type Dashboard {
+  buckets: [BucketSummary!]!
+  unallocated: [Receipt!]!
+}
+
+type BucketSummary {
+  guid: ID!
+  name: String!
+  totalAmount: Float!
+  receiptCount: Int!
+}
+
+type FileInfo {
+  hash: String!
+  filename: String!
+  alreadyExists: Boolean!
+}
+
+input ReceiptInput {
+  vendor: String!
+  total: Float!
+  date: String!
+  timezone: String!
+  notes: String
+  hash: String
+  reference: String
+  allocations: [AllocationInput!]
+}
+
+input AllocationInput {
+  bucketGuid: ID!
+  amount: Float!
+}
