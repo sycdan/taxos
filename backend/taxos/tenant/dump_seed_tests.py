@@ -1,4 +1,4 @@
-"""Tests for tenant export and import commands."""
+"""Tests for DumpTenant and SeedTenant commands."""
 
 import json
 from unittest.mock import patch
@@ -42,11 +42,11 @@ def _seed(bucket_name: str, vendor: str, total: float, date: str = "2024-06-01T1
 
 
 @pytest.mark.integration
-class TestExportImport:
-  def test_export_returns_all_entities(self, tmp_path):
+class TestDumpSeed:
+  def test_dump_returns_all_entities(self, tmp_path):
     from taxos.tenant.dump.command import DumpTenant
 
-    tenant = _make_tenant(tmp_path, "Export Test")
+    tenant = _make_tenant(tmp_path, "Dump Test")
     _set(tenant)
     _seed("Travel", "Airline", 500.0)
 
@@ -65,13 +65,13 @@ class TestExportImport:
 
     _del_tenant(tmp_path, tenant)
 
-  def test_export_writes_file(self, tmp_path):
+  def test_dump_writes_file(self, tmp_path):
     from taxos.tenant.dump.command import DumpTenant
 
-    tenant = _make_tenant(tmp_path, "File Export Test")
+    tenant = _make_tenant(tmp_path, "File Dump Test")
     _set(tenant)
 
-    out_file = tmp_path / "export.json"
+    out_file = tmp_path / "dump.json"
     DumpTenant(path=str(out_file)).execute()
 
     assert out_file.exists()
@@ -80,7 +80,7 @@ class TestExportImport:
 
     _del_tenant(tmp_path, tenant)
 
-  def test_import_from_export_roundtrip(self, tmp_path):
+  def test_seed_from_dump_roundtrip(self, tmp_path):
     from taxos import db
     from taxos.tenant.dump.command import DumpTenant
     from taxos.tenant.seed.command import SeedTenant
@@ -89,12 +89,12 @@ class TestExportImport:
     _set(src)
     _seed("Office", "Staples", 45.0, "2024-03-01T09:00:00")
 
-    export_file = tmp_path / "export.json"
-    DumpTenant(path=str(export_file)).execute()
+    dump_file = tmp_path / "dump.json"
+    DumpTenant(path=str(dump_file)).execute()
 
     dst = _make_tenant(tmp_path, "Dest Tenant")
     _set(dst)
-    counts = SeedTenant(source=str(export_file)).execute()
+    counts = SeedTenant(source=str(dump_file)).execute()
 
     assert counts == {"buckets": 1, "vendors": 1, "receipts": 1}
 
@@ -111,8 +111,8 @@ class TestExportImport:
     _del_tenant(tmp_path, src)
     _del_tenant(tmp_path, dst)
 
-  def test_import_from_flat_dir(self, tmp_path):
-    """Import from old flat-file tenant directory structure."""
+  def test_seed_from_flat_dir(self, tmp_path):
+    """Seed from old flat-file tenant directory structure."""
     from taxos import db
     from taxos.tenant.seed.command import SeedTenant
 
@@ -147,7 +147,7 @@ class TestExportImport:
       )
     )
 
-    tenant = _make_tenant(tmp_path, "Import Flat Test")
+    tenant = _make_tenant(tmp_path, "Seed Flat Test")
     _set(tenant)
     counts = SeedTenant(source=str(flat_dir)).execute()
 
