@@ -1,16 +1,18 @@
 import logging
 
+from taxos import db
+from taxos.context.tools import require_tenant
 from taxos.vendor.entity import Vendor
 from taxos.vendor.list.query import ListVendors
-from taxos.vendor.repo.load.query import LoadVendorRepo
 
 logger = logging.getLogger(__name__)
 
 
 def handle(query: ListVendors) -> list[Vendor]:
   logger.debug(f"{query=}")
-  repo = LoadVendorRepo().execute()
-
-  # Return vendors sorted by name
-  vendors = sorted(repo.index.values(), key=lambda v: v.name.lower())
-  return vendors
+  tenant = require_tenant()
+  records = db.query(
+    "MATCH (v:Vendor) RETURN v.guid AS guid, v.name AS name ORDER BY toLower(v.name)",
+    database=tenant.db_name,
+  )
+  return [Vendor(r["guid"], r["name"]) for r in records]

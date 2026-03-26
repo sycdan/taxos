@@ -1,11 +1,8 @@
 import logging
-import os
 
+from taxos import db
 from taxos.context.tools import require_tenant
-from taxos.tools import json
 from taxos.vendor.entity import Vendor
-from taxos.vendor.load.query import LoadVendor
-from taxos.vendor.tools import get_state_file
 from taxos.vendor.update.command import UpdateVendor
 
 logger = logging.getLogger(__name__)
@@ -14,13 +11,15 @@ logger = logging.getLogger(__name__)
 def handle(command: UpdateVendor) -> Vendor:
   logger.debug(f"{command=}")
   tenant = require_tenant()
-  vendor = LoadVendor(ref=command.ref).execute()
-
-  vendor.name = command.name.strip()
-
-  state_file = get_state_file(vendor.guid, tenant.guid)
-  os.makedirs(state_file.parent, exist_ok=True)
-
-  json.dump(vendor, state_file)
-
-  return vendor
+  records = db.query(
+    """
+    MATCH (v:Vendor {guid: $guid})
+    SET v.name = $name, v.name_lower = toLower($name)
+    RETURN v.name AS name
+    """,
+    {"guid": command.ref.guid.hex, "name": command.name},
+    database=tenant.db_name,
+  )
+  if not records:
+    raise Vendor.DoesNotExist(command.ref.guid)
+  return Vendor(command.ref.guid, records[0]["name"])

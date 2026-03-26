@@ -81,7 +81,7 @@ Remove: `@connectrpc/connect`, `@connectrpc/connect-web`, `@bufbuild/protobuf`
 
 ---
 
-### Phase 0 — Infrastructure
+### Phase 0 — Infrastructure ✅
 
 **docker-compose.yml**: add Neo4j service
 ```yaml
@@ -124,7 +124,7 @@ def run(cypher: str, params: dict = None, *, database: str) -> None:
 
 ---
 
-### Phase 1 — Tenant entity + lifecycle handlers
+### Phase 1 — Tenant entity + lifecycle handlers ✅
 
 **`backend/taxos/tenant/entity.py`**: add `db_name` property, remove `content_dir` and
 `state_file` cached properties (they reference the filesystem hierarchy that disappears).
@@ -177,7 +177,7 @@ attachment storage).
 
 ---
 
-### Phase 2 — Bucket handlers
+### Phase 2 — Bucket handlers ✅
 
 All four handlers replace file I/O with Cypher. No relationships to manage.
 
