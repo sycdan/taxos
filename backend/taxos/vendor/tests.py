@@ -12,6 +12,7 @@ VENDOR_GUID = UUID("01930000-0000-7000-8000-000000000002")
 
 def _ctx(tenant=TENANT):
   from taxos.context.entity import Context
+
   return Context(tenant=tenant)
 
 
@@ -24,6 +25,7 @@ def _row(guid=VENDOR_GUID, name="Acme"):
 # ---------------------------------------------------------------------------
 # find_or_create
 # ---------------------------------------------------------------------------
+
 
 class TestFindOrCreateVendorHandler:
   @pytest.mark.unit
@@ -60,6 +62,7 @@ class TestFindOrCreateVendorHandler:
 # ---------------------------------------------------------------------------
 # list
 # ---------------------------------------------------------------------------
+
 
 class TestListVendorsHandler:
   @pytest.mark.unit
@@ -100,6 +103,7 @@ class TestListVendorsHandler:
 # load
 # ---------------------------------------------------------------------------
 
+
 class TestLoadVendorHandler:
   @pytest.mark.unit
   def test_returns_vendor(self):
@@ -134,6 +138,7 @@ class TestLoadVendorHandler:
 # ---------------------------------------------------------------------------
 # update
 # ---------------------------------------------------------------------------
+
 
 class TestUpdateVendorHandler:
   @pytest.mark.unit
@@ -171,6 +176,7 @@ class TestUpdateVendorHandler:
 # ---------------------------------------------------------------------------
 # integration
 # ---------------------------------------------------------------------------
+
 
 class TestVendorLifecycleIntegration:
   @pytest.mark.integration

@@ -3,12 +3,12 @@ import logging
 
 from taxos import db
 from taxos.context.tools import require_tenant
-from taxos.tenant.export.command import ExportTenant
+from taxos.tenant.dump.command import DumpTenant
 
 logger = logging.getLogger(__name__)
 
 
-def handle(command: ExportTenant) -> dict:
+def handle(command: DumpTenant) -> dict:
   tenant = require_tenant()
 
   buckets = db.query(
@@ -39,17 +39,19 @@ def handle(command: ExportTenant) -> dict:
       for a in record["allocations"]
       if a["bucket"] is not None
     ]
-    receipts.append({
-      "guid": node["guid"],
-      "vendor": node["vendor"],
-      "total": node["total"],
-      "date": node["date"],
-      "timezone": node["timezone"],
-      "allocations": allocs,
-      "vendor_ref": node.get("reference", "") or "",
-      "notes": node.get("notes", "") or "",
-      "hash": node.get("hash", "") or "",
-    })
+    receipts.append(
+      {
+        "guid": node["guid"],
+        "vendor": node["vendor"],
+        "total": node["total"],
+        "date": node["date"],
+        "timezone": node["timezone"],
+        "allocations": allocs,
+        "vendor_ref": node.get("reference", "") or "",
+        "notes": node.get("notes", "") or "",
+        "hash": node.get("hash", "") or "",
+      }
+    )
 
   data = {
     "buckets": [dict(r) for r in buckets],

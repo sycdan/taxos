@@ -15,7 +15,9 @@ def handle(query: ListReceipts) -> list[Receipt]:
   tenant = require_tenant()
   bucket = require_bucket(query.bucket)
 
-  months_filter = "AND any(m IN $months WHERE r.date STARTS WITH m)" if query.months else ""
+  months_filter = (
+    "AND any(m IN $months WHERE r.date STARTS WITH m)" if query.months else ""
+  )
 
   records = db.query(
     f"""
@@ -36,15 +38,17 @@ def handle(query: ListReceipts) -> list[Receipt]:
     for alloc in record["allocations"]:
       if alloc["bucket"] is not None:
         allocations.add(Allocation(BucketRef(alloc["bucket"]), alloc["amount"]))
-    receipts.append(Receipt(
-      guid=node["guid"],
-      vendor=node["vendor"],
-      total=node["total"],
-      date=node["date"],
-      timezone=node["timezone"],
-      allocations=allocations,
-      vendor_ref=node.get("reference", ""),
-      notes=node.get("notes", ""),
-      hash=node.get("hash", ""),
-    ))
+    receipts.append(
+      Receipt(
+        guid=node["guid"],
+        vendor=node["vendor"],
+        total=node["total"],
+        date=node["date"],
+        timezone=node["timezone"],
+        allocations=allocations,
+        vendor_ref=node.get("reference", ""),
+        notes=node.get("notes", ""),
+        hash=node.get("hash", ""),
+      )
+    )
   return receipts

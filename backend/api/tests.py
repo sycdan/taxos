@@ -1,4 +1,5 @@
 """Integration tests for the GraphQL schema — exercises resolvers against real Neo4j."""
+
 from unittest.mock import patch
 
 import pytest
@@ -38,17 +39,22 @@ def gql(tmp_path):
 # Buckets
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.integration
 class TestBuckets:
   def test_create_persists(self, gql):
-    guid = gql('mutation { createBucket(name: "Travel") { guid } }')["createBucket"]["guid"]
+    guid = gql('mutation { createBucket(name: "Travel") { guid } }')["createBucket"][
+      "guid"
+    ]
 
     fetched = gql(f'query {{ bucket(guid: "{guid}") {{ guid name }} }}')["bucket"]
     assert fetched["name"] == "Travel"
     assert fetched["guid"] == guid
 
   def test_update_persists(self, gql):
-    guid = gql('mutation { createBucket(name: "Old") { guid } }')["createBucket"]["guid"]
+    guid = gql('mutation { createBucket(name: "Old") { guid } }')["createBucket"][
+      "guid"
+    ]
 
     gql(f'mutation {{ updateBucket(guid: "{guid}", name: "New") {{ name }} }}')
 
@@ -56,7 +62,9 @@ class TestBuckets:
     assert fetched["name"] == "New"
 
   def test_delete_removes_from_db(self, gql):
-    guid = gql('mutation { createBucket(name: "Temp") { guid } }')["createBucket"]["guid"]
+    guid = gql('mutation { createBucket(name: "Temp") { guid } }')["createBucket"][
+      "guid"
+    ]
 
     result = gql(f'mutation {{ deleteBucket(guid: "{guid}") }}')
     assert result["deleteBucket"] is True
@@ -73,7 +81,9 @@ class TestBuckets:
     assert "Beta" in names
 
   def test_bucket_total_amount_and_receipt_count(self, gql):
-    bucket_guid = gql('mutation { createBucket(name: "Expenses") { guid } }')["createBucket"]["guid"]
+    bucket_guid = gql('mutation { createBucket(name: "Expenses") { guid } }')[
+      "createBucket"
+    ]["guid"]
 
     gql(f"""
       mutation {{
@@ -94,7 +104,9 @@ class TestBuckets:
     assert bucket["receiptCount"] == 1
 
   def test_bucket_receipts_field(self, gql):
-    bucket_guid = gql('mutation { createBucket(name: "Office") { guid } }')["createBucket"]["guid"]
+    bucket_guid = gql('mutation { createBucket(name: "Office") { guid } }')[
+      "createBucket"
+    ]["guid"]
 
     gql(f"""
       mutation {{
@@ -120,6 +132,7 @@ class TestBuckets:
 # Receipts
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.integration
 class TestReceipts:
   def test_create_persists(self, gql):
@@ -135,13 +148,17 @@ class TestReceipts:
       }
     """)["createReceipt"]["guid"]
 
-    fetched = gql(f'query {{ receipt(guid: "{guid}") {{ vendor total notes }} }}')["receipt"]
+    fetched = gql(f'query {{ receipt(guid: "{guid}") {{ vendor total notes }} }}')[
+      "receipt"
+    ]
     assert fetched["vendor"] == "Acme"
     assert fetched["total"] == 100.0
     assert fetched["notes"] == "business lunch"
 
   def test_create_with_allocation_persists(self, gql):
-    bucket_guid = gql('mutation { createBucket(name: "Travel") { guid } }')["createBucket"]["guid"]
+    bucket_guid = gql('mutation { createBucket(name: "Travel") { guid } }')[
+      "createBucket"
+    ]["guid"]
 
     guid = gql(f"""
       mutation {{
@@ -186,7 +203,9 @@ class TestReceipts:
       }}
     """)
 
-    fetched = gql(f'query {{ receipt(guid: "{guid}") {{ vendor total notes }} }}')["receipt"]
+    fetched = gql(f'query {{ receipt(guid: "{guid}") {{ vendor total notes }} }}')[
+      "receipt"
+    ]
     assert fetched["vendor"] == "New Vendor"
     assert fetched["total"] == 75.0
     assert fetched["notes"] == "updated"
@@ -219,7 +238,9 @@ class TestReceipts:
       }}
     """)
 
-    allocs = gql(f'query {{ receipt(guid: "{guid}") {{ allocations {{ bucket {{ name }} }} }} }}')["receipt"]["allocations"]
+    allocs = gql(
+      f'query {{ receipt(guid: "{guid}") {{ allocations {{ bucket {{ name }} }} }} }}'
+    )["receipt"]["allocations"]
     assert len(allocs) == 1
     assert allocs[0]["bucket"]["name"] == "B"
 
@@ -238,7 +259,9 @@ class TestReceipts:
 
   def test_receipts_query_filtered_by_bucket(self, gql):
     b1 = gql('mutation { createBucket(name: "Food") { guid } }')["createBucket"]["guid"]
-    b2 = gql('mutation { createBucket(name: "Travel") { guid } }')["createBucket"]["guid"]
+    b2 = gql('mutation { createBucket(name: "Travel") { guid } }')["createBucket"][
+      "guid"
+    ]
 
     gql(f"""
       mutation {{
@@ -289,6 +312,7 @@ class TestReceipts:
 # Vendors
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.integration
 class TestVendors:
   def test_create_via_receipt_and_list(self, gql):
@@ -332,7 +356,9 @@ class TestVendors:
     vendors = gql("query { vendors { guid name } }")["vendors"]
     guid = next(v["guid"] for v in vendors if v["name"] == "Staples")
 
-    receipts = gql(f'query {{ vendor(guid: "{guid}") {{ receipts {{ total }} }} }}')["vendor"]["receipts"]
+    receipts = gql(f'query {{ vendor(guid: "{guid}") {{ receipts {{ total }} }} }}')[
+      "vendor"
+    ]["receipts"]
     totals = sorted(r["total"] for r in receipts)
     assert totals == [25.0, 40.0]
 
@@ -341,10 +367,13 @@ class TestVendors:
 # Dashboard
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.integration
 class TestDashboard:
   def test_bucket_totals_and_unallocated(self, gql):
-    bucket_guid = gql('mutation { createBucket(name: "Travel") { guid } }')["createBucket"]["guid"]
+    bucket_guid = gql('mutation { createBucket(name: "Travel") { guid } }')[
+      "createBucket"
+    ]["guid"]
 
     gql(f"""
       mutation {{
@@ -381,7 +410,9 @@ class TestDashboard:
     assert dashboard["unallocated"][0]["total"] == 50.0
 
   def test_dashboard_month_filter(self, gql):
-    bucket_guid = gql('mutation { createBucket(name: "Office") { guid } }')["createBucket"]["guid"]
+    bucket_guid = gql('mutation { createBucket(name: "Office") { guid } }')[
+      "createBucket"
+    ]["guid"]
 
     gql(f"""
       mutation {{

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from taxos import db
 from taxos.context.tools import require_tenant
-from taxos.tenant.import_.command import ImportTenant
+from taxos.tenant.seed.command import SeedTenant
 
 logger = logging.getLogger(__name__)
 
@@ -29,22 +29,24 @@ def _load_from_flat_dir(path: Path) -> dict:
   receipts = []
   for state_file in sorted((path / "receipts").glob("*/state.json")):
     data = json.loads(state_file.read_text())
-    receipts.append({
-      "guid": data["guid"],
-      "vendor": data["vendor"],
-      "total": data["total"],
-      "date": data["date"],
-      "timezone": data.get("timezone", "UTC"),
-      "allocations": data.get("allocations", []),
-      "vendor_ref": data.get("vendor_ref", "") or "",
-      "notes": data.get("notes", "") or "",
-      "hash": data.get("hash", "") or "",
-    })
+    receipts.append(
+      {
+        "guid": data["guid"],
+        "vendor": data["vendor"],
+        "total": data["total"],
+        "date": data["date"],
+        "timezone": data.get("timezone", "UTC"),
+        "allocations": data.get("allocations", []),
+        "vendor_ref": data.get("vendor_ref", "") or "",
+        "notes": data.get("notes", "") or "",
+        "hash": data.get("hash", "") or "",
+      }
+    )
 
   return {"buckets": buckets, "vendors": vendors, "receipts": receipts}
 
 
-def handle(command: ImportTenant) -> dict:
+def handle(command: SeedTenant) -> dict:
   tenant = require_tenant()
   source = Path(command.source)
 

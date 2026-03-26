@@ -1,18 +1,21 @@
 """Tests for tenant export and import commands."""
+
 import json
 from unittest.mock import patch
 
 import pytest
 
 
-def _make_tenant(tmp_path, name):
+def _make_tenant(tmp_path, name: str):
   from taxos.tenant.create.command import CreateTenant
+
   with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
     return CreateTenant(name=name).execute()
 
 
 def _del_tenant(tmp_path, tenant):
   from taxos.tenant.delete.command import DeleteTenant
+
   with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
     DeleteTenant(tenant=tenant).execute()
 
@@ -20,10 +23,11 @@ def _del_tenant(tmp_path, tenant):
 def _set(tenant):
   from taxos.context.entity import Context
   from taxos.context.tools import set_context
+
   set_context(Context(tenant=tenant))
 
 
-def _seed(bucket_name, vendor, total, date="2024-06-01T10:00:00"):
+def _seed(bucket_name: str, vendor: str, total: float, date: str = "2024-06-01T10:00:00"):
   from taxos.allocation.entity import Allocation
   from taxos.bucket.create.command import CreateBucket
   from taxos.bucket.entity import BucketRef
@@ -31,20 +35,22 @@ def _seed(bucket_name, vendor, total, date="2024-06-01T10:00:00"):
 
   bucket = CreateBucket(name=bucket_name).execute()
   allocs = {Allocation(BucketRef(bucket.guid.hex), total)}
-  CreateReceipt(vendor=vendor, total=total, date=date, timezone="UTC", allocations=allocs).execute()
+  CreateReceipt(
+    vendor=vendor, total=total, date=date, timezone="UTC", allocations=allocs
+  ).execute()
   return bucket
 
 
 @pytest.mark.integration
 class TestExportImport:
   def test_export_returns_all_entities(self, tmp_path):
-    from taxos.tenant.export.command import ExportTenant
+    from taxos.tenant.dump.command import DumpTenant
 
     tenant = _make_tenant(tmp_path, "Export Test")
     _set(tenant)
     _seed("Travel", "Airline", 500.0)
 
-    data = ExportTenant().execute()
+    data = DumpTenant().execute()
 
     assert len(data["buckets"]) == 1
     assert data["buckets"][0]["name"] == "Travel"
@@ -60,13 +66,13 @@ class TestExportImport:
     _del_tenant(tmp_path, tenant)
 
   def test_export_writes_file(self, tmp_path):
-    from taxos.tenant.export.command import ExportTenant
+    from taxos.tenant.dump.command import DumpTenant
 
     tenant = _make_tenant(tmp_path, "File Export Test")
     _set(tenant)
 
     out_file = tmp_path / "export.json"
-    ExportTenant(path=str(out_file)).execute()
+    DumpTenant(path=str(out_file)).execute()
 
     assert out_file.exists()
     data = json.loads(out_file.read_text())
@@ -76,19 +82,19 @@ class TestExportImport:
 
   def test_import_from_export_roundtrip(self, tmp_path):
     from taxos import db
-    from taxos.tenant.export.command import ExportTenant
-    from taxos.tenant.import_.command import ImportTenant
+    from taxos.tenant.dump.command import DumpTenant
+    from taxos.tenant.seed.command import SeedTenant
 
     src = _make_tenant(tmp_path, "Source Tenant")
     _set(src)
     _seed("Office", "Staples", 45.0, "2024-03-01T09:00:00")
 
     export_file = tmp_path / "export.json"
-    ExportTenant(path=str(export_file)).execute()
+    DumpTenant(path=str(export_file)).execute()
 
     dst = _make_tenant(tmp_path, "Dest Tenant")
     _set(dst)
-    counts = ImportTenant(source=str(export_file)).execute()
+    counts = SeedTenant(source=str(export_file)).execute()
 
     assert counts == {"buckets": 1, "vendors": 1, "receipts": 1}
 
@@ -108,7 +114,7 @@ class TestExportImport:
   def test_import_from_flat_dir(self, tmp_path):
     """Import from old flat-file tenant directory structure."""
     from taxos import db
-    from taxos.tenant.import_.command import ImportTenant
+    from taxos.tenant.seed.command import SeedTenant
 
     bucket_guid = "11111111-1111-1111-1111-111111111111"
     receipt_guid = "22222222-2222-2222-2222-222222222222"
@@ -126,22 +132,24 @@ class TestExportImport:
       json.dumps({"guid": vendor_guid, "name": "Grocery Store"})
     )
     (flat_dir / "receipts" / receipt_guid.replace("-", "") / "state.json").write_text(
-      json.dumps({
-        "guid": receipt_guid,
-        "vendor": "Grocery Store",
-        "total": 120.0,
-        "date": "2024-05-10T14:00:00",
-        "timezone": "UTC",
-        "allocations": [{"bucket": bucket_guid, "amount": 120.0}],
-        "vendor_ref": "",
-        "notes": "weekly shop",
-        "hash": "",
-      })
+      json.dumps(
+        {
+          "guid": receipt_guid,
+          "vendor": "Grocery Store",
+          "total": 120.0,
+          "date": "2024-05-10T14:00:00",
+          "timezone": "UTC",
+          "allocations": [{"bucket": bucket_guid, "amount": 120.0}],
+          "vendor_ref": "",
+          "notes": "weekly shop",
+          "hash": "",
+        }
+      )
     )
 
     tenant = _make_tenant(tmp_path, "Import Flat Test")
     _set(tenant)
-    counts = ImportTenant(source=str(flat_dir)).execute()
+    counts = SeedTenant(source=str(flat_dir)).execute()
 
     assert counts == {"buckets": 1, "vendors": 1, "receipts": 1}
 

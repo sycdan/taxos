@@ -1,8 +1,6 @@
 import logging
 
 from taxos import db
-from taxos.allocation.entity import Allocation
-from taxos.bucket.entity import BucketRef
 from taxos.context.tools import require_tenant
 from taxos.receipt.entity import Receipt
 from taxos.tenant.dashboard.entity import BucketSummary, Dashboard
@@ -17,9 +15,7 @@ def handle(query: GetDashboard) -> Dashboard:
   tenant = require_tenant()
 
   months_where = (
-    "WHERE any(m IN $months WHERE r.date STARTS WITH m)"
-    if query.months
-    else ""
+    "WHERE any(m IN $months WHERE r.date STARTS WITH m)" if query.months else ""
   )
 
   bucket_records = db.query(

@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
@@ -12,12 +12,14 @@ BUCKET_GUID = UUID("01930000-0000-7000-8000-000000000002")
 
 def _ctx(tenant=TENANT):
   from taxos.context.entity import Context
+
   return Context(tenant=tenant)
 
 
 # ---------------------------------------------------------------------------
 # create
 # ---------------------------------------------------------------------------
+
 
 class TestCreateBucketHandler:
   @pytest.mark.unit
@@ -42,6 +44,7 @@ class TestCreateBucketHandler:
 # ---------------------------------------------------------------------------
 # load
 # ---------------------------------------------------------------------------
+
 
 class TestLoadBucketHandler:
   @pytest.mark.unit
@@ -77,6 +80,7 @@ class TestLoadBucketHandler:
 # ---------------------------------------------------------------------------
 # update
 # ---------------------------------------------------------------------------
+
 
 class TestUpdateBucketHandler:
   @pytest.mark.unit
@@ -114,6 +118,7 @@ class TestUpdateBucketHandler:
 # ---------------------------------------------------------------------------
 # delete
 # ---------------------------------------------------------------------------
+
 
 class TestDeleteBucketHandler:
   @pytest.mark.unit
@@ -155,6 +160,7 @@ class TestDeleteBucketHandler:
 # integration
 # ---------------------------------------------------------------------------
 
+
 class TestBucketLifecycleIntegration:
   @pytest.mark.integration
   def test_crud_roundtrip(self, tmp_path):
@@ -166,7 +172,6 @@ class TestBucketLifecycleIntegration:
     from taxos.tenant.delete.command import DeleteTenant
     from taxos.context.entity import Context
     from taxos.context.tools import set_context
-    from taxos import db
 
     with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
       tenant = CreateTenant(name="Bucket Integration Test").execute()

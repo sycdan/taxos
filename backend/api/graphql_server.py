@@ -5,7 +5,13 @@ import zipfile
 from functools import wraps
 from pathlib import Path
 
-from ariadne import MutationType, ObjectType, QueryType, load_schema_from_path, make_executable_schema
+from ariadne import (
+  MutationType,
+  ObjectType,
+  QueryType,
+  load_schema_from_path,
+  make_executable_schema,
+)
 from ariadne.graphql import graphql_sync
 from flask import Flask, Response, jsonify, request
 from flask_cors import CORS
@@ -42,12 +48,17 @@ CORS(app)
 # Auth
 # ---------------------------------------------------------------------------
 
+
 def require_auth(f):
   @wraps(f)
   def decorated(*args, **kwargs):
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
-      return Response('{"errors":[{"message":"Missing or invalid Authorization header"}]}', status=401, content_type="application/json")
+      return Response(
+        '{"errors":[{"message":"Missing or invalid Authorization header"}]}',
+        status=401,
+        content_type="application/json",
+      )
     token_hash = auth_header[7:]
     try:
       tenant = AuthenticateTenant(token_hash).execute()
@@ -55,12 +66,19 @@ def require_auth(f):
       return f(*args, **kwargs)
     except Exception as e:
       logger.warning(f"Authentication failed: {e}")
-      return Response('{"errors":[{"message":"Invalid or expired access token"}]}', status=401, content_type="application/json")
+      return Response(
+        '{"errors":[{"message":"Invalid or expired access token"}]}',
+        status=401,
+        content_type="application/json",
+      )
+
   return decorated
+
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _parse_allocations(items: list | None) -> set[Allocation]:
   allocations = set()
@@ -73,6 +91,7 @@ def _receipts_from_records(records) -> list[Receipt]:
   """Convert neo4j records (r node + allocations list) to Receipt objects."""
   from taxos.allocation.entity import Allocation
   from taxos.bucket.entity import BucketRef
+
   receipts = []
   for record in records:
     node = record["r"]
@@ -80,17 +99,19 @@ def _receipts_from_records(records) -> list[Receipt]:
     for alloc in record["allocations"]:
       if alloc["bucket"] is not None:
         allocations.add(Allocation(BucketRef(alloc["bucket"]), alloc["amount"]))
-    receipts.append(Receipt(
-      guid=node["guid"],
-      vendor=node["vendor"],
-      total=node["total"],
-      date=node["date"],
-      timezone=node["timezone"],
-      allocations=allocations,
-      vendor_ref=node.get("reference", ""),
-      notes=node.get("notes", ""),
-      hash=node.get("hash", ""),
-    ))
+    receipts.append(
+      Receipt(
+        guid=node["guid"],
+        vendor=node["vendor"],
+        total=node["total"],
+        date=node["date"],
+        timezone=node["timezone"],
+        allocations=allocations,
+        vendor_ref=node.get("reference", ""),
+        notes=node.get("notes", ""),
+        hash=node.get("hash", ""),
+      )
+    )
   return receipts
 
 
@@ -108,6 +129,7 @@ allocation_type = ObjectType("Allocation")
 
 
 # --- Query ---
+
 
 @query.field("vendors")
 def resolve_vendors(*_):
@@ -130,6 +152,7 @@ def resolve_buckets(*_):
     database=tenant.db_name,
   )
   from taxos.bucket.entity import Bucket
+
   return [Bucket(r["guid"], r["name"]) for r in records]
 
 
@@ -148,10 +171,14 @@ def resolve_receipts(*_, vendorGuid=None, bucketGuid=None, months=None):
   params: dict = {"months": months or []}
 
   if vendorGuid:
-    conditions.append("EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {guid: $vendorGuid}) }")
+    conditions.append(
+      "EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {guid: $vendorGuid}) }"
+    )
     params["vendorGuid"] = vendorGuid
   if bucketGuid:
-    conditions.append("EXISTS { MATCH (r)-[:ALLOCATED_TO]->(b:Bucket {guid: $bucketGuid}) }")
+    conditions.append(
+      "EXISTS { MATCH (r)-[:ALLOCATED_TO]->(b:Bucket {guid: $bucketGuid}) }"
+    )
     params["bucketGuid"] = bucketGuid
   if months:
     conditions.append("any(m IN $months WHERE r.date STARTS WITH m)")
@@ -186,6 +213,7 @@ def resolve_dashboard(*_, months=None):
 
 
 # --- Mutation ---
+
 
 @mutation.field("createBucket")
 def resolve_create_bucket(*_, name):
@@ -263,6 +291,7 @@ def resolve_upload_receipt_file(*_, hash, filename, data):
 
 
 # --- Field resolvers ---
+
 
 @vendor_type.field("guid")
 def resolve_vendor_guid(vendor, *_):
@@ -352,7 +381,11 @@ def resolve_receipt_hash(receipt, *_):
 
 @allocation_type.field("bucket")
 def resolve_allocation_bucket(allocation, *_):
-  ref = allocation.bucket if isinstance(allocation.bucket, BucketRef) else BucketRef(allocation.bucket.guid.hex)
+  ref = (
+    allocation.bucket
+    if isinstance(allocation.bucket, BucketRef)
+    else BucketRef(allocation.bucket.guid.hex)
+  )
   return LoadBucket(ref=ref).execute()
 
 
@@ -384,6 +417,7 @@ schema = make_executable_schema(
 @require_auth
 def download_file_endpoint(file_hash):
   from taxos.receipt.download_file.command import DownloadFile
+
   try:
     result = DownloadFile(file_hash=file_hash).execute()
     return Response(
@@ -392,7 +426,11 @@ def download_file_endpoint(file_hash):
       headers={"Content-Disposition": f'attachment; filename="{result.filename}"'},
     )
   except FileNotFoundError:
-    return Response('{"errors":[{"message":"File not found"}]}', status=404, content_type="application/json")
+    return Response(
+      '{"errors":[{"message":"File not found"}]}',
+      status=404,
+      content_type="application/json",
+    )
 
 
 @app.route("/graphql", methods=["POST"])

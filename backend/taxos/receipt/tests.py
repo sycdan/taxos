@@ -19,6 +19,7 @@ DATE_ISO = "2024-03-15T12:00:00"
 
 def _ctx(tenant=TENANT):
   from taxos.context.entity import Context
+
   return Context(tenant=tenant)
 
 
@@ -45,6 +46,7 @@ def _node(props: dict):
 # ---------------------------------------------------------------------------
 # save
 # ---------------------------------------------------------------------------
+
 
 class TestSaveReceiptHandler:
   @pytest.mark.unit
@@ -81,6 +83,7 @@ class TestSaveReceiptHandler:
 # load
 # ---------------------------------------------------------------------------
 
+
 class TestLoadReceiptHandler:
   @pytest.mark.unit
   def test_returns_receipt(self):
@@ -89,8 +92,18 @@ class TestLoadReceiptHandler:
     from taxos.context.tools import set_context
 
     set_context(_ctx())
-    node = _node({"guid": RECEIPT_GUID.hex, "vendor": "Acme", "total": 100.0,
-                  "date": DATE_ISO, "timezone": "UTC", "notes": "", "hash": "", "reference": ""})
+    node = _node(
+      {
+        "guid": RECEIPT_GUID.hex,
+        "vendor": "Acme",
+        "total": 100.0,
+        "date": DATE_ISO,
+        "timezone": "UTC",
+        "notes": "",
+        "hash": "",
+        "reference": "",
+      }
+    )
     record = MagicMock()
     record.__getitem__ = lambda self, k: node if k == "r" else []
 
@@ -117,6 +130,7 @@ class TestLoadReceiptHandler:
 # ---------------------------------------------------------------------------
 # delete
 # ---------------------------------------------------------------------------
+
 
 class TestDeleteReceiptHandler:
   @pytest.mark.unit
@@ -156,6 +170,7 @@ class TestDeleteReceiptHandler:
 # ---------------------------------------------------------------------------
 # integration
 # ---------------------------------------------------------------------------
+
 
 class TestReceiptLifecycleIntegration:
   @pytest.mark.integration

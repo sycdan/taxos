@@ -1,8 +1,8 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
-class ExportTenant:
+class DumpTenant:
   """Dump all tenant data to a JSON-serialisable dict (or write to a file).
 
   If `path` is empty the result is returned as a dict.
@@ -12,5 +12,6 @@ class ExportTenant:
   path: str = ""
 
   def execute(self) -> dict:
-    from taxos.tenant.export.handler import handle
+    from taxos.tenant.dump.handler import handle
+
     return handle(self)

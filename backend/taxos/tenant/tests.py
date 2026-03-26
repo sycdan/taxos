@@ -1,13 +1,14 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import UUID
 
 import pytest
 
-from taxos.tenant.entity import Tenant, TenantRef
+from taxos.tenant.entity import Tenant
 
 
 def _neo4j_db_exists(db_name: str) -> bool:
   from taxos import db
+
   records = db.query(
     "SHOW DATABASES YIELD name WHERE name = $name RETURN name",
     {"name": db_name},
@@ -19,6 +20,7 @@ def _neo4j_db_exists(db_name: str) -> bool:
 # ---------------------------------------------------------------------------
 # entity
 # ---------------------------------------------------------------------------
+
 
 class TestTenantDbName:
   def test_db_name_prefix(self):
@@ -43,6 +45,7 @@ class TestTenantDbName:
 # ---------------------------------------------------------------------------
 # create handler
 # ---------------------------------------------------------------------------
+
 
 class TestCreateTenantHandler:
   @pytest.mark.unit
@@ -81,6 +84,7 @@ class TestCreateTenantHandler:
 # delete handler
 # ---------------------------------------------------------------------------
 
+
 class TestDeleteTenantHandler:
   def _make_tenant(self, tmp_path):
     guid = UUID("01930000-0000-7000-8000-000000000001")
@@ -101,7 +105,11 @@ class TestDeleteTenantHandler:
       patch("taxos.tenant.delete.handler.db") as mock_db,
       patch("taxos.tenant.delete.handler.ACCESS_TOKENS_DIR", tmp_path / "tokens"),
       patch("taxos.tenant.tools.TENANTS_DIR", tmp_path),
-      patch.object(type(tenant), "content_dir", new_callable=lambda: property(lambda self: tmp_path / self.guid.hex)),
+      patch.object(
+        type(tenant),
+        "content_dir",
+        new_callable=lambda: property(lambda self: tmp_path / self.guid.hex),
+      ),
     ):
       result = handle(DeleteTenant(tenant=tenant))
 
@@ -123,7 +131,11 @@ class TestDeleteTenantHandler:
     with (
       patch("taxos.tenant.delete.handler.db") as mock_db,
       patch("taxos.tenant.delete.handler.ACCESS_TOKENS_DIR", tmp_path / "tokens"),
-      patch.object(type(tenant), "content_dir", new_callable=lambda: property(lambda self: tmp_path / "nonexistent")),
+      patch.object(
+        type(tenant),
+        "content_dir",
+        new_callable=lambda: property(lambda self: tmp_path / "nonexistent"),
+      ),
     ):
       result = handle(DeleteTenant(tenant=tenant))
 
@@ -134,6 +146,7 @@ class TestDeleteTenantHandler:
 # ---------------------------------------------------------------------------
 # integration
 # ---------------------------------------------------------------------------
+
 
 class TestTenantLifecycleIntegration:
   @pytest.mark.integration
