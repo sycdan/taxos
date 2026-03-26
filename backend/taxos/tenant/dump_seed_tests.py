@@ -27,7 +27,9 @@ def _set(tenant):
   set_context(Context(tenant=tenant))
 
 
-def _seed(bucket_name: str, vendor: str, total: float, date: str = "2024-06-01T10:00:00"):
+def _seed(
+  bucket_name: str, vendor: str, total: float, date: str = "2024-06-01T10:00:00"
+):
   from taxos.allocation.entity import Allocation
   from taxos.bucket.create.command import CreateBucket
   from taxos.bucket.entity import BucketRef

@@ -17,19 +17,12 @@ export default defineConfig({
       port: 5173
     },
     proxy: {
-      // GraphQL API (new)
       '/graphql': {
         target: process.env.VITE_API_URL || 'http://backend:50052',
         changeOrigin: true,
       },
-      // File download endpoint (new)
       '/files': {
         target: process.env.VITE_API_URL || 'http://backend:50052',
-        changeOrigin: true,
-      },
-      // Connect-RPC (kept until Phase 9 cleanup)
-      '/taxos.v1': {
-        target: process.env.VITE_GRPC_API_URL || 'http://backend:50051',
         changeOrigin: true,
       },
     },
