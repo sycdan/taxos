@@ -1,6 +1,6 @@
 import shutil
 
-from taxos import ACCESS_TOKENS_DIR
+from taxos import ACCESS_TOKENS_DIR, db
 from taxos.tenant.delete.command import DeleteTenant
 from taxos.tools import json
 
@@ -21,7 +21,9 @@ def handle(command: DeleteTenant):
 
     if tenant.content_dir.exists():
       shutil.rmtree(tenant.content_dir)
-      return True
+
+    db.run(f"DROP DATABASE {tenant.db_name} IF EXISTS DESTROY DATA", database="system")
+    return True
   except RuntimeError:
     pass  # probably does not exist
   return False

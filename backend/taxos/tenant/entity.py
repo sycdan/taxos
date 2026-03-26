@@ -3,7 +3,7 @@ from functools import cached_property
 from pathlib import Path
 from uuid import UUID
 
-from taxos.tenant.tools import get_content_dir, get_state_file
+from taxos.tenant.tools import get_content_dir
 from taxos.tools.guid import parse_guid
 
 
@@ -22,9 +22,10 @@ class Tenant:
   def content_dir(self) -> Path:
     return get_content_dir(self.guid)
 
-  @cached_property
-  def state_file(self) -> Path:
-    return get_state_file(self.guid)
+  @property
+  def db_name(self) -> str:
+    """Neo4j database name. t-prefix ensures it never starts with a digit."""
+    return f"t{self.guid.hex}"
 
   def __post_init__(self):
     if not isinstance(self.guid, UUID):
