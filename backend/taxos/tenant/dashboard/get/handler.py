@@ -1,11 +1,12 @@
 import logging
 
-from taxos.bucket.repo.load.query import LoadBucketRepo
+from taxos import db
+from taxos.allocation.entity import Allocation
+from taxos.bucket.entity import BucketRef
+from taxos.context.tools import require_tenant
 from taxos.receipt.entity import Receipt
-from taxos.receipt.repo.load.command import LoadReceiptRepo
 from taxos.tenant.dashboard.entity import BucketSummary, Dashboard
 from taxos.tenant.dashboard.get.query import GetDashboard
-from taxos.tenant.list_receipts.query import ListReceipts
 from taxos.vendor.list.query import ListVendors
 
 logger = logging.getLogger(__name__)
@@ -13,47 +14,66 @@ logger = logging.getLogger(__name__)
 
 def handle(query: GetDashboard) -> Dashboard:
   logger.info(f"Generating dashboard for months: {query.months}")
-  bucket_repo = LoadBucketRepo().execute()
-  receipt_repo = LoadReceiptRepo().execute()
+  tenant = require_tenant()
 
-  bucket_summaries: list[BucketSummary] = []
-  unallocated_receipts: list[Receipt] = []
+  months_where = (
+    "WHERE any(m IN $months WHERE r.date STARTS WITH m)"
+    if query.months
+    else ""
+  )
 
-  # Calculate summaries for each bucket
-  for bucket in bucket_repo.index.values():
-    receipts = ListReceipts(
-      months=query.months,
-      bucket=bucket,
-      repo=receipt_repo,
-    ).execute()
+  bucket_records = db.query(
+    f"""
+    MATCH (b:Bucket)
+    OPTIONAL MATCH (b)<-[a:ALLOCATED_TO]-(r:Receipt)
+    {months_where}
+    WITH b, sum(a.amount) AS total, count(DISTINCT r) AS receipt_count
+    RETURN b.guid AS guid, b.name AS name, total, receipt_count
+    ORDER BY b.name
+    """,
+    {"months": query.months},
+    database=tenant.db_name,
+  )
 
-    total_amount = sum(
-      sum(a.amount for a in r.allocations if a.bucket.guid == bucket.guid)
-      for r in receipts
+  bucket_summaries = [
+    BucketSummary(
+      guid=row["guid"],
+      name=row["name"],
+      total_amount=row["total"] or 0.0,
+      receipt_count=row["receipt_count"] or 0,
     )
-    receipt_count = len(receipts)
+    for row in bucket_records
+  ]
 
-    bucket_summaries.append(
-      BucketSummary(
-        guid=bucket.guid.hex,
-        name=bucket.name,
-        total_amount=total_amount,
-        receipt_count=receipt_count,
-      )
+  unallocated_records = db.query(
+    f"""
+    MATCH (r:Receipt)
+    WHERE NOT (r)-[:ALLOCATED_TO]->()
+    {"AND any(m IN $months WHERE r.date STARTS WITH m)" if query.months else ""}
+    RETURN r
+    """,
+    {"months": query.months},
+    database=tenant.db_name,
+  )
+
+  unallocated_receipts = [
+    Receipt(
+      guid=row["r"]["guid"],
+      vendor=row["r"]["vendor"],
+      total=row["r"]["total"],
+      date=row["r"]["date"],
+      timezone=row["r"]["timezone"],
+      notes=row["r"].get("notes", ""),
+      hash=row["r"].get("hash", ""),
+      vendor_ref=row["r"].get("reference", ""),
     )
+    for row in unallocated_records
+  ]
 
-  for month in query.months:
-    for receipt in receipt_repo.iter_by_month(month):
-      total_allocated = sum(a.amount for a in receipt.allocations)
-      if round(receipt.total, 2) > round(total_allocated, 2):
-        unallocated_receipts.append(receipt)
-
-  # Get all vendor names for typeahead
   vendors = ListVendors().execute()
-  vendor_names = [vendor.name for vendor in vendors]
 
   return Dashboard(
     buckets=bucket_summaries,
     unallocated=unallocated_receipts,
-    vendor_names=vendor_names,
+    vendor_names=[v.name for v in vendors],
   )

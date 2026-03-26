@@ -5,7 +5,6 @@ from taxos.context.tools import require_tenant
 from taxos.receipt.create.command import CreateReceipt
 from taxos.receipt.entity import Receipt
 from taxos.receipt.save.command import SaveReceipt
-from taxos.receipt.tools import get_state_file
 from taxos.tools import guid
 from taxos.vendor.find_or_create.command import FindOrCreateVendor
 
@@ -15,20 +14,15 @@ logger = logging.getLogger(__name__)
 def handle(command: CreateReceipt) -> Receipt:
   assert isinstance(command.date, datetime), "Date must be parsed."
   logger.debug(f"{command=}")
-  tenant = require_tenant()
-  receipt_guid = guid.uuid7()
+  require_tenant()
 
-  state_file = get_state_file(receipt_guid, tenant.guid)
-  if state_file.exists() and state_file.stat().st_size > 0:
-    raise RuntimeError(f"Receipt {receipt_guid} already exists.")
-
-  # Create or find vendor to enable typeahead functionality
+  # Find or create vendor to enable typeahead
   if command.vendor:
     vendor = FindOrCreateVendor(command.vendor).execute()
     logger.debug(f"Vendor: {vendor.name} ({vendor.guid})")
 
   receipt = Receipt(
-    receipt_guid,
+    guid.uuid7(),
     vendor=command.vendor,
     total=command.total,
     date=command.date,

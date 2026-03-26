@@ -1,12 +1,11 @@
 import logging
 from datetime import datetime
 
-from taxos.context.tools import require_receipt, require_tenant
-from taxos.receipt.entity import Receipt
-from taxos.receipt.repo.update.command import UpdateReceiptRepo
-from taxos.receipt.tools import get_state_file
+from taxos.context.tools import require_tenant
+from taxos.receipt.entity import Receipt, ReceiptRef
+from taxos.receipt.save.command import SaveReceipt
 from taxos.receipt.update.command import UpdateReceipt
-from taxos.tools import json
+from taxos.receipt.load.query import LoadReceipt
 
 logger = logging.getLogger(__name__)
 
@@ -14,8 +13,10 @@ logger = logging.getLogger(__name__)
 def handle(command: UpdateReceipt) -> Receipt:
   assert isinstance(command.date, datetime), "Date must be parsed."
   logger.debug(f"{command=}")
-  tenant = require_tenant()
-  receipt = require_receipt(command.ref)
+  require_tenant()
+
+  ref = command.ref if isinstance(command.ref, ReceiptRef) else ReceiptRef(str(command.ref.guid))
+  receipt = LoadReceipt(ref=ref).execute()
 
   receipt.vendor = command.vendor
   receipt.total = command.total
@@ -26,9 +27,4 @@ def handle(command: UpdateReceipt) -> Receipt:
   receipt.notes = command.notes
   receipt.hash = command.hash
 
-  state_file = get_state_file(receipt.guid, tenant.guid)
-  json.dump(receipt, state_file)
-
-  UpdateReceiptRepo(receipt).execute()
-
-  return receipt
+  return SaveReceipt(receipt).execute()

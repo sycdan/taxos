@@ -1,11 +1,9 @@
 import logging
-import shutil
 
-from taxos.context.tools import require_receipt, require_tenant
+from taxos import db
+from taxos.context.tools import require_tenant
 from taxos.receipt.delete.command import DeleteReceipt
-from taxos.receipt.entity import Receipt
-from taxos.receipt.repo.update.command import UpdateReceiptRepo
-from taxos.receipt.tools import get_state_file
+from taxos.receipt.entity import ReceiptRef
 
 logger = logging.getLogger(__name__)
 
@@ -13,18 +11,10 @@ logger = logging.getLogger(__name__)
 def handle(command: DeleteReceipt):
   logger.debug(f"{command=}")
   tenant = require_tenant()
-
-  try:
-    receipt = require_receipt(command.ref)
-  except Receipt.DoesNotExist:
-    logger.warning(f"Receipt not found for deletion: {command.ref}")
-    return False
-
-  UpdateReceiptRepo(receipt, remove=True).execute()
-  receipt_guid = receipt.guid
-  state_file = get_state_file(receipt_guid, tenant.guid)
-  content_dir = state_file.parent
-  if content_dir.exists():
-    shutil.rmtree(content_dir)
-    return True
-  return False
+  ref = command.ref if isinstance(command.ref, ReceiptRef) else ReceiptRef(str(command.ref.guid))
+  result = db.query(
+    "MATCH (r:Receipt {guid: $guid}) DETACH DELETE r RETURN count(r) AS n",
+    {"guid": ref.guid.hex},
+    database=tenant.db_name,
+  )
+  return result[0]["n"] > 0
