@@ -1,10 +1,9 @@
 import logging
-import shutil
 
+from taxos import db
 from taxos.bucket.delete.command import DeleteBucket
-from taxos.bucket.tools import get_state_file
-from taxos.context.tools import require_bucket, require_tenant
-from taxos.receipt.repo.load.command import LoadReceiptRepo
+from taxos.bucket.entity import BucketRef
+from taxos.context.tools import require_tenant
 
 logger = logging.getLogger(__name__)
 
@@ -12,14 +11,11 @@ logger = logging.getLogger(__name__)
 def handle(command: DeleteBucket):
   logger.debug(f"{command=}")
   tenant = require_tenant()
-  bucket = require_bucket(command.ref)
-  try:
-    state_file = get_state_file(bucket.guid, tenant.guid)
-    content_dir = state_file.parent
-    if content_dir.exists():
-      shutil.rmtree(content_dir)
-      LoadReceiptRepo(force_rebuild=True).execute()
-      return True
-  except RuntimeError:
-    pass  # probably does not exist
-  return False
+  ref = command.ref if isinstance(command.ref, BucketRef) else BucketRef(command.ref)
+  # DETACH DELETE also removes ALLOCATED_TO edges from receipts
+  result = db.query(
+    "MATCH (b:Bucket {guid: $guid}) DETACH DELETE b RETURN count(b) AS n",
+    {"guid": ref.guid.hex},
+    database=tenant.db_name,
+  )
+  return result[0]["n"] > 0

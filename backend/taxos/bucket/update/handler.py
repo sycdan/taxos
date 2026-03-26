@@ -1,11 +1,9 @@
 import logging
-import os
 
-from taxos.bucket.entity import Bucket
-from taxos.bucket.tools import get_state_file
+from taxos import db
+from taxos.bucket.entity import Bucket, BucketRef
 from taxos.bucket.update.command import UpdateBucket
-from taxos.context.tools import require_bucket, require_tenant
-from taxos.tools import json
+from taxos.context.tools import require_tenant
 
 logger = logging.getLogger(__name__)
 
@@ -13,13 +11,12 @@ logger = logging.getLogger(__name__)
 def handle(command: UpdateBucket) -> Bucket:
   logger.debug(f"{command=}")
   tenant = require_tenant()
-  bucket = require_bucket(command.ref)
-
-  bucket.name = command.name
-
-  state_file = get_state_file(bucket.guid, tenant.guid)
-  os.makedirs(state_file.parent, exist_ok=True)
-
-  json.dump(bucket, state_file)
-
-  return bucket
+  ref = command.ref if isinstance(command.ref, BucketRef) else BucketRef(command.ref)
+  records = db.query(
+    "MATCH (b:Bucket {guid: $guid}) SET b.name = $name RETURN b.name AS name",
+    {"guid": ref.guid.hex, "name": command.name},
+    database=tenant.db_name,
+  )
+  if not records:
+    raise Bucket.DoesNotExist(ref.guid)
+  return Bucket(ref.guid, records[0]["name"])
