@@ -6,6 +6,16 @@ import pytest
 from taxos.tenant.entity import Tenant, TenantRef
 
 
+def _neo4j_db_exists(db_name: str) -> bool:
+  from taxos import db
+  records = db.query(
+    "SHOW DATABASES YIELD name WHERE name = $name RETURN name",
+    {"name": db_name},
+    database="system",
+  )
+  return len(records) > 0
+
+
 # ---------------------------------------------------------------------------
 # entity
 # ---------------------------------------------------------------------------
@@ -119,3 +129,24 @@ class TestDeleteTenantHandler:
 
     mock_db.run.assert_called_once()
     assert result is True
+
+
+# ---------------------------------------------------------------------------
+# integration
+# ---------------------------------------------------------------------------
+
+class TestTenantLifecycleIntegration:
+  @pytest.mark.integration
+  def test_create_and_delete_provisions_and_drops_neo4j_database(self, tmp_path):
+    from taxos.tenant.create.command import CreateTenant
+    from taxos.tenant.delete.command import DeleteTenant
+
+    with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
+      tenant = CreateTenant(name="Integration Test Tenant").execute()
+
+    assert _neo4j_db_exists(tenant.db_name), "database should exist after create"
+
+    with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
+      DeleteTenant(tenant=tenant).execute()
+
+    assert not _neo4j_db_exists(tenant.db_name), "database should be gone after delete"
