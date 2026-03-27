@@ -1,3 +1,4 @@
+import atexit
 import logging
 import os
 import time
@@ -19,6 +20,7 @@ def get_driver():
     )
     logger.info("Connecting to Neo4j at %s", uri)
     _driver = GraphDatabase.driver(uri, auth=auth)
+    atexit.register(_driver.close)
   return _driver
 
 
