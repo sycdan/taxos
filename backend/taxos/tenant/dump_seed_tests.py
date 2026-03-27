@@ -46,7 +46,7 @@ def _seed(
 @pytest.mark.integration
 class TestDumpSeed:
   def test_dump_returns_all_entities(self, tmp_path):
-    from taxos.tenant.dump.command import DumpTenant
+    from taxos.tenant.backup.command import DumpTenant
 
     tenant = _make_tenant(tmp_path, "Dump Test")
     _set(tenant)
@@ -68,7 +68,7 @@ class TestDumpSeed:
     _del_tenant(tmp_path, tenant)
 
   def test_dump_writes_file(self, tmp_path):
-    from taxos.tenant.dump.command import DumpTenant
+    from taxos.tenant.backup.command import DumpTenant
 
     tenant = _make_tenant(tmp_path, "File Dump Test")
     _set(tenant)
@@ -84,8 +84,8 @@ class TestDumpSeed:
 
   def test_seed_from_dump_roundtrip(self, tmp_path):
     from taxos import db
-    from taxos.tenant.dump.command import DumpTenant
-    from taxos.tenant.seed.command import SeedTenant
+    from taxos.tenant.backup.command import DumpTenant
+    from taxos.tenant.restore.command import SeedTenant
 
     src = _make_tenant(tmp_path, "Source Tenant")
     _set(src)
@@ -116,7 +116,7 @@ class TestDumpSeed:
   def test_seed_from_flat_dir(self, tmp_path):
     """Seed from old flat-file tenant directory structure."""
     from taxos import db
-    from taxos.tenant.seed.command import SeedTenant
+    from taxos.tenant.restore.command import SeedTenant
 
     bucket_guid = "11111111-1111-1111-1111-111111111111"
     receipt_guid = "22222222-2222-2222-2222-222222222222"

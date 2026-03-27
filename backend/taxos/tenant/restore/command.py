@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-
+from pathlib import Path
 
 @dataclass
 class SeedTenant:
@@ -10,9 +10,13 @@ class SeedTenant:
   - Path to an old flat-file tenant directory (contains buckets/, vendors/, receipts/)
   """
 
-  source: str
+  source: Path
+
+  def __post_init__(self):
+    if not isinstance(self.source, Path):
+      self.source = Path(self.source)
 
   def execute(self) -> dict:
-    from taxos.tenant.seed.handler import handle
+    from taxos.tenant.restore.handler import handle
 
     return handle(self)

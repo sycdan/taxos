@@ -12,6 +12,6 @@ class DumpTenant:
   path: str = ""
 
   def execute(self) -> dict:
-    from taxos.tenant.dump.handler import handle
+    from taxos.tenant.backup.handler import handle
 
     return handle(self)

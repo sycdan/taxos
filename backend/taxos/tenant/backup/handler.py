@@ -3,7 +3,7 @@ import logging
 
 from taxos import db
 from taxos.context.tools import require_tenant
-from taxos.tenant.dump.command import DumpTenant
+from taxos.tenant.backup.command import DumpTenant
 
 logger = logging.getLogger(__name__)
 

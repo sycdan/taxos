@@ -1,33 +1,35 @@
 import json
 import logging
 from pathlib import Path
+from uuid import UUID
 
 from taxos import db
 from taxos.context.tools import require_tenant
-from taxos.tenant.seed.command import SeedTenant
+from taxos.tenant.restore.command import SeedTenant
 
 logger = logging.getLogger(__name__)
-
 
 def _load_from_export_file(path: Path) -> dict:
   with open(path) as f:
     return json.load(f)
 
 
-def _load_from_flat_dir(path: Path) -> dict:
+def _load_from_flat_dir(source: Path) -> dict:
   """Read the old per-entity state.json files from a tenant directory."""
+  tenant_guid = UUID(source.name).hex
+  
   buckets = []
-  for state_file in sorted((path / "buckets").glob("*/state.json")):
+  for state_file in sorted((source / "buckets").glob("*/state.json")):
     data = json.loads(state_file.read_text())
     buckets.append({"guid": data["guid"], "name": data["name"]})
 
   vendors = []
-  for state_file in sorted((path / "vendors").glob("*/state.json")):
+  for state_file in sorted((source / "vendors").glob("*/state.json")):
     data = json.loads(state_file.read_text())
     vendors.append({"guid": data["guid"], "name": data["name"]})
 
   receipts = []
-  for state_file in sorted((path / "receipts").glob("*/state.json")):
+  for state_file in sorted((source / "receipts").glob("*/state.json")):
     data = json.loads(state_file.read_text())
     receipts.append(
       {
@@ -47,12 +49,12 @@ def _load_from_flat_dir(path: Path) -> dict:
 
 
 def handle(command: SeedTenant) -> dict:
-  tenant = require_tenant()
-  source = Path(command.source)
+  source = command.source
 
   if source.is_dir():
     data = _load_from_flat_dir(source)
   else:
+    raise NotImplemented("this was written by an agent and is not verified yet")
     data = _load_from_export_file(source)
 
   counts = {"buckets": 0, "vendors": 0, "receipts": 0}
