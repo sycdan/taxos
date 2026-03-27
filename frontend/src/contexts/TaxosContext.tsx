@@ -521,7 +521,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 
 	const refreshVendors = useCallback(async () => {
 		try {
-			const response = await client.listVendors({});
+			const response = await client.listVendors();
 			const apiVendors: Vendor[] = response.vendors.map((v) => ({
 				id: v.guid,
 				name: v.name,

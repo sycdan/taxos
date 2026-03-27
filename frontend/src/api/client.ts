@@ -289,7 +289,7 @@ export const client = {
     });
   },
 
-  async listVendors(_?: unknown) {
+  async listVendors() {
     const { data } = await apolloClient.query({ query: LIST_VENDORS_QUERY });
     return {
       vendors: data.vendors as { guid: string; name: string }[],
