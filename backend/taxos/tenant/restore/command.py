@@ -1,8 +1,9 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
+
 @dataclass
-class SeedTenant:
+class RestoreTenant:
   """Restore tenant data into Neo4j from a JSON dump file or directory.
 
   `source` can be:
@@ -11,6 +12,11 @@ class SeedTenant:
   """
 
   source: Path
+  name: str = "Restored Tenant"
+  nuke: bool = field(
+    default=False,
+    doc="If True, any existing tenant with the same GUID will be deleted before creating the new tenant.",
+  )
 
   def __post_init__(self):
     if not isinstance(self.source, Path):

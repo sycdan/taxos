@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def handle(command: CreateBucket) -> Bucket:
   logger.debug(f"{command=}")
   tenant = require_tenant()
-  bucket = Bucket(guid.uuid7(), command.name)
+  bucket = Bucket(command.guid, command.name)
   db.run(
     "CREATE (:Bucket {guid: $guid, name: $name})",
     {"guid": bucket.guid.hex, "name": bucket.name},

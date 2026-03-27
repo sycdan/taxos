@@ -1,9 +1,16 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from uuid import UUID
+
+from taxos.tools import guid
 
 
 @dataclass
 class CreateBucket:
   name: str
+  guid: UUID = field(
+    default_factory=lambda: guid.uuid7(),
+    doc="Optional UUID. If not provided, a new UUID will be generated automatically.",
+  )
 
   def __post_init__(self):
     if name := str(self.name or "").strip():
