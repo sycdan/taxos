@@ -9,7 +9,7 @@ import React, {
 	type ReactNode,
 } from "react";
 import type { Bucket, BucketSummary, Receipt, Vendor } from "../types";
-import { client, getToken } from "../api/client";
+import { client, getToken, type MappedReceipt } from "../api/client";
 import { UNALLOCATED_BUCKET_ID } from "../types";
 
 const slugify = (text: string) => {
@@ -126,7 +126,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					months: getMonthsInRange(startDate, endDate),
 				});
 
-				const bucketReceipts: Receipt[] = response.receipts.map((r) => ({
+				const bucketReceipts: Receipt[] = response.receipts.map((r: MappedReceipt) => ({
 					id: r.guid,
 					vendor: r.vendor,
 					total: r.total,
@@ -223,7 +223,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				);
 
 				const apiUnallocatedReceipts: Receipt[] =
-					response.unallocatedReceipts.map((r) => ({
+					response.unallocatedReceipts.map((r: MappedReceipt) => ({
 						id: r.guid,
 						vendor: r.vendor,
 						total: r.total,

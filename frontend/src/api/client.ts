@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   ApolloClient,
   InMemoryCache,
@@ -173,9 +174,11 @@ function mapReceiptResponse(r: {
   };
 }
 
+export type MappedReceipt = ReturnType<typeof mapReceiptResponse>;
+
 export const client = {
   async getDashboard(params?: { months?: string[] }) {
-    const { data } = await apolloClient.query({
+    const { data = {} as Record<string, any> } = await apolloClient.query<Record<string, any>>({
       query: DASHBOARD_QUERY,
       variables: { months: params?.months },
     });
@@ -192,7 +195,7 @@ export const client = {
   },
 
   async listReceipts(params?: { bucket?: string; months?: string[] }) {
-    const { data } = await apolloClient.query({
+    const { data = {} as Record<string, any> } = await apolloClient.query<Record<string, any>>({
       query: LIST_RECEIPTS_QUERY,
       variables: { bucketGuid: params?.bucket, months: params?.months },
     });
@@ -200,7 +203,7 @@ export const client = {
   },
 
   async createBucket(args: { name: string }) {
-    const { data } = await apolloClient.mutate({
+    const { data } = await apolloClient.mutate<Record<string, any>>({
       mutation: CREATE_BUCKET_MUTATION,
       variables: { name: args.name },
     });
@@ -208,7 +211,7 @@ export const client = {
   },
 
   async updateBucket(args: { guid: string; name: string }) {
-    const { data } = await apolloClient.mutate({
+    const { data } = await apolloClient.mutate<Record<string, any>>({
       mutation: UPDATE_BUCKET_MUTATION,
       variables: args,
     });
@@ -233,7 +236,7 @@ export const client = {
     hash?: string;
   }) {
     const dateIso = args.date.toISOString();
-    const { data } = await apolloClient.mutate({
+    const { data } = await apolloClient.mutate<Record<string, any>>({
       mutation: CREATE_RECEIPT_MUTATION,
       variables: {
         input: {
@@ -263,7 +266,7 @@ export const client = {
     hash?: string;
   }) {
     const dateIso = args.date.toISOString();
-    const { data } = await apolloClient.mutate({
+    const { data } = await apolloClient.mutate<Record<string, any>>({
       mutation: UPDATE_RECEIPT_MUTATION,
       variables: {
         guid: args.guid,
@@ -290,14 +293,14 @@ export const client = {
   },
 
   async listVendors() {
-    const { data } = await apolloClient.query({ query: LIST_VENDORS_QUERY });
+    const { data = {} as Record<string, any> } = await apolloClient.query<Record<string, any>>({ query: LIST_VENDORS_QUERY });
     return {
       vendors: data.vendors as { guid: string; name: string }[],
     };
   },
 
   async updateVendor(args: { guid: string; name: string }) {
-    const { data } = await apolloClient.mutate({
+    const { data } = await apolloClient.mutate<Record<string, any>>({
       mutation: UPDATE_VENDOR_MUTATION,
       variables: args,
     });
@@ -321,7 +324,7 @@ export const uploadReceiptFile = async (
   for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
   const base64 = btoa(binary);
   onProgress?.(60);
-  const { data } = await apolloClient.mutate({
+  const { data } = await apolloClient.mutate<Record<string, any>>({
     mutation: UPLOAD_FILE_MUTATION,
     variables: { hash, filename: file.name, data: base64 },
   });
