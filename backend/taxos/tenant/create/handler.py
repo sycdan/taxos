@@ -19,4 +19,5 @@ def handle(command: CreateTenant) -> Tenant:
 
   json.dump(tenant, state_file)
   db.run(f"CREATE DATABASE {tenant.db_name} IF NOT EXISTS", database="system")
+  db.wait_for_database(tenant.db_name)
   return tenant

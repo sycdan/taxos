@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 
 from neo4j import GraphDatabase
 
@@ -29,3 +30,18 @@ def query(cypher: str, params: dict | None = None, *, database: str) -> list:
 def run(cypher: str, params: dict | None = None, *, database: str) -> None:
   """Execute a Cypher statement where the return value is not needed."""
   get_driver().execute_query(cypher, params or {}, database_=database)
+
+
+def wait_for_database(db_name: str, timeout: float = 10.0, interval: float = 0.2) -> None:
+  """Poll until the named database reports currentStatus = 'online'."""
+  deadline = time.monotonic() + timeout
+  while time.monotonic() < deadline:
+    records = query(
+      "SHOW DATABASE $name WHERE currentStatus = 'online'",
+      {"name": db_name},
+      database="system",
+    )
+    if records:
+      return
+    time.sleep(interval)
+  raise TimeoutError(f"Database {db_name!r} did not come online within {timeout}s")
