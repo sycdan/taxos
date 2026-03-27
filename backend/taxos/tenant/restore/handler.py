@@ -5,6 +5,7 @@ from uuid import UUID
 
 from taxos import db
 from taxos.context.tools import require_tenant
+from taxos.tenant.entity import TenantRef
 from taxos.tenant.restore.command import SeedTenant
 
 logger = logging.getLogger(__name__)
@@ -14,10 +15,10 @@ def _load_from_export_file(path: Path) -> dict:
     return json.load(f)
 
 
-def _load_from_flat_dir(source: Path) -> dict:
+def _load_from_flat_dir(source: Path) -> tuple[UUID, dict]:
   """Read the old per-entity state.json files from a tenant directory."""
-  tenant_guid = UUID(source.name).hex
-  
+  tenant_uuid = UUID(source.name)
+
   buckets = []
   for state_file in sorted((source / "buckets").glob("*/state.json")):
     data = json.loads(state_file.read_text())
@@ -45,18 +46,25 @@ def _load_from_flat_dir(source: Path) -> dict:
       }
     )
 
-  return {"buckets": buckets, "vendors": vendors, "receipts": receipts}
+  return tenant_uuid, {"buckets": buckets, "vendors": vendors, "receipts": receipts}
 
 
 def handle(command: SeedTenant) -> dict:
   source = command.source
 
+  if not source.exists():
+    raise RuntimeError(f"Source not found: {source}")
+
   if source.is_dir():
-    data = _load_from_flat_dir(source)
+    tenant_uuid, data = _load_from_flat_dir(source)
   else:
     raise NotImplemented("this was written by an agent and is not verified yet")
     data = _load_from_export_file(source)
 
+  if extant_tenant := require_tenant(TenantRef(tenant_uuid.hex)):
+    raise RuntimeError(f"Tenant already exists: {extant_tenant.guid}")
+
+  tenant_db_name = tenant_uuid.hex
   counts = {"buckets": 0, "vendors": 0, "receipts": 0}
 
   for b in data.get("buckets", []):
