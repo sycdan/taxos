@@ -32,7 +32,9 @@ def run(cypher: str, params: dict | None = None, *, database: str) -> None:
   get_driver().execute_query(cypher, params or {}, database_=database)
 
 
-def wait_for_database(db_name: str, timeout: float = 10.0, interval: float = 0.2) -> None:
+def wait_for_database(
+  db_name: str, timeout: float = 10.0, interval: float = 0.2
+) -> None:
   """Poll until the named database reports currentStatus = 'online'."""
   deadline = time.monotonic() + timeout
   while time.monotonic() < deadline:
