@@ -14,6 +14,6 @@ COPY ./taxos/ ./taxos/
 
 ENV PYTHONPATH=/app
 
-EXPOSE 50051
+EXPOSE 50052
 
-CMD ["python", "api/connect_http_server.py"]
+CMD ["python", "api/graphql_server.py"]

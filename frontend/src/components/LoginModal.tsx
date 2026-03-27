@@ -1,10 +1,6 @@
 import React, { useState } from "react";
 import { LogIn } from "lucide-react";
 import { setToken } from "../api/client";
-import { createPromiseClient, type Interceptor } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-web";
-import { TaxosApi } from "../api/v1/taxos_service_connect";
-import { AuthenticateRequest } from "../api/v1/taxos_service_pb";
 
 interface LoginModalProps {
 	isOpen: boolean;
@@ -18,34 +14,16 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onLogin }) => {
 
 	const validateToken = async (tokenToValidate: string): Promise<boolean> => {
 		try {
-			const baseUrl = window.location.origin;
-
-			// Create a temporary client with the test token
-			const testClient = createPromiseClient(
-				TaxosApi,
-				createConnectTransport({
-					baseUrl,
-					interceptors: [
-						((next) => async (req) => {
-							req.header.set("Authorization", `Bearer ${tokenToValidate}`);
-							return await next(req);
-						}) as Interceptor,
-					],
-				}),
-			);
-
-			// Use the authenticate endpoint to validate the token
-			await testClient.authenticate(
-				new AuthenticateRequest({ token: tokenToValidate }),
-			);
-			return true;
-		} catch (err: unknown) {
-			// If it's a 401 or unauthenticated error, token is invalid
-			const e = err as { code?: string; status?: number };
-			if (e?.code === "unauthenticated" || e?.status === 401) {
-				return false;
-			}
-			// Other errors might be due to network issues, so be lenient
+			const response = await fetch("/graphql", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${tokenToValidate}`,
+				},
+				body: JSON.stringify({ query: "{ vendors { guid } }" }),
+			});
+			return response.ok;
+		} catch {
 			return false;
 		}
 	};
