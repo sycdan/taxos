@@ -176,9 +176,7 @@ def resolve_receipts(*_, vendorGuid=None, bucketGuid=None, months=None, vendor=N
     )
     params["vendorGuid"] = vendorGuid
   if vendor:
-    conditions.append(
-      "EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {name: $vendor}) }"
-    )
+    conditions.append("EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {name: $vendor}) }")
     params["vendor"] = vendor
   if bucketGuid:
     conditions.append(

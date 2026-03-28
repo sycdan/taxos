@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 def handle(query: GetDashboard) -> Dashboard:
-  logger.info(f"Generating dashboard for months: {query.months}, vendor: {query.vendor}")
+  logger.info(
+    f"Generating dashboard for months: {query.months}, vendor: {query.vendor}"
+  )
   tenant = require_tenant()
 
   # Build where conditions for receipts
@@ -20,8 +22,10 @@ def handle(query: GetDashboard) -> Dashboard:
     receipt_conditions.append("any(m IN $months WHERE r.date STARTS WITH m)")
   if query.vendor:
     receipt_conditions.append("(r)-[:FROM_VENDOR]->(v:Vendor {name: $vendor})")
-  
-  receipt_where = (" WHERE " + " AND ".join(receipt_conditions)) if receipt_conditions else ""
+
+  receipt_where = (
+    (" WHERE " + " AND ".join(receipt_conditions)) if receipt_conditions else ""
+  )
 
   bucket_records = db.query(
     f"""
@@ -52,7 +56,7 @@ def handle(query: GetDashboard) -> Dashboard:
     unallocated_conditions.append("any(m IN $months WHERE r.date STARTS WITH m)")
   if query.vendor:
     unallocated_conditions.append("(r)-[:FROM_VENDOR]->(v:Vendor {name: $vendor})")
-  
+
   unallocated_where = "WHERE " + " AND ".join(unallocated_conditions)
 
   unallocated_records = db.query(
