@@ -5,7 +5,6 @@ from taxos.context.tools import require_tenant
 from taxos.receipt.create.command import CreateReceipt
 from taxos.receipt.entity import Receipt
 from taxos.receipt.save.command import SaveReceipt
-from taxos.tools import guid
 from taxos.vendor.find_or_create.command import FindOrCreateVendor
 
 logger = logging.getLogger(__name__)

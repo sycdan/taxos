@@ -2,7 +2,6 @@ import logging
 
 from taxos import db
 from taxos.context.tools import require_tenant
-from taxos.tools import guid as guid_tools
 from taxos.vendor.entity import Vendor
 from taxos.vendor.find_or_create.command import FindOrCreateVendor
 

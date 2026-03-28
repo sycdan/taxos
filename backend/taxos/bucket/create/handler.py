@@ -4,7 +4,6 @@ from taxos import db
 from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.entity import Bucket
 from taxos.context.tools import require_tenant
-from taxos.tools import guid
 
 logger = logging.getLogger(__name__)
 
