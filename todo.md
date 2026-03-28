@@ -7,8 +7,6 @@ we should create a receipt, then switch to a different year (with no receipts) a
 
 we need to start using vendorGuid for queries instead of name
 
-we need to sort the cards on the vendors view by vendor name ascending
-
 we need to add helpers in the flow tests for thigns like adding receipts, to reduce code duplication. the helpers should also perform test asserts so we know if that part of the flow breaks.
 
 
