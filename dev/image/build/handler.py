@@ -2,7 +2,6 @@ import os
 import datetime as dt
 
 from image.build.command import BuildImage
-from proto.gen.command import GenProto
 
 from dev import BACKEND_ROOT, FRONTEND_ROOT
 
@@ -28,8 +27,6 @@ def push_image():
 
 
 def handle(command: BuildImage):
-  if not command.no_proto:
-    GenProto().execute()
   build_image()
   if not command.no_push:
     push_image()

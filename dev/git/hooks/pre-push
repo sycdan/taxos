@@ -9,12 +9,6 @@ if [ -n "$(git -C "$REPO_ROOT" status --porcelain)" ]; then
   exit 1
 fi
 
-echo "==> Generating proto files..."
-if ! (cd "$REPO_ROOT" && scaf call dev/proto/gen); then
-  echo "❌ Proto generation failed." >&2
-  exit 1
-fi
-
 echo "==> Running backend tests..."
 if ! (cd "$REPO_ROOT" && scaf call dev/test); then
   echo "❌ Backend tests failed." >&2
@@ -52,7 +46,7 @@ if ! (cd "$REPO_ROOT/frontend" && npm run build); then
 fi
 
 echo "==> Building and pushing docker images..."
-if ! (cd "$REPO_ROOT" && scaf call dev/image/build --no-proto); then
+if ! (cd "$REPO_ROOT" && scaf call dev/image/build); then
   echo "❌ Docker image build/push failed." >&2
   exit 1
 fi
