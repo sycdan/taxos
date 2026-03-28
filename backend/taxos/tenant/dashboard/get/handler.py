@@ -11,32 +11,24 @@ logger = logging.getLogger(__name__)
 
 
 def handle(query: GetDashboard) -> Dashboard:
-  logger.info(
-    f"Generating dashboard for months: {query.months}, vendor: {query.vendor}"
-  )
+  logger.info(f"Generating dashboard for months: {query.months}")
   tenant = require_tenant()
 
-  # Build where conditions for receipts
-  receipt_conditions = []
-  if query.months:
-    receipt_conditions.append("any(m IN $months WHERE r.date STARTS WITH m)")
-  if query.vendor:
-    receipt_conditions.append("(r)-[:FROM_VENDOR]->(v:Vendor {name: $vendor})")
-
-  receipt_where = (
-    (" WHERE " + " AND ".join(receipt_conditions)) if receipt_conditions else ""
+  # Bucket totals in selected months
+  bucket_where = (
+    "WHERE any(m IN $months WHERE r.date STARTS WITH m)" if query.months else ""
   )
 
   bucket_records = db.query(
     f"""
     MATCH (b:Bucket)
     OPTIONAL MATCH (b)<-[a:ALLOCATED_TO]-(r:Receipt)
-    {receipt_where}
+    {bucket_where}
     WITH b, sum(a.amount) AS total, count(DISTINCT r) AS receipt_count
     RETURN b.guid AS guid, b.name AS name, total, receipt_count
     ORDER BY b.name
     """,
-    {"months": query.months, "vendor": query.vendor},
+    {"months": query.months},
     database=tenant.db_name,
   )
 
@@ -50,14 +42,10 @@ def handle(query: GetDashboard) -> Dashboard:
     for row in bucket_records
   ]
 
-  # Build where conditions for unallocated receipts
-  unallocated_conditions = ["NOT (r)-[:ALLOCATED_TO]->()"]
+  unallocated_where_parts = ["NOT (r)-[:ALLOCATED_TO]->()"]
   if query.months:
-    unallocated_conditions.append("any(m IN $months WHERE r.date STARTS WITH m)")
-  if query.vendor:
-    unallocated_conditions.append("(r)-[:FROM_VENDOR]->(v:Vendor {name: $vendor})")
-
-  unallocated_where = "WHERE " + " AND ".join(unallocated_conditions)
+    unallocated_where_parts.append("any(m IN $months WHERE r.date STARTS WITH m)")
+  unallocated_where = "WHERE " + " AND ".join(unallocated_where_parts)
 
   unallocated_records = db.query(
     f"""
@@ -65,7 +53,7 @@ def handle(query: GetDashboard) -> Dashboard:
     {unallocated_where}
     RETURN r
     """,
-    {"months": query.months, "vendor": query.vendor},
+    {"months": query.months},
     database=tenant.db_name,
   )
 

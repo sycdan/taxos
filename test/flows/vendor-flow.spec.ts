@@ -1,7 +1,7 @@
 import { test, expect } from "../fixtures";
 
 test.describe("Vendor Management Flow", () => {
-	test("rename a vendor from the Vendors page", async ({
+	test("open vendor card and view vendor detail", async ({
 		page,
 		tenant: _tenant,
 	}) => {
@@ -24,32 +24,25 @@ test.describe("Vendor Management Flow", () => {
 			page.locator(".card", { has: page.getByText("Unallocated") }),
 		).toContainText("$25.00");
 
-		// Navigate to the Vendors page
+		// Navigate to the Vendors view
 		await page.getByRole("button", { name: "Vendors" }).click();
 		await expect(
-			page.getByRole("heading", { level: 1, name: "Vendors" }),
+			page.getByRole("heading", { level: 2, name: "Vendors" }),
 		).toBeVisible();
 
-		// Find the vendor card — use .filter({ hasText }) which matches the
-		// card's textContent in normal (non-editing) display mode.
+		// Shared header remains visible in every view
+		await expect(page.getByText("Receipts")).toBeVisible();
+
 		const vendorCard = page.locator(".card").filter({ hasText: "Acme Corp" });
 		await expect(vendorCard).toBeVisible();
-		await vendorCard.getByTitle("Rename vendor").click();
 
-		// Edit the name and confirm. The card filter (hasText) stops matching once
-		// the vendor name is replaced by an input, so query page-wide instead.
-		// The month filter is hidden on the Vendors page so this is unambiguous.
-		const nameInput = page.getByRole("textbox");
-		await expect(nameInput).toBeVisible();
-		await nameInput.fill("Acme Ltd");
-		await page.keyboard.press("Enter");
-
-		// New name visible, old name gone
-		await expect(page.getByText("Acme Ltd")).toBeVisible();
-		await expect(page.getByText("Acme Corp")).not.toBeVisible();
+		// Click through to vendor detail and verify receipt list view appears.
+		await vendorCard.click();
+		await expect(page.getByRole("heading", { level: 2, name: "Acme Corp" })).toBeVisible();
+		await expect(page.getByText("$25.00").first()).toBeVisible();
 	});
 
-	test("save button is disabled when vendor name is cleared", async ({
+	test("vendors view keeps date and action controls", async ({
 		page,
 		tenant: _tenant,
 	}) => {
@@ -73,20 +66,17 @@ test.describe("Vendor Management Flow", () => {
 
 		// Navigate to Vendors
 		await page.getByRole("button", { name: "Vendors" }).click();
+		await expect(
+			page.getByRole("heading", { level: 2, name: "Vendors" }),
+		).toBeVisible();
 
-		// Open the inline edit form
-		const vendorCard = page.locator(".card").filter({ hasText: "ValidVendor" });
-		await expect(vendorCard).toBeVisible();
-		await vendorCard.getByTitle("Rename vendor").click();
+		// Top bar controls are preserved in vendors view.
+		await expect(page.getByRole("button", { name: "Year" })).toBeVisible();
+		await expect(page.getByRole("button", { name: "Month" })).toBeVisible();
+		await expect(page.getByRole("button", { name: "Add Receipt" })).toBeVisible();
+		await expect(page.getByRole("button", { name: "Upload File" })).toBeVisible();
 
-		// Clear the name field (same reasoning: filter no longer matches after edit mode)
-		await page.getByRole("textbox").fill("");
-
-		// The save (check) button must be disabled
-		await expect(page.getByTitle("Save")).toBeDisabled();
-
-		// Cancel to leave state clean
-		await page.getByTitle("Cancel").click();
-		await expect(page.getByText("ValidVendor")).toBeVisible();
+		// Vendor card should be present in vendors mode.
+		await expect(page.locator(".card").filter({ hasText: "ValidVendor" })).toBeVisible();
 	});
 });

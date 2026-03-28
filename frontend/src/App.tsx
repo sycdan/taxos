@@ -39,6 +39,7 @@ deleteBucket,
 isNameTaken,
 authenticated,
 } = useTaxos();
+
 const [currentBucketId, setCurrentBucketId] = useState<string | null>(null);
 const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
 const [showVendors, setShowVendors] = useState(false);
@@ -82,6 +83,7 @@ start: startOfYear(date),
 end: endOfYear(date),
 };
 }
+
 const [year, month] = (filterConfig.value || format(new Date(), "yyyy-MM"))
 .split("-")
 .map(Number);
