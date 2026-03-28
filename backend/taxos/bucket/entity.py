@@ -1,10 +1,11 @@
 from dataclasses import dataclass, field
 from uuid import UUID
 
+from taxos.concepts import UNALLOCATED_BUCKET_V1_SINGLETON
 from taxos.tools.guid import parse_guid
 
 
-@dataclass
+@dataclass(frozen=True)
 class Bucket:
   class DoesNotExist(FileNotFoundError):
     pass
@@ -14,7 +15,7 @@ class Bucket:
 
   def __post_init__(self):
     if not isinstance(self.guid, UUID):
-      self.guid = UUID(self.guid)
+      object.__setattr__(self, "guid", UUID(self.guid))
 
   def __hash__(self) -> int:
     return hash(self.guid)
@@ -41,3 +42,9 @@ class BucketRef:
 
   def __hash__(self) -> int:
     return hash(self.guid)
+
+
+@dataclass(frozen=True)
+class UnallocatedBucket(Bucket):
+  guid: UUID = UNALLOCATED_BUCKET_V1_SINGLETON
+  name: str = "Unallocated"

@@ -38,4 +38,4 @@ export interface Receipt {
 	hash?: string; // SHA-256 hash for duplicate prevention
 }
 
-export const UNALLOCATED_BUCKET_ID = "unallocated";
+export { UNALLOCATED_BUCKET_V1_SINGLETON as UNALLOCATED_BUCKET_ID } from "./contracts";

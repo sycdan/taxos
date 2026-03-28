@@ -6,7 +6,7 @@ from taxos.bucket.entity import Bucket, BucketRef
 
 @dataclass
 class ListReceipts:
-  bucket: Union[Bucket, BucketRef, str] = field(
+  bucket: Union[Bucket, BucketRef] = field(
     metadata={
       "help": "Include only receipts allocated to this bucket.",
     },

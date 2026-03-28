@@ -272,6 +272,7 @@ class TestReceiptLifecycleIntegration:
       ).execute()
 
       dashboard = handle(GetDashboard())
+
       assert len(dashboard.buckets) == 1
       assert dashboard.buckets[0].name == "Travel"
       assert dashboard.buckets[0].total_amount == 100.0

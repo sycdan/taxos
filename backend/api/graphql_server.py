@@ -21,7 +21,7 @@ from taxos.access.authenticate_tenant.command import AuthenticateTenant
 from taxos.allocation.entity import Allocation
 from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.delete.command import DeleteBucket
-from taxos.bucket.entity import BucketRef
+from taxos.bucket.entity import Bucket, BucketRef
 from taxos.bucket.load.query import LoadBucket
 from taxos.bucket.update.command import UpdateBucket
 from taxos.context.entity import Context
@@ -418,8 +418,8 @@ def resolve_bucket_receipt_count(bucket, *_):
 
 
 @bucket_type.field("receipts")
-def resolve_bucket_receipts(bucket, *_, months=None):
-  return ListReceipts(bucket=BucketRef(bucket.guid.hex), months=months or []).execute()
+def resolve_bucket_receipts(bucket: Bucket, *_, months=None):
+  return ListReceipts(bucket=bucket, months=months or []).execute()
 
 
 @receipt_type.field("guid")

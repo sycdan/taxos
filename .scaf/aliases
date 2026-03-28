@@ -4,6 +4,7 @@ DECK="$(dirname -- "$SCAF_FOLDER")"
 # Scaf domain action aliases (added as actions are called):
 alias dev.clean="scaf call $DECK/dev/clean"
 alias dev.context.use="scaf call $DECK/dev/context/use"
+alias dev.gen="scaf call $DECK/dev/gen"
 alias dev.image.build="scaf call $DECK/dev/image/build"
 alias dev.nuke="scaf call $DECK/dev/nuke"
 alias dev.scratch="scaf call $DECK/dev/scratch"
