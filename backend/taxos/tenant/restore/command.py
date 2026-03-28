@@ -4,10 +4,10 @@ from pathlib import Path
 
 @dataclass
 class RestoreTenant:
-  """Restore tenant data into Neo4j from a JSON dump file or directory.
+  """Restore tenant data into Neo4j from a JSON backup file or directory.
 
   `source` can be:
-  - Path to a JSON file produced by DumpTenant
+  - Path to a JSON file produced by BackupTenant
   - Path to an old flat-file tenant directory (contains buckets/, vendors/, receipts/)
   """
 

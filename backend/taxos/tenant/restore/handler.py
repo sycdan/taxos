@@ -1,6 +1,7 @@
 import json
 import logging
 from pathlib import Path
+from typing import Optional
 from uuid import UUID
 
 from taxos.access.token.entity import AccessToken
@@ -21,9 +22,15 @@ from taxos.vendor.find_or_create.command import FindOrCreateVendor
 logger = logging.getLogger(__name__)
 
 
-def _load_from_export_file(path: Path) -> dict:
+def _load_from_export_file(path: Path) -> tuple[Optional[UUID], dict]:
   with open(path) as f:
-    return json.load(f)
+    data = json.load(f)
+  # Extract tenant GUID if present, otherwise None (will generate a new one)
+  tenant_guid = None
+  if "tenant_guid" in data:
+    if parsed_guid := parse_guid(data["tenant_guid"]):
+      tenant_guid = parsed_guid
+  return tenant_guid, data
 
 
 def _load_from_flat_dir(source: Path) -> tuple[UUID, dict]:
@@ -70,10 +77,11 @@ def handle(command: RestoreTenant) -> AccessToken:
   if source.is_dir():
     tenant_guid, data = _load_from_flat_dir(source)
   else:
-    from taxos.tools.guid import uuid7
+    tenant_guid, data = _load_from_export_file(source)
+    if tenant_guid is None:
+      from taxos.tools.guid import uuid7
 
-    tenant_guid = uuid7()
-    data = _load_from_export_file(source)
+      tenant_guid = uuid7()
 
   if command.nuke:
     try:

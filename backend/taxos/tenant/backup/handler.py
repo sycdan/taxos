@@ -3,12 +3,12 @@ import logging
 
 from taxos import db
 from taxos.context.tools import require_tenant
-from taxos.tenant.backup.command import DumpTenant
+from taxos.tenant.backup.command import BackupTenant
 
 logger = logging.getLogger(__name__)
 
 
-def handle(command: DumpTenant) -> dict:
+def handle(command: BackupTenant) -> dict:
   tenant = require_tenant()
 
   buckets = db.query(
@@ -54,6 +54,7 @@ def handle(command: DumpTenant) -> dict:
     )
 
   data = {
+    "tenant_guid": tenant.guid.hex,
     "buckets": [dict(r) for r in buckets],
     "vendors": [dict(r) for r in vendors],
     "receipts": receipts,
@@ -62,6 +63,6 @@ def handle(command: DumpTenant) -> dict:
   if command.path:
     with open(command.path, "w") as f:
       json.dump(data, f, indent=2)
-    logger.info(f"Exported tenant {tenant.guid} to {command.path}")
+    logger.info(f"Backed up tenant {tenant.guid} to {command.path}")
 
   return data

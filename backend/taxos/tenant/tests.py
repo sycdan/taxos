@@ -163,3 +163,183 @@ class TestTenantLifecycleIntegration:
       DeleteTenant(tenant=tenant).execute()
 
     assert not _neo4j_db_exists(tenant.db_name), "database should be gone after delete"
+
+
+# ---------------------------------------------------------------------------
+# backup/restore
+# ---------------------------------------------------------------------------
+
+
+def _make_tenant_for_backup(tmp_path, name: str):
+  from taxos.tenant.create.command import CreateTenant
+
+  with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
+    return CreateTenant(name=name).execute()
+
+
+def _delete_tenant_for_backup(tmp_path, tenant):
+  from taxos.tenant.delete.command import DeleteTenant
+
+  with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
+    DeleteTenant(tenant=tenant).execute()
+
+
+def _set_context_tenant(tenant):
+  from taxos.context.entity import Context
+  from taxos.context.tools import set_context
+
+  set_context(Context(tenant=tenant))
+
+
+def _create_test_data(
+  bucket_name: str, vendor: str, total: float, date: str = "2024-06-01T10:00:00"
+):
+  from taxos.allocation.entity import Allocation
+  from taxos.bucket.create.command import CreateBucket
+  from taxos.bucket.entity import BucketRef
+  from taxos.receipt.create.command import CreateReceipt
+
+  bucket = CreateBucket(name=bucket_name).execute()
+  allocs = {Allocation(BucketRef(bucket.guid.hex), total)}
+  CreateReceipt(
+    vendor=vendor, total=total, date=date, timezone="UTC", allocations=allocs
+  ).execute()
+  return bucket
+
+
+class TestBackupRestore:
+  @pytest.mark.integration
+  def test_backup_returns_all_entities(self, tmp_path):
+    from taxos.tenant.backup.command import BackupTenant
+
+    tenant = _make_tenant_for_backup(tmp_path, "Backup Test")
+    _set_context_tenant(tenant)
+    _create_test_data("Travel", "Airline", 500.0)
+
+    data = BackupTenant().execute()
+
+    assert len(data["buckets"]) == 1
+    assert data["buckets"][0]["name"] == "Travel"
+    assert len(data["vendors"]) == 1
+    assert data["vendors"][0]["name"] == "Airline"
+    assert len(data["receipts"]) == 1
+    assert data["tenant_guid"] == tenant.guid.hex
+    r = data["receipts"][0]
+    assert r["vendor"] == "Airline"
+    assert r["total"] == 500.0
+    assert len(r["allocations"]) == 1
+    assert r["allocations"][0]["amount"] == 500.0
+
+    _delete_tenant_for_backup(tmp_path, tenant)
+
+  @pytest.mark.integration
+  def test_backup_writes_file(self, tmp_path):
+    import json
+
+    from taxos.tenant.backup.command import BackupTenant
+
+    tenant = _make_tenant_for_backup(tmp_path, "File Backup Test")
+    _set_context_tenant(tenant)
+
+    out_file = tmp_path / "backup.json"
+    BackupTenant(path=str(out_file)).execute()
+
+    assert out_file.exists()
+    data = json.loads(out_file.read_text())
+    assert "buckets" in data and "vendors" in data and "receipts" in data
+    assert data["tenant_guid"] == tenant.guid.hex
+
+    _delete_tenant_for_backup(tmp_path, tenant)
+
+  @pytest.mark.integration
+  def test_restore_from_backup_preserves_tenant_guid(self, tmp_path):
+    from taxos import db
+    from taxos.tenant.backup.command import BackupTenant
+    from taxos.tenant.restore.command import RestoreTenant
+
+    src = _make_tenant_for_backup(tmp_path, "Source Tenant")
+    _set_context_tenant(src)
+    _create_test_data("Office", "Staples", 45.0, "2024-03-01T09:00:00")
+
+    backup_file = tmp_path / "backup.json"
+    original_guid = src.guid.hex
+    BackupTenant(path=str(backup_file)).execute()
+    _delete_tenant_for_backup(tmp_path, src)
+
+    with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
+      token = RestoreTenant(source=str(backup_file), name="Restored Tenant").execute()
+
+    tenant = token.tenant
+    try:
+      # Verify tenant GUID is preserved
+      assert tenant.guid.hex == original_guid
+
+      buckets = db.query(
+        "MATCH (b:Bucket) RETURN b.name AS name", database=tenant.db_name
+      )
+      assert len(buckets) == 1
+      assert buckets[0]["name"] == "Office"
+
+      rows = db.query(
+        "MATCH (r:Receipt) OPTIONAL MATCH (r)-[a:ALLOCATED_TO]->(b) RETURN r.vendor AS vendor, collect(a.amount) AS amounts",
+        database=tenant.db_name,
+      )
+      assert rows[0]["vendor"] == "Staples"
+      assert rows[0]["amounts"] == [45.0]
+    finally:
+      _delete_tenant_for_backup(tmp_path, tenant)
+
+  @pytest.mark.integration
+  def test_restore_from_flat_dir(self, tmp_path):
+    """Restore from old flat-file tenant directory structure."""
+    import json
+
+    from taxos import db
+    from taxos.tenant.restore.command import RestoreTenant
+
+    tenant_guid = "33333333333333333333333333333333"
+    bucket_guid = "11111111-1111-1111-1111-111111111111"
+    receipt_guid = "22222222-2222-2222-2222-222222222222"
+    vendor_guid = "44444444-4444-4444-4444-444444444444"
+
+    flat_dir = tmp_path / tenant_guid
+    (flat_dir / "buckets" / bucket_guid.replace("-", "")).mkdir(parents=True)
+    (flat_dir / "vendors" / vendor_guid.replace("-", "")).mkdir(parents=True)
+    (flat_dir / "receipts" / receipt_guid.replace("-", "")).mkdir(parents=True)
+
+    (flat_dir / "buckets" / bucket_guid.replace("-", "") / "state.json").write_text(
+      json.dumps({"guid": bucket_guid, "name": "Food"})
+    )
+    (flat_dir / "vendors" / vendor_guid.replace("-", "") / "state.json").write_text(
+      json.dumps({"guid": vendor_guid, "name": "Grocery Store"})
+    )
+    (flat_dir / "receipts" / receipt_guid.replace("-", "") / "state.json").write_text(
+      json.dumps(
+        {
+          "guid": receipt_guid,
+          "vendor": "Grocery Store",
+          "total": 120.0,
+          "date": "2024-05-10T14:00:00",
+          "timezone": "UTC",
+          "allocations": [{"bucket": bucket_guid, "amount": 120.0}],
+          "vendor_ref": "",
+          "notes": "weekly shop",
+          "hash": "",
+        }
+      )
+    )
+
+    with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
+      token = RestoreTenant(source=str(flat_dir), name="Flat Test", nuke=True).execute()
+
+    tenant = token.tenant
+    try:
+      rows = db.query(
+        "MATCH (r:Receipt) RETURN r.vendor AS vendor, r.total AS total, r.notes AS notes",
+        database=tenant.db_name,
+      )
+      assert rows[0]["vendor"] == "Grocery Store"
+      assert rows[0]["total"] == 120.0
+      assert rows[0]["notes"] == "weekly shop"
+    finally:
+      _delete_tenant_for_backup(tmp_path, tenant)
