@@ -243,6 +243,7 @@ class TestReceiptLifecycleIntegration:
     from taxos.tenant.create.command import CreateTenant
     from taxos.tenant.delete.command import DeleteTenant
     from taxos.tenant.dashboard.get.query import GetDashboard
+    from taxos.tenant.dashboard.get.handler import handle
     from taxos.context.entity import Context
     from taxos.context.tools import set_context
 
@@ -270,8 +271,7 @@ class TestReceiptLifecycleIntegration:
         timezone="UTC",
       ).execute()
 
-      dashboard = GetDashboard().execute()
-
+      dashboard = handle(GetDashboard())
       assert len(dashboard.buckets) == 1
       assert dashboard.buckets[0].name == "Travel"
       assert dashboard.buckets[0].total_amount == 100.0

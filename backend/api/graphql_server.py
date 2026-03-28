@@ -31,7 +31,7 @@ from taxos.receipt.delete.command import DeleteReceipt
 from taxos.receipt.entity import Receipt, ReceiptRef
 from taxos.receipt.load.query import LoadReceipt
 from taxos.receipt.update.command import UpdateReceipt
-from taxos.tenant.dashboard.get.query import GetDashboard
+from taxos.tenant.dashboard.entity import BucketSummary, Dashboard
 from taxos.tenant.list_receipts.query import ListReceipts
 from taxos.tenant.tools import get_files_dir
 from taxos.vendor.entity import VendorRef
@@ -212,7 +212,74 @@ def resolve_receipt(*_, guid):
 
 @query.field("dashboard")
 def resolve_dashboard(*_, months=None):
-  return GetDashboard(months=months or []).execute()
+  logger.info(f"Generating dashboard for months: {months}")
+  tenant = require_tenant()
+  months = months or []
+
+  # Bucket totals in selected months
+  bucket_where = (
+    "WHERE any(m IN $months WHERE r.date STARTS WITH m)" if months else ""
+  )
+
+  bucket_records = db.query(
+    f"""
+    MATCH (b:Bucket)
+    OPTIONAL MATCH (b)<-[a:ALLOCATED_TO]-(r:Receipt)
+    {bucket_where}
+    WITH b, sum(a.amount) AS total, count(DISTINCT r) AS receipt_count
+    RETURN b.guid AS guid, b.name AS name, total, receipt_count
+    ORDER BY b.name
+    """,
+    {"months": months},
+    database=tenant.db_name,
+  )
+
+  bucket_summaries = [
+    BucketSummary(
+      guid=row["guid"],
+      name=row["name"],
+      total_amount=row["total"] or 0.0,
+      receipt_count=row["receipt_count"] or 0,
+    )
+    for row in bucket_records
+  ]
+
+  unallocated_where_parts = ["NOT (r)-[:ALLOCATED_TO]->()"]
+  if months:
+    unallocated_where_parts.append("any(m IN $months WHERE r.date STARTS WITH m)")
+  unallocated_where = "WHERE " + " AND ".join(unallocated_where_parts)
+
+  unallocated_records = db.query(
+    f"""
+    MATCH (r:Receipt)
+    {unallocated_where}
+    RETURN r
+    """,
+    {"months": months},
+    database=tenant.db_name,
+  )
+
+  unallocated_receipts = [
+    Receipt(
+      guid=row["r"]["guid"],
+      vendor=row["r"]["vendor"],
+      total=row["r"]["total"],
+      date=row["r"]["date"],
+      timezone=row["r"]["timezone"],
+      notes=row["r"].get("notes", ""),
+      hash=row["r"].get("hash", ""),
+      vendor_ref=row["r"].get("reference", ""),
+    )
+    for row in unallocated_records
+  ]
+
+  vendors = ListVendors().execute()
+
+  return Dashboard(
+    buckets=bucket_summaries,
+    unallocated=unallocated_receipts,
+    vendor_names=[v.name for v in vendors],
+  )
 
 
 # --- Mutation ---
