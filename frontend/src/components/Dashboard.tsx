@@ -241,7 +241,10 @@ transition: "width 1s ease-out",
 </motion.div>
 ))}
 {viewMode === "vendors" &&
-filteredVendors.map((vendor, index) => (
+filteredVendors
+  .slice()
+  .sort((a, b) => a.name.localeCompare(b.name))
+  .map((vendor, index) => (
 <motion.div
 key={vendor.id}
 initial={{ opacity: 0, scale: 0.95 }}
