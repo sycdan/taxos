@@ -3,14 +3,13 @@ import logging
 from pathlib import Path
 from uuid import UUID
 
-from taxos import db
 from taxos.access.token.entity import AccessToken
 from taxos.access.token.generate.command import GenerateAccessToken
 from taxos.allocation.entity import Allocation
 from taxos.bucket.create.command import CreateBucket
 from taxos.bucket.entity import BucketRef
 from taxos.context.entity import Context
-from taxos.context.tools import require_tenant, set_context, with_context
+from taxos.context.tools import with_context
 from taxos.receipt.create.command import CreateReceipt
 from taxos.tenant.create.command import CreateTenant
 from taxos.tenant.delete.command import DeleteTenant
@@ -71,7 +70,8 @@ def handle(command: RestoreTenant) -> AccessToken:
   if source.is_dir():
     tenant_guid, data = _load_from_flat_dir(source)
   else:
-    raise NotImplemented("this was written by an agent and is not verified yet")
+    from taxos.tools.guid import uuid7
+    tenant_guid = uuid7()
     data = _load_from_export_file(source)
 
   if command.nuke:

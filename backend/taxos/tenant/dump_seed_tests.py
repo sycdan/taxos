@@ -85,7 +85,7 @@ class TestDumpSeed:
   def test_seed_from_dump_roundtrip(self, tmp_path):
     from taxos import db
     from taxos.tenant.backup.command import DumpTenant
-    from taxos.tenant.restore.command import SeedTenant
+    from taxos.tenant.restore.command import RestoreTenant
 
     src = _make_tenant(tmp_path, "Source Tenant")
     _set(src)
@@ -93,36 +93,37 @@ class TestDumpSeed:
 
     dump_file = tmp_path / "dump.json"
     DumpTenant(path=str(dump_file)).execute()
-
-    dst = _make_tenant(tmp_path, "Dest Tenant")
-    _set(dst)
-    counts = SeedTenant(source=str(dump_file)).execute()
-
-    assert counts == {"buckets": 1, "vendors": 1, "receipts": 1}
-
-    buckets = db.query("MATCH (b:Bucket) RETURN b.name AS name", database=dst.db_name)
-    assert buckets[0]["name"] == "Office"
-
-    rows = db.query(
-      "MATCH (r:Receipt) OPTIONAL MATCH (r)-[a:ALLOCATED_TO]->(b) RETURN r.vendor AS vendor, collect(a.amount) AS amounts",
-      database=dst.db_name,
-    )
-    assert rows[0]["vendor"] == "Staples"
-    assert rows[0]["amounts"] == [45.0]
-
     _del_tenant(tmp_path, src)
-    _del_tenant(tmp_path, dst)
+
+    with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
+      token = RestoreTenant(source=str(dump_file), name="Restored Tenant").execute()
+
+    tenant = token.tenant
+    try:
+      buckets = db.query("MATCH (b:Bucket) RETURN b.name AS name", database=tenant.db_name)
+      assert len(buckets) == 1
+      assert buckets[0]["name"] == "Office"
+
+      rows = db.query(
+        "MATCH (r:Receipt) OPTIONAL MATCH (r)-[a:ALLOCATED_TO]->(b) RETURN r.vendor AS vendor, collect(a.amount) AS amounts",
+        database=tenant.db_name,
+      )
+      assert rows[0]["vendor"] == "Staples"
+      assert rows[0]["amounts"] == [45.0]
+    finally:
+      _del_tenant(tmp_path, tenant)
 
   def test_seed_from_flat_dir(self, tmp_path):
     """Seed from old flat-file tenant directory structure."""
     from taxos import db
-    from taxos.tenant.restore.command import SeedTenant
+    from taxos.tenant.restore.command import RestoreTenant
 
+    tenant_guid = "33333333333333333333333333333333"
     bucket_guid = "11111111-1111-1111-1111-111111111111"
     receipt_guid = "22222222-2222-2222-2222-222222222222"
-    vendor_guid = "33333333-3333-3333-3333-333333333333"
+    vendor_guid = "44444444-4444-4444-4444-444444444444"
 
-    flat_dir = tmp_path / "flat_tenant"
+    flat_dir = tmp_path / tenant_guid
     (flat_dir / "buckets" / bucket_guid.replace("-", "")).mkdir(parents=True)
     (flat_dir / "vendors" / vendor_guid.replace("-", "")).mkdir(parents=True)
     (flat_dir / "receipts" / receipt_guid.replace("-", "")).mkdir(parents=True)
@@ -149,18 +150,17 @@ class TestDumpSeed:
       )
     )
 
-    tenant = _make_tenant(tmp_path, "Seed Flat Test")
-    _set(tenant)
-    counts = SeedTenant(source=str(flat_dir)).execute()
+    with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
+      token = RestoreTenant(source=str(flat_dir), name="Flat Test", nuke=True).execute()
 
-    assert counts == {"buckets": 1, "vendors": 1, "receipts": 1}
-
-    rows = db.query(
-      "MATCH (r:Receipt) RETURN r.vendor AS vendor, r.total AS total, r.notes AS notes",
-      database=tenant.db_name,
-    )
-    assert rows[0]["vendor"] == "Grocery Store"
-    assert rows[0]["total"] == 120.0
-    assert rows[0]["notes"] == "weekly shop"
-
-    _del_tenant(tmp_path, tenant)
+    tenant = token.tenant
+    try:
+      rows = db.query(
+        "MATCH (r:Receipt) RETURN r.vendor AS vendor, r.total AS total, r.notes AS notes",
+        database=tenant.db_name,
+      )
+      assert rows[0]["vendor"] == "Grocery Store"
+      assert rows[0]["total"] == 120.0
+      assert rows[0]["notes"] == "weekly shop"
+    finally:
+      _del_tenant(tmp_path, tenant)
