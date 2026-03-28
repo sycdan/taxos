@@ -211,8 +211,8 @@ def resolve_receipt(*_, guid):
 
 
 @query.field("dashboard")
-def resolve_dashboard(*_, months=None, vendor=None):
-  return GetDashboard(months=months or [], vendor=vendor).execute()
+def resolve_dashboard(*_, months=None):
+  return GetDashboard(months=months or []).execute()
 
 
 # --- Mutation ---
