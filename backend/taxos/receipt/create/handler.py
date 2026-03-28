@@ -22,7 +22,7 @@ def handle(command: CreateReceipt) -> Receipt:
     logger.debug(f"Vendor: {vendor.name} ({vendor.guid})")
 
   receipt = Receipt(
-    guid.uuid7(),
+    command.guid,
     vendor=command.vendor,
     total=command.total,
     date=command.date,

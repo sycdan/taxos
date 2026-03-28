@@ -18,7 +18,7 @@ def handle(command: FindOrCreateVendor) -> Vendor:
     ON CREATE SET v.guid = $new_guid, v.name = $name
     RETURN v.guid AS guid, v.name AS name
     """,
-    {"name": command.name, "new_guid": guid_tools.uuid7().hex},
+    {"name": command.name, "new_guid": command.guid.hex},
     database=tenant.db_name,
   )
   row = records[0]

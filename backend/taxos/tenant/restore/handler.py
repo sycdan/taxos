@@ -4,14 +4,20 @@ from pathlib import Path
 from uuid import UUID
 
 from taxos import db
+from taxos.access.token.entity import AccessToken
+from taxos.access.token.generate.command import GenerateAccessToken
+from taxos.allocation.entity import Allocation
 from taxos.bucket.create.command import CreateBucket
+from taxos.bucket.entity import BucketRef
 from taxos.context.entity import Context
 from taxos.context.tools import require_tenant, set_context, with_context
+from taxos.receipt.create.command import CreateReceipt
 from taxos.tenant.create.command import CreateTenant
 from taxos.tenant.delete.command import DeleteTenant
 from taxos.tenant.entity import Tenant, TenantRef
 from taxos.tenant.restore.command import RestoreTenant
 from taxos.tools.guid import parse_guid
+from taxos.vendor.find_or_create.command import FindOrCreateVendor
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +29,8 @@ def _load_from_export_file(path: Path) -> dict:
 
 def _load_from_flat_dir(source: Path) -> tuple[UUID, dict]:
   """Read the old per-entity state.json files from a tenant directory."""
-  tenant_guid = parse_guid(source.name)
+  if not (tenant_guid := parse_guid(source.name)):
+    raise RuntimeError(f"Invalid tenant GUID: {source.name}")
 
   buckets = []
   for state_file in sorted((source / "buckets").glob("*/state.json")):
@@ -55,7 +62,7 @@ def _load_from_flat_dir(source: Path) -> tuple[UUID, dict]:
   return tenant_guid, {"buckets": buckets, "vendors": vendors, "receipts": receipts}
 
 
-def handle(command: RestoreTenant) -> dict:
+def handle(command: RestoreTenant) -> AccessToken:
   source = command.source
 
   if not source.exists():
@@ -85,79 +92,39 @@ def handle(command: RestoreTenant) -> dict:
         counts["buckets"] += 1
 
     for v in data.get("vendors", []):
-      db.run(
-        """
-        MERGE (v:Vendor {guid: $guid})
-        SET v.name = $name, v.name_lower = toLower($name)
-        """,
-        {"guid": v["guid"], "name": v["name"]},
-        database=tenant.db_name,
-      )
-      counts["vendors"] += 1
+      if vendor_guid := parse_guid(v["guid"]):
+        FindOrCreateVendor(name=v["name"], guid=vendor_guid).execute()
+        counts["vendors"] += 1
 
     for r in data.get("receipts", []):
-      db.run(
-        """
-        MERGE (r:Receipt {guid: $guid})
-        SET r.vendor = $vendor,
-            r.total = $total,
-            r.date = $date,
-            r.timezone = $timezone,
-            r.reference = $vendor_ref,
-            r.notes = $notes,
-            r.hash = $hash
-        """,
-        {
-          "guid": r["guid"],
-          "vendor": r["vendor"],
-          "total": float(r["total"]),
-          "date": r["date"],
-          "timezone": r.get("timezone", "UTC"),
-          "vendor_ref": r.get("vendor_ref", "") or "",
-          "notes": r.get("notes", "") or "",
-          "hash": r.get("hash", "") or "",
-        },
-        database=tenant.db_name,
-      )
-
-      # Vendor edge
-      db.run(
-        """
-        MATCH (r:Receipt {guid: $receipt_guid})
-        MATCH (v:Vendor {name_lower: toLower($vendor_name)})
-        MERGE (r)-[:FROM_VENDOR]->(v)
-        """,
-        {"receipt_guid": r["guid"], "vendor_name": r["vendor"]},
-        database=tenant.db_name,
-      )
-
-      # Allocation edges — delete existing then recreate
-      db.run(
-        "MATCH (r:Receipt {guid: $guid})-[a:ALLOCATED_TO]->() DELETE a",
-        {"guid": r["guid"]},
-        database=tenant.db_name,
-      )
-      for alloc in r.get("allocations", []):
-        db.run(
-          """
-          MATCH (r:Receipt {guid: $receipt_guid})
-          MATCH (b:Bucket {guid: $bucket_guid})
-          MERGE (r)-[:ALLOCATED_TO {amount: $amount}]->(b)
-          """,
-          {
-            "receipt_guid": r["guid"],
-            "bucket_guid": alloc["bucket"],
-            "amount": float(alloc["amount"]),
-          },
-          database=tenant.db_name,
-        )
-
-      counts["receipts"] += 1
-
-    logger.info(
-      f"Imported into tenant {tenant.guid}: "
-      f"{counts['buckets']} buckets, {counts['vendors']} vendors, {counts['receipts']} receipts"
-    )
+      if receipt_guid := parse_guid(r["guid"]):
+        allocations = set()
+        for alloc in r.get("allocations", []):
+          if alloc_bucket_guid := parse_guid(alloc["bucket"]):
+            allocations.add(
+              Allocation(
+                bucket=BucketRef(alloc_bucket_guid.hex),
+                amount=alloc["amount"],
+              )
+            )
+        CreateReceipt(
+          vendor=r["vendor"],
+          total=float(r["total"]),
+          date=r["date"],
+          timezone=r.get("timezone", "UTC"),
+          allocations=allocations,
+          vendor_ref=r["vendor_ref"],
+          notes=r["notes"],
+          hash=r["hash"],
+          guid=receipt_guid,
+        ).execute()
+        counts["receipts"] += 1
     return counts
 
-  return _restore()
+  counts = _restore()
+  logger.info(
+    f"Restored {tenant} ({tenant.guid}): "
+    f"{counts['buckets']} buckets, {counts['vendors']} vendors, {counts['receipts']} receipts"
+  )
+
+  return GenerateAccessToken(tenant=tenant).execute()

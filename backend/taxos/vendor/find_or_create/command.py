@@ -1,9 +1,13 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from uuid import UUID
+
+from taxos.tools.guid import uuid7
 
 
 @dataclass
 class FindOrCreateVendor:
   name: str
+  guid: UUID = field(default_factory=lambda: uuid7())
 
   def __post_init__(self):
     if name := str(self.name or "").strip():
