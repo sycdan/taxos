@@ -217,9 +217,7 @@ def resolve_dashboard(*_, months=None):
   months = months or []
 
   # Bucket totals in selected months
-  bucket_where = (
-    "WHERE any(m IN $months WHERE r.date STARTS WITH m)" if months else ""
-  )
+  bucket_where = "WHERE any(m IN $months WHERE r.date STARTS WITH m)" if months else ""
 
   bucket_records = db.query(
     f"""
