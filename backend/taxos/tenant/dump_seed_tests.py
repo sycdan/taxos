@@ -100,7 +100,9 @@ class TestDumpSeed:
 
     tenant = token.tenant
     try:
-      buckets = db.query("MATCH (b:Bucket) RETURN b.name AS name", database=tenant.db_name)
+      buckets = db.query(
+        "MATCH (b:Bucket) RETURN b.name AS name", database=tenant.db_name
+      )
       assert len(buckets) == 1
       assert buckets[0]["name"] == "Office"
 

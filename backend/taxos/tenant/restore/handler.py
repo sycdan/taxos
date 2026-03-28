@@ -71,6 +71,7 @@ def handle(command: RestoreTenant) -> AccessToken:
     tenant_guid, data = _load_from_flat_dir(source)
   else:
     from taxos.tools.guid import uuid7
+
     tenant_guid = uuid7()
     data = _load_from_export_file(source)
 
