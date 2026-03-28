@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-  ApolloClient,
-  InMemoryCache,
-  HttpLink,
-  ApolloLink,
-  from,
-  gql,
+	ApolloClient,
+	InMemoryCache,
+	HttpLink,
+	ApolloLink,
+	from,
+	gql,
 } from "@apollo/client";
 
 // ---------------------------------------------------------------------------
@@ -15,13 +15,13 @@ import {
 export const getToken = () => localStorage.getItem("taxos_token");
 
 export const setToken = (token: string) => {
-  localStorage.setItem("taxos_token", token);
-  window.location.reload();
+	localStorage.setItem("taxos_token", token);
+	window.location.reload();
 };
 
 export const clearToken = () => {
-  localStorage.removeItem("taxos_token");
-  window.location.reload();
+	localStorage.removeItem("taxos_token");
+	window.location.reload();
 };
 
 // ---------------------------------------------------------------------------
@@ -29,24 +29,24 @@ export const clearToken = () => {
 // ---------------------------------------------------------------------------
 
 const authLink = new ApolloLink((operation, forward) => {
-  const token = getToken();
-  if (token) {
-    operation.setContext(({ headers = {} }) => ({
-      headers: { ...headers, Authorization: `Bearer ${token}` },
-    }));
-  }
-  return forward(operation);
+	const token = getToken();
+	if (token) {
+		operation.setContext(({ headers = {} }) => ({
+			headers: { ...headers, Authorization: `Bearer ${token}` },
+		}));
+	}
+	return forward(operation);
 });
 
 const httpLink = new HttpLink({ uri: "/graphql" });
 
 const apolloClient = new ApolloClient({
-  link: from([authLink, httpLink]),
-  cache: new InMemoryCache(),
-  defaultOptions: {
-    query: { fetchPolicy: "no-cache" },
-    mutate: { fetchPolicy: "no-cache" },
-  },
+	link: from([authLink, httpLink]),
+	cache: new InMemoryCache(),
+	defaultOptions: {
+		query: { fetchPolicy: "no-cache" },
+		mutate: { fetchPolicy: "no-cache" },
+	},
 });
 
 // ---------------------------------------------------------------------------
@@ -54,41 +54,80 @@ const apolloClient = new ApolloClient({
 // ---------------------------------------------------------------------------
 
 const DASHBOARD_QUERY = gql`
-  query GetDashboard($months: [String!]) {
-    dashboard(months: $months) {
-      buckets { guid name totalAmount receiptCount }
-      unallocated { guid vendor total date timezone notes hash reference
-        allocations { amount bucket { guid } } }
-    }
-    vendors { name }
-  }
+	query GetDashboard($months: [String!]) {
+		dashboard(months: $months) {
+			buckets {
+				guid
+				name
+				totalAmount
+				receiptCount
+			}
+			unallocated {
+				guid
+				vendor
+				total
+				date
+				timezone
+				notes
+				hash
+				reference
+				allocations {
+					amount
+					bucket {
+						guid
+					}
+				}
+			}
+		}
+		vendors {
+			name
+		}
+	}
 `;
 
 const LIST_RECEIPTS_QUERY = gql`
-  query ListReceipts($bucketGuid: ID, $months: [String!]) {
-    receipts(bucketGuid: $bucketGuid, months: $months) {
-      guid vendor total date timezone notes hash reference
-      allocations { amount bucket { guid } }
-    }
-  }
+	query ListReceipts($bucketGuid: ID, $months: [String!], $vendor: String) {
+		receipts(bucketGuid: $bucketGuid, months: $months, vendor: $vendor) {
+			guid
+			vendor
+			total
+			date
+			timezone
+			notes
+			hash
+			reference
+			allocations {
+				amount
+				bucket {
+					guid
+				}
+			}
+		}
+	}
 `;
 
 const CREATE_BUCKET_MUTATION = gql`
-  mutation CreateBucket($name: String!) {
-    createBucket(name: $name) { guid name }
-  }
+	mutation CreateBucket($name: String!) {
+		createBucket(name: $name) {
+			guid
+			name
+		}
+	}
 `;
 
 const UPDATE_BUCKET_MUTATION = gql`
-  mutation UpdateBucket($guid: ID!, $name: String!) {
-    updateBucket(guid: $guid, name: $name) { guid name }
-  }
+	mutation UpdateBucket($guid: ID!, $name: String!) {
+		updateBucket(guid: $guid, name: $name) {
+			guid
+			name
+		}
+	}
 `;
 
 const DELETE_BUCKET_MUTATION = gql`
-  mutation DeleteBucket($guid: ID!) {
-    deleteBucket(guid: $guid)
-  }
+	mutation DeleteBucket($guid: ID!) {
+		deleteBucket(guid: $guid)
+	}
 `;
 
 const RECEIPT_FIELDS = `
@@ -109,29 +148,41 @@ const UPDATE_RECEIPT_MUTATION = gql`
 `;
 
 const DELETE_RECEIPT_MUTATION = gql`
-  mutation DeleteReceipt($guid: ID!) {
-    deleteReceipt(guid: $guid)
-  }
+	mutation DeleteReceipt($guid: ID!) {
+		deleteReceipt(guid: $guid)
+	}
 `;
 
 const LIST_VENDORS_QUERY = gql`
-  query ListVendors {
-    vendors { guid name }
-  }
+	query ListVendors {
+		vendors {
+			guid
+			name
+		}
+	}
 `;
 
 const UPDATE_VENDOR_MUTATION = gql`
-  mutation UpdateVendor($guid: ID!, $name: String!) {
-    updateVendor(guid: $guid, name: $name) { guid name }
-  }
+	mutation UpdateVendor($guid: ID!, $name: String!) {
+		updateVendor(guid: $guid, name: $name) {
+			guid
+			name
+		}
+	}
 `;
 
 const UPLOAD_FILE_MUTATION = gql`
-  mutation UploadReceiptFile($hash: String!, $filename: String!, $data: String!) {
-    uploadReceiptFile(hash: $hash, filename: $filename, data: $data) {
-      hash filename alreadyExists
-    }
-  }
+	mutation UploadReceiptFile(
+		$hash: String!
+		$filename: String!
+		$data: String!
+	) {
+		uploadReceiptFile(hash: $hash, filename: $filename, data: $data) {
+			hash
+			filename
+			alreadyExists
+		}
+	}
 `;
 
 // ---------------------------------------------------------------------------
@@ -142,170 +193,184 @@ type AllocationInput = { bucket: string; amount: number };
 type GQLAlloc = { amount: number; bucket: { guid: string } };
 
 function mapAllocationsInput(
-  allocations: AllocationInput[],
+	allocations: AllocationInput[],
 ): { bucketGuid: string; amount: number }[] {
-  return allocations.map((a) => ({ bucketGuid: a.bucket, amount: a.amount }));
+	return allocations.map((a) => ({ bucketGuid: a.bucket, amount: a.amount }));
 }
 
 function mapReceiptResponse(r: {
-  guid: string;
-  vendor: string;
-  total: number;
-  date: string;
-  timezone: string;
-  notes?: string | null;
-  hash?: string | null;
-  reference?: string | null;
-  allocations: GQLAlloc[];
+	guid: string;
+	vendor: string;
+	total: number;
+	date: string;
+	timezone: string;
+	notes?: string | null;
+	hash?: string | null;
+	reference?: string | null;
+	allocations: GQLAlloc[];
 }) {
-  return {
-    guid: r.guid,
-    vendor: r.vendor,
-    total: r.total,
-    date: r.date,
-    timezone: r.timezone,
-    notes: r.notes ?? "",
-    hash: r.hash ?? "",
-    vendorRef: r.reference ?? "",
-    allocations: r.allocations.map((a) => ({
-      bucket: a.bucket.guid,
-      amount: a.amount,
-    })),
-  };
+	return {
+		guid: r.guid,
+		vendor: r.vendor,
+		total: r.total,
+		date: r.date,
+		timezone: r.timezone,
+		notes: r.notes ?? "",
+		hash: r.hash ?? "",
+		vendorRef: r.reference ?? "",
+		allocations: r.allocations.map((a) => ({
+			bucket: a.bucket.guid,
+			amount: a.amount,
+		})),
+	};
 }
 
 export type MappedReceipt = ReturnType<typeof mapReceiptResponse>;
 
 export const client = {
-  async getDashboard(params?: { months?: string[] }) {
-    const { data = {} as Record<string, any> } = await apolloClient.query<Record<string, any>>({
-      query: DASHBOARD_QUERY,
-      variables: { months: params?.months },
-    });
-    return {
-      buckets: data.dashboard.buckets as {
-        guid: string;
-        name: string;
-        totalAmount: number;
-        receiptCount: number;
-      }[],
-      unallocatedReceipts: data.dashboard.unallocated.map(mapReceiptResponse),
-      vendorNames: (data.vendors as { name: string }[]).map((v) => v.name),
-    };
-  },
+	async getDashboard(params?: { months?: string[] }) {
+		const { data = {} as Record<string, any> } = await apolloClient.query<
+			Record<string, any>
+		>({
+			query: DASHBOARD_QUERY,
+			variables: { months: params?.months },
+		});
+		return {
+			buckets: data.dashboard.buckets as {
+				guid: string;
+				name: string;
+				totalAmount: number;
+				receiptCount: number;
+			}[],
+			unallocatedReceipts: data.dashboard.unallocated.map(mapReceiptResponse),
+			vendorNames: (data.vendors as { name: string }[]).map((v) => v.name),
+		};
+	},
 
-  async listReceipts(params?: { bucket?: string; months?: string[] }) {
-    const { data = {} as Record<string, any> } = await apolloClient.query<Record<string, any>>({
-      query: LIST_RECEIPTS_QUERY,
-      variables: { bucketGuid: params?.bucket, months: params?.months },
-    });
-    return { receipts: data.receipts.map(mapReceiptResponse) };
-  },
+	async listReceipts(params?: {
+		bucket?: string;
+		months?: string[];
+		vendor?: string;
+	}) {
+		const { data = {} as Record<string, any> } = await apolloClient.query<
+			Record<string, any>
+		>({
+			query: LIST_RECEIPTS_QUERY,
+			variables: {
+				bucketGuid: params?.bucket,
+				months: params?.months,
+				vendor: params?.vendor,
+			},
+		});
+		return { receipts: data.receipts.map(mapReceiptResponse) };
+	},
 
-  async createBucket(args: { name: string }) {
-    const { data } = await apolloClient.mutate<Record<string, any>>({
-      mutation: CREATE_BUCKET_MUTATION,
-      variables: { name: args.name },
-    });
-    return data!.createBucket as { guid: string; name: string };
-  },
+	async createBucket(args: { name: string }) {
+		const { data } = await apolloClient.mutate<Record<string, any>>({
+			mutation: CREATE_BUCKET_MUTATION,
+			variables: { name: args.name },
+		});
+		return data!.createBucket as { guid: string; name: string };
+	},
 
-  async updateBucket(args: { guid: string; name: string }) {
-    const { data } = await apolloClient.mutate<Record<string, any>>({
-      mutation: UPDATE_BUCKET_MUTATION,
-      variables: args,
-    });
-    return data!.updateBucket as { guid: string; name: string };
-  },
+	async updateBucket(args: { guid: string; name: string }) {
+		const { data } = await apolloClient.mutate<Record<string, any>>({
+			mutation: UPDATE_BUCKET_MUTATION,
+			variables: args,
+		});
+		return data!.updateBucket as { guid: string; name: string };
+	},
 
-  async deleteBucket(args: { guid: string }) {
-    await apolloClient.mutate({
-      mutation: DELETE_BUCKET_MUTATION,
-      variables: args,
-    });
-  },
+	async deleteBucket(args: { guid: string }) {
+		await apolloClient.mutate({
+			mutation: DELETE_BUCKET_MUTATION,
+			variables: args,
+		});
+	},
 
-  async createReceipt(args: {
-    vendor: string;
-    total: number;
-    date: Date;
-    timezone: string;
-    allocations?: AllocationInput[];
-    vendorRef?: string;
-    notes?: string;
-    hash?: string;
-  }) {
-    const dateIso = args.date.toISOString();
-    const { data } = await apolloClient.mutate<Record<string, any>>({
-      mutation: CREATE_RECEIPT_MUTATION,
-      variables: {
-        input: {
-          vendor: args.vendor,
-          total: args.total,
-          date: dateIso,
-          timezone: args.timezone,
-          allocations: mapAllocationsInput(args.allocations ?? []),
-          reference: args.vendorRef ?? "",
-          notes: args.notes ?? "",
-          hash: args.hash ?? "",
-        },
-      },
-    });
-    return mapReceiptResponse(data!.createReceipt);
-  },
+	async createReceipt(args: {
+		vendor: string;
+		total: number;
+		date: Date;
+		timezone: string;
+		allocations?: AllocationInput[];
+		vendorRef?: string;
+		notes?: string;
+		hash?: string;
+	}) {
+		const dateIso = args.date.toISOString();
+		const { data } = await apolloClient.mutate<Record<string, any>>({
+			mutation: CREATE_RECEIPT_MUTATION,
+			variables: {
+				input: {
+					vendor: args.vendor,
+					total: args.total,
+					date: dateIso,
+					timezone: args.timezone,
+					allocations: mapAllocationsInput(args.allocations ?? []),
+					reference: args.vendorRef ?? "",
+					notes: args.notes ?? "",
+					hash: args.hash ?? "",
+				},
+			},
+		});
+		return mapReceiptResponse(data!.createReceipt);
+	},
 
-  async updateReceipt(args: {
-    guid: string;
-    vendor: string;
-    total: number;
-    date: Date;
-    timezone: string;
-    allocations?: AllocationInput[];
-    vendorRef?: string;
-    notes?: string;
-    hash?: string;
-  }) {
-    const dateIso = args.date.toISOString();
-    const { data } = await apolloClient.mutate<Record<string, any>>({
-      mutation: UPDATE_RECEIPT_MUTATION,
-      variables: {
-        guid: args.guid,
-        input: {
-          vendor: args.vendor,
-          total: args.total,
-          date: dateIso,
-          timezone: args.timezone,
-          allocations: mapAllocationsInput(args.allocations ?? []),
-          reference: args.vendorRef ?? "",
-          notes: args.notes ?? "",
-          hash: args.hash ?? "",
-        },
-      },
-    });
-    return mapReceiptResponse(data!.updateReceipt);
-  },
+	async updateReceipt(args: {
+		guid: string;
+		vendor: string;
+		total: number;
+		date: Date;
+		timezone: string;
+		allocations?: AllocationInput[];
+		vendorRef?: string;
+		notes?: string;
+		hash?: string;
+	}) {
+		const dateIso = args.date.toISOString();
+		const { data } = await apolloClient.mutate<Record<string, any>>({
+			mutation: UPDATE_RECEIPT_MUTATION,
+			variables: {
+				guid: args.guid,
+				input: {
+					vendor: args.vendor,
+					total: args.total,
+					date: dateIso,
+					timezone: args.timezone,
+					allocations: mapAllocationsInput(args.allocations ?? []),
+					reference: args.vendorRef ?? "",
+					notes: args.notes ?? "",
+					hash: args.hash ?? "",
+				},
+			},
+		});
+		return mapReceiptResponse(data!.updateReceipt);
+	},
 
-  async deleteReceipt(args: { guid: string }) {
-    await apolloClient.mutate({
-      mutation: DELETE_RECEIPT_MUTATION,
-      variables: args,
-    });
-  },
+	async deleteReceipt(args: { guid: string }) {
+		await apolloClient.mutate({
+			mutation: DELETE_RECEIPT_MUTATION,
+			variables: args,
+		});
+	},
 
-  async listVendors() {
-    const { data = {} as Record<string, any> } = await apolloClient.query<Record<string, any>>({ query: LIST_VENDORS_QUERY });
-    return {
-      vendors: data.vendors as { guid: string; name: string }[],
-    };
-  },
+	async listVendors() {
+		const { data = {} as Record<string, any> } = await apolloClient.query<
+			Record<string, any>
+		>({ query: LIST_VENDORS_QUERY });
+		return {
+			vendors: data.vendors as { guid: string; name: string }[],
+		};
+	},
 
-  async updateVendor(args: { guid: string; name: string }) {
-    const { data } = await apolloClient.mutate<Record<string, any>>({
-      mutation: UPDATE_VENDOR_MUTATION,
-      variables: args,
-    });
-    return data!.updateVendor as { guid: string; name: string };
-  },
+	async updateVendor(args: { guid: string; name: string }) {
+		const { data } = await apolloClient.mutate<Record<string, any>>({
+			mutation: UPDATE_VENDOR_MUTATION,
+			variables: args,
+		});
+		return data!.updateVendor as { guid: string; name: string };
+	},
 };
 
 // ---------------------------------------------------------------------------
@@ -313,45 +378,48 @@ export const client = {
 // ---------------------------------------------------------------------------
 
 export const uploadReceiptFile = async (
-  file: File,
-  hash: string,
-  onProgress?: (progress: number) => void,
+	file: File,
+	hash: string,
+	onProgress?: (progress: number) => void,
 ): Promise<{ alreadyExists: boolean }> => {
-  onProgress?.(25);
-  const fileBuffer = await file.arrayBuffer();
-  const bytes = new Uint8Array(fileBuffer);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-  const base64 = btoa(binary);
-  onProgress?.(60);
-  const { data } = await apolloClient.mutate<Record<string, any>>({
-    mutation: UPLOAD_FILE_MUTATION,
-    variables: { hash, filename: file.name, data: base64 },
-  });
-  onProgress?.(100);
-  return { alreadyExists: data!.uploadReceiptFile.alreadyExists };
+	onProgress?.(25);
+	const fileBuffer = await file.arrayBuffer();
+	const bytes = new Uint8Array(fileBuffer);
+	let binary = "";
+	for (let i = 0; i < bytes.byteLength; i++)
+		binary += String.fromCharCode(bytes[i]);
+	const base64 = btoa(binary);
+	onProgress?.(60);
+	const { data } = await apolloClient.mutate<Record<string, any>>({
+		mutation: UPLOAD_FILE_MUTATION,
+		variables: { hash, filename: file.name, data: base64 },
+	});
+	onProgress?.(100);
+	return { alreadyExists: data!.uploadReceiptFile.alreadyExists };
 };
 
-export const downloadReceiptFile = async (fileHash: string): Promise<{ filename: string; fileSize: number }> => {
-  const token = getToken();
-  const response = await fetch(`/files/${fileHash}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!response.ok) throw new Error(`Download failed: ${response.statusText}`);
+export const downloadReceiptFile = async (
+	fileHash: string,
+): Promise<{ filename: string; fileSize: number }> => {
+	const token = getToken();
+	const response = await fetch(`/files/${fileHash}`, {
+		headers: token ? { Authorization: `Bearer ${token}` } : {},
+	});
+	if (!response.ok) throw new Error(`Download failed: ${response.statusText}`);
 
-  const contentDisposition = response.headers.get("Content-Disposition") ?? "";
-  const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
-  const filename = filenameMatch?.[1] ?? fileHash;
-  const blob = await response.blob();
+	const contentDisposition = response.headers.get("Content-Disposition") ?? "";
+	const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+	const filename = filenameMatch?.[1] ?? fileHash;
+	const blob = await response.blob();
 
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
+	const url = window.URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.href = url;
+	link.download = filename;
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	window.URL.revokeObjectURL(url);
 
-  return { filename, fileSize: blob.size };
+	return { filename, fileSize: blob.size };
 };

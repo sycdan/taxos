@@ -165,7 +165,7 @@ def resolve_bucket(*_, guid):
 
 
 @query.field("receipts")
-def resolve_receipts(*_, vendorGuid=None, bucketGuid=None, months=None):
+def resolve_receipts(*_, vendorGuid=None, bucketGuid=None, months=None, vendor=None):
   tenant = require_tenant()
   conditions = []
   params: dict = {"months": months or []}
@@ -175,6 +175,11 @@ def resolve_receipts(*_, vendorGuid=None, bucketGuid=None, months=None):
       "EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {guid: $vendorGuid}) }"
     )
     params["vendorGuid"] = vendorGuid
+  if vendor:
+    conditions.append(
+      "EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {name: $vendor}) }"
+    )
+    params["vendor"] = vendor
   if bucketGuid:
     conditions.append(
       "EXISTS { MATCH (r)-[:ALLOCATED_TO]->(b:Bucket {guid: $bucketGuid}) }"
@@ -208,8 +213,8 @@ def resolve_receipt(*_, guid):
 
 
 @query.field("dashboard")
-def resolve_dashboard(*_, months=None):
-  return GetDashboard(months=months or []).execute()
+def resolve_dashboard(*_, months=None, vendor=None):
+  return GetDashboard(months=months or [], vendor=vendor).execute()
 
 
 # --- Mutation ---

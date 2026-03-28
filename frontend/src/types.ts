@@ -14,6 +14,12 @@ export interface BucketSummary {
 	receiptCount: number;
 }
 
+export interface VendorSummary {
+	vendor: Vendor;
+	totalAmount: number;
+	receiptCount: number;
+}
+
 export interface ReceiptAllocation {
 	bucketId: string;
 	amount: number;

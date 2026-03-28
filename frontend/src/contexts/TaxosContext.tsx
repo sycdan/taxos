@@ -24,6 +24,7 @@ const slugify = (text: string) => {
 interface TaxosContextType {
 	buckets: Bucket[];
 	bucketSummaries: BucketSummary[];
+	vendorSummaries: import("../types").VendorSummary[];
 	unallocatedSummary: { totalAmount: number; receiptCount: number };
 	receipts: Record<string, Receipt>;
 	unallocatedReceipts: Receipt[];
@@ -36,7 +37,10 @@ interface TaxosContextType {
 	addBucket: (name: string) => Promise<boolean>;
 	updateBucket: (id: string, name: string) => Promise<boolean>;
 	deleteBucket: (id: string) => Promise<void>;
-	addReceipt: (receipt: Omit<Receipt, "id">, refreshDates?: { start: Date; end: Date }) => Promise<void>;
+	addReceipt: (
+		receipt: Omit<Receipt, "id">,
+		refreshDates?: { start: Date; end: Date },
+	) => Promise<void>;
 	updateReceipt: (receipt: Receipt) => Promise<void>;
 	deleteReceipt: (id: string) => Promise<void>;
 	refreshBuckets: (
@@ -46,6 +50,11 @@ interface TaxosContextType {
 	) => Promise<void>;
 	loadReceiptsForBucket: (
 		bucketId: string,
+		startDate: Date,
+		endDate: Date,
+	) => Promise<Receipt[]>;
+	loadReceiptsForVendor: (
+		vendor: string,
 		startDate: Date,
 		endDate: Date,
 	) => Promise<Receipt[]>;
@@ -66,6 +75,9 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
 	const [buckets, setBuckets] = useState<Bucket[]>([]);
 	const [bucketSummaries, setBucketSummaries] = useState<BucketSummary[]>([]);
+	const [vendorSummaries, setVendorSummaries] = useState<
+		import("../types").VendorSummary[]
+	>([]);
 	const [unallocatedSummary, setUnallocatedSummary] = useState<{
 		totalAmount: number;
 		receiptCount: number;
@@ -126,20 +138,22 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					months: getMonthsInRange(startDate, endDate),
 				});
 
-				const bucketReceipts: Receipt[] = response.receipts.map((r: MappedReceipt) => ({
-					id: r.guid,
-					vendor: r.vendor,
-					total: r.total,
-					date: r.date,
-					timezone: r.timezone,
-					allocations: r.allocations.map((a) => ({
-						bucketId: a.bucket,
-						amount: a.amount,
-					})),
-					ref: r.vendorRef || undefined,
-					notes: r.notes || undefined,
-					hash: r.hash || undefined,
-				}));
+				const bucketReceipts: Receipt[] = response.receipts.map(
+					(r: MappedReceipt) => ({
+						id: r.guid,
+						vendor: r.vendor,
+						total: r.total,
+						date: r.date,
+						timezone: r.timezone,
+						allocations: r.allocations.map((a) => ({
+							bucketId: a.bucket,
+							amount: a.amount,
+						})),
+						ref: r.vendorRef || undefined,
+						notes: r.notes || undefined,
+						hash: r.hash || undefined,
+					}),
+				);
 
 				// Update source of truth for current view
 				setCurrentReceiptsList(bucketReceipts);
@@ -162,18 +176,63 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 		[],
 	);
 
+	const loadReceiptsForVendor = useCallback(
+		async (
+			vendor: string,
+			startDate: Date,
+			endDate: Date,
+		): Promise<Receipt[]> => {
+			try {
+				const response = await client.listReceipts({
+					vendor: vendor,
+					months: getMonthsInRange(startDate, endDate),
+				});
+
+				const vendorReceipts: Receipt[] = response.receipts.map(
+					(r: MappedReceipt) => ({
+						id: r.guid,
+						vendor: r.vendor,
+						total: r.total,
+						date: r.date,
+						timezone: r.timezone,
+						allocations: r.allocations.map((a) => ({
+							bucketId: a.bucket,
+							amount: a.amount,
+						})),
+						ref: r.vendorRef || undefined,
+						notes: r.notes || undefined,
+						hash: r.hash || undefined,
+					}),
+				);
+
+				// Update source of truth for current view
+				setCurrentReceiptsList(vendorReceipts);
+
+				// Update cache
+				setReceipts((prev) => {
+					const updated = { ...prev };
+					for (const receipt of vendorReceipts) {
+						updated[receipt.id] = receipt;
+					}
+					return updated;
+				});
+
+				return vendorReceipts;
+			} catch (error) {
+				console.error("Failed to load receipts for vendor:", error);
+				return [];
+			}
+		},
+		[],
+	);
+
 	const refreshBuckets = useCallback(
 		async (startDate?: Date, endDate?: Date, force?: boolean) => {
-			// Prevent concurrent requests; queue the latest dates so we can
-			// re-run after the in-flight request completes.
 			if (isRefreshingRef.current) {
 				pendingRefreshRef.current = { start: startDate, end: endDate };
 				return;
 			}
 
-			// Only refresh if dates have actually changed or it's the initial load
-			// Use the ref so this check is always against the latest value,
-			// even when called from a stale closure.
 			const currentFilter = currentDateFilterRef.current;
 			const sameStart =
 				(!startDate && !currentFilter.start) ||
@@ -186,7 +245,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					currentFilter.end &&
 					endDate.getTime() === currentFilter.end.getTime());
 
-			if (!force && sameStart && sameEnd && buckets.length > 0) {
+			if (!force && sameStart && sameEnd) {
 				return;
 			}
 
@@ -199,16 +258,15 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					return;
 				}
 
-				// Update the ref so it is immediately visible to future calls.
 				currentDateFilterRef.current = { start: startDate, end: endDate };
 
 				const response = await client.getDashboard({
 					months: getMonthsInRange(startDate, endDate),
 				});
 
-				const apiBuckets: Bucket[] = response.buckets.map((summary) => ({
-					id: summary.guid,
-					name: summary.name,
+				const apiBuckets: Bucket[] = response.buckets.map((bucket) => ({
+					id: bucket.guid,
+					name: bucket.name,
 				}));
 
 				const apiSummaries: BucketSummary[] = response.buckets.map(
@@ -238,7 +296,6 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 						hash: r.hash || undefined,
 					}));
 
-				// Calculate unallocated portions for the pseudo-bucket summary
 				let unallocatedTotal = 0;
 				let unallocatedCount = 0;
 
@@ -250,18 +307,44 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					const unallocatedAmount = r.total - allocatedAmount;
 					if (unallocatedAmount > 0) {
 						unallocatedTotal += unallocatedAmount;
-						unallocatedCount++;
+						unallocatedCount += 1;
 					}
 				}
 
-				// If triggerRefresh fired while this fetch was in-flight, discard
-				// this (now-stale) response so we don't overwrite optimistic state.
+				const vendorReceiptsResponse = await client.listReceipts({
+					months: getMonthsInRange(startDate, endDate),
+				});
+
+				const vendorMap = new Map<string, { total: number; count: number }>();
+				for (const r of vendorReceiptsResponse.receipts) {
+					const key = r.vendor;
+					if (!vendorMap.has(key)) {
+						vendorMap.set(key, { total: 0, count: 0 });
+					}
+					const current = vendorMap.get(key);
+					if (current) {
+						current.total += r.total;
+						current.count += 1;
+					}
+				}
+
+				const apiVendorSummaries: import("../types").VendorSummary[] =
+					Array.from(vendorMap.entries()).map(([vendorName, data]) => ({
+						vendor: {
+							id: vendorName,
+							name: vendorName,
+						},
+						totalAmount: data.total,
+						receiptCount: data.count,
+					}));
+
 				if (mySeq !== refreshSeqRef.current) {
 					return;
 				}
 
 				setBuckets(apiBuckets);
 				setBucketSummaries(apiSummaries);
+				setVendorSummaries(apiVendorSummaries);
 				setUnallocatedReceipts(apiUnallocatedReceipts);
 				setVendorNames(response.vendorNames || []);
 				setUnallocatedSummary({
@@ -269,8 +352,6 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					receiptCount: unallocatedCount,
 				});
 
-				// If we have an active bucket that ISN'T unallocated, reload that specific bucket's receipts
-				// Otherwise, show unallocated receipts (default dashboard view)
 				const currentActiveBucketId = activeBucketIdRef.current;
 				if (
 					currentActiveBucketId &&
@@ -280,11 +361,9 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				) {
 					void loadReceiptsForBucket(currentActiveBucketId, startDate, endDate);
 				} else {
-					// Default view is unallocated if no specific bucket is being loaded
 					setCurrentReceiptsList(apiUnallocatedReceipts);
 				}
 
-				// Update cache
 				setReceipts((prev) => {
 					const updated = { ...prev };
 					for (const r of apiUnallocatedReceipts) {
@@ -297,7 +376,6 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 			} finally {
 				isRefreshingRef.current = false;
 				setLoading(false);
-				// If a refresh was requested while we were in-flight, run it now.
 				if (pendingRefreshRef.current) {
 					const pending = pendingRefreshRef.current;
 					pendingRefreshRef.current = null;
@@ -305,8 +383,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				}
 			}
 		},
-		// Intentionally omit activeBucketId: we read it via a ref so that this
-		// eslint-disable-next-line react-hooks/exhaustive-deps
+		// Intentionally omit activeBucketId and bucket arrays; they are read via refs/state updates.
 		[authenticated, loadReceiptsForBucket],
 	);
 
@@ -401,7 +478,10 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 		}
 	};
 
-	const addReceipt = async (receipt: Omit<Receipt, "id">, refreshDates?: { start: Date; end: Date }) => {
+	const addReceipt = async (
+		receipt: Omit<Receipt, "id">,
+		refreshDates?: { start: Date; end: Date },
+	) => {
 		try {
 			const response = await client.createReceipt({
 				vendor: receipt.vendor,
@@ -532,23 +612,27 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 		}
 	}, []);
 
-	const updateVendor = useCallback(async (id: string, name: string): Promise<Vendor | null> => {
-		try {
-			const response = await client.updateVendor({ guid: id, name });
-			const updated: Vendor = { id: response.guid, name: response.name };
-			setVendors((prev) => prev.map((v) => (v.id === id ? updated : v)));
-			return updated;
-		} catch (error) {
-			console.error("Failed to update vendor:", error);
-			return null;
-		}
-	}, []);
+	const updateVendor = useCallback(
+		async (id: string, name: string): Promise<Vendor | null> => {
+			try {
+				const response = await client.updateVendor({ guid: id, name });
+				const updated: Vendor = { id: response.guid, name: response.name };
+				setVendors((prev) => prev.map((v) => (v.id === id ? updated : v)));
+				return updated;
+			} catch (error) {
+				console.error("Failed to update vendor:", error);
+				return null;
+			}
+		},
+		[],
+	);
 
 	return (
 		<TaxosContext.Provider
 			value={{
 				buckets,
 				bucketSummaries,
+				vendorSummaries,
 				unallocatedSummary,
 				receipts,
 				unallocatedReceipts,
@@ -566,6 +650,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				deleteReceipt,
 				refreshBuckets,
 				loadReceiptsForBucket,
+				loadReceiptsForVendor,
 				getUnallocatedReceipts,
 				activeBucketId,
 				setActiveBucketId,

@@ -3,9 +3,9 @@ type Query {
   vendor(guid: ID!): Vendor
   buckets: [Bucket!]!
   bucket(guid: ID!): Bucket
-  receipts(vendorGuid: ID, bucketGuid: ID, months: [String!]): [Receipt!]!
+  receipts(vendorGuid: ID, bucketGuid: ID, months: [String!], vendor: String): [Receipt!]!
   receipt(guid: ID!): Receipt
-  dashboard(months: [String!]): Dashboard
+  dashboard(months: [String!], vendor: String): Dashboard
 }
 
 type Mutation {

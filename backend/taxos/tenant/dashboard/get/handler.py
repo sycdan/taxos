@@ -11,23 +11,28 @@ logger = logging.getLogger(__name__)
 
 
 def handle(query: GetDashboard) -> Dashboard:
-  logger.info(f"Generating dashboard for months: {query.months}")
+  logger.info(f"Generating dashboard for months: {query.months}, vendor: {query.vendor}")
   tenant = require_tenant()
 
-  months_where = (
-    "WHERE any(m IN $months WHERE r.date STARTS WITH m)" if query.months else ""
-  )
+  # Build where conditions for receipts
+  receipt_conditions = []
+  if query.months:
+    receipt_conditions.append("any(m IN $months WHERE r.date STARTS WITH m)")
+  if query.vendor:
+    receipt_conditions.append("(r)-[:FROM_VENDOR]->(v:Vendor {name: $vendor})")
+  
+  receipt_where = (" WHERE " + " AND ".join(receipt_conditions)) if receipt_conditions else ""
 
   bucket_records = db.query(
     f"""
     MATCH (b:Bucket)
     OPTIONAL MATCH (b)<-[a:ALLOCATED_TO]-(r:Receipt)
-    {months_where}
+    {receipt_where}
     WITH b, sum(a.amount) AS total, count(DISTINCT r) AS receipt_count
     RETURN b.guid AS guid, b.name AS name, total, receipt_count
     ORDER BY b.name
     """,
-    {"months": query.months},
+    {"months": query.months, "vendor": query.vendor},
     database=tenant.db_name,
   )
 
@@ -41,14 +46,22 @@ def handle(query: GetDashboard) -> Dashboard:
     for row in bucket_records
   ]
 
+  # Build where conditions for unallocated receipts
+  unallocated_conditions = ["NOT (r)-[:ALLOCATED_TO]->()"]
+  if query.months:
+    unallocated_conditions.append("any(m IN $months WHERE r.date STARTS WITH m)")
+  if query.vendor:
+    unallocated_conditions.append("(r)-[:FROM_VENDOR]->(v:Vendor {name: $vendor})")
+  
+  unallocated_where = "WHERE " + " AND ".join(unallocated_conditions)
+
   unallocated_records = db.query(
     f"""
     MATCH (r:Receipt)
-    WHERE NOT (r)-[:ALLOCATED_TO]->()
-    {"AND any(m IN $months WHERE r.date STARTS WITH m)" if query.months else ""}
+    {unallocated_where}
     RETURN r
     """,
-    {"months": query.months},
+    {"months": query.months, "vendor": query.vendor},
     database=tenant.db_name,
   )
 
