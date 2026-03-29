@@ -31,10 +31,9 @@ from taxos.receipt.delete.command import DeleteReceipt
 from taxos.receipt.entity import Receipt, ReceiptRef
 from taxos.receipt.load.query import LoadReceipt
 from taxos.receipt.update.command import UpdateReceipt
-from taxos.tenant.dashboard.entity import BucketSummary, Dashboard
 from taxos.tenant.list_receipts.query import ListReceipts
 from taxos.tenant.tools import get_files_dir
-from taxos.vendor.entity import VendorRef
+from taxos.vendor.entity import Vendor, VendorRef
 from taxos.vendor.list.query import ListVendors
 from taxos.vendor.load.query import LoadVendor
 from taxos.vendor.update.command import UpdateVendor
@@ -123,7 +122,6 @@ query = QueryType()
 mutation = MutationType()
 vendor_type = ObjectType("Vendor")
 bucket_type = ObjectType("Bucket")
-bucket_summary_type = ObjectType("BucketSummary")
 receipt_type = ObjectType("Receipt")
 allocation_type = ObjectType("Allocation")
 
@@ -137,10 +135,10 @@ def resolve_vendors(*_):
 
 
 @query.field("vendor")
-def resolve_vendor(*_, guid):
+def resolve_vendor(*_, guid: str):
   try:
     return LoadVendor(ref=VendorRef(guid)).execute()
-  except Exception:
+  except Vendor.DoesNotExist:
     return None
 
 
@@ -157,32 +155,36 @@ def resolve_buckets(*_):
 
 
 @query.field("bucket")
-def resolve_bucket(*_, guid):
+def resolve_bucket(*_, guid: str):
   try:
     return LoadBucket(ref=BucketRef(guid)).execute()
-  except Exception:
+  except Bucket.DoesNotExist:
     return None
 
 
 @query.field("receipts")
-def resolve_receipts(*_, vendorGuid=None, bucketGuid=None, months=None, vendor=None):
+def resolve_receipts(*_, vendor=None, bucket=None, months=None):
   tenant = require_tenant()
   conditions = []
   params: dict = {"months": months or []}
 
-  if vendorGuid:
-    conditions.append(
-      "EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {guid: $vendorGuid}) }"
-    )
-    params["vendorGuid"] = vendorGuid
   if vendor:
-    conditions.append("EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {name: $vendor}) }")
+    # Support both GUID and name for backward compatibility during migration
+    # GUID is a 32-char hex string
+    is_guid = isinstance(vendor, str) and len(vendor) == 32 and all(c in '0123456789abcdefABCDEF' for c in vendor)
+    
+    if is_guid:
+      conditions.append(
+        "EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {guid: $vendor}) }"
+      )
+    else:
+      conditions.append("EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {name: $vendor}) }")
     params["vendor"] = vendor
-  if bucketGuid:
+  if bucket:
     conditions.append(
-      "EXISTS { MATCH (r)-[:ALLOCATED_TO]->(b:Bucket {guid: $bucketGuid}) }"
+      "EXISTS { MATCH (r)-[:ALLOCATED_TO]->(b:Bucket {guid: $bucket}) }"
     )
-    params["bucketGuid"] = bucketGuid
+    params["bucket"] = bucket
   if months:
     conditions.append("any(m IN $months WHERE r.date STARTS WITH m)")
 
@@ -203,103 +205,33 @@ def resolve_receipts(*_, vendorGuid=None, bucketGuid=None, months=None, vendor=N
 
 
 @query.field("receipt")
-def resolve_receipt(*_, guid):
+def resolve_receipt(*_, guid: str):
   try:
     return LoadReceipt(ref=ReceiptRef(guid)).execute()
-  except Exception:
+  except Receipt.DoesNotExist:
     return None
-
-
-@query.field("dashboard")
-def resolve_dashboard(*_, months=None):
-  logger.info(f"Generating dashboard for months: {months}")
-  tenant = require_tenant()
-  months = months or []
-
-  # Bucket totals in selected months
-  bucket_where = "WHERE any(m IN $months WHERE r.date STARTS WITH m)" if months else ""
-
-  bucket_records = db.query(
-    f"""
-    MATCH (b:Bucket)
-    OPTIONAL MATCH (b)<-[a:ALLOCATED_TO]-(r:Receipt)
-    {bucket_where}
-    WITH b, sum(a.amount) AS total, count(DISTINCT r) AS receipt_count
-    RETURN b.guid AS guid, b.name AS name, total, receipt_count
-    ORDER BY b.name
-    """,
-    {"months": months},
-    database=tenant.db_name,
-  )
-
-  bucket_summaries = [
-    BucketSummary(
-      guid=row["guid"],
-      name=row["name"],
-      total_amount=row["total"] or 0.0,
-      receipt_count=row["receipt_count"] or 0,
-    )
-    for row in bucket_records
-  ]
-
-  unallocated_where_parts = ["NOT (r)-[:ALLOCATED_TO]->()"]
-  if months:
-    unallocated_where_parts.append("any(m IN $months WHERE r.date STARTS WITH m)")
-  unallocated_where = "WHERE " + " AND ".join(unallocated_where_parts)
-
-  unallocated_records = db.query(
-    f"""
-    MATCH (r:Receipt)
-    {unallocated_where}
-    RETURN r
-    """,
-    {"months": months},
-    database=tenant.db_name,
-  )
-
-  unallocated_receipts = [
-    Receipt(
-      guid=row["r"]["guid"],
-      vendor=row["r"]["vendor"],
-      total=row["r"]["total"],
-      date=row["r"]["date"],
-      timezone=row["r"]["timezone"],
-      notes=row["r"].get("notes", ""),
-      hash=row["r"].get("hash", ""),
-      vendor_ref=row["r"].get("reference", ""),
-    )
-    for row in unallocated_records
-  ]
-
-  vendors = ListVendors().execute()
-
-  return Dashboard(
-    buckets=bucket_summaries,
-    unallocated=unallocated_receipts,
-    vendor_names=[v.name for v in vendors],
-  )
 
 
 # --- Mutation ---
 
 
 @mutation.field("createBucket")
-def resolve_create_bucket(*_, name):
+def resolve_create_bucket(*_, name: str):
   return CreateBucket(name=name).execute()
 
 
 @mutation.field("updateBucket")
-def resolve_update_bucket(*_, guid, name):
+def resolve_update_bucket(*_, guid: str, name: str):
   return UpdateBucket(ref=BucketRef(guid), name=name).execute()
 
 
 @mutation.field("deleteBucket")
-def resolve_delete_bucket(*_, guid):
+def resolve_delete_bucket(*_, guid: str):
   return DeleteBucket(ref=guid).execute()
 
 
 @mutation.field("createReceipt")
-def resolve_create_receipt(*_, input):
+def resolve_create_receipt(*_, input: dict):
   return CreateReceipt(
     vendor=input["vendor"],
     total=input["total"],
@@ -313,7 +245,7 @@ def resolve_create_receipt(*_, input):
 
 
 @mutation.field("updateReceipt")
-def resolve_update_receipt(*_, guid, input):
+def resolve_update_receipt(*_, guid: str, input: dict):
   return UpdateReceipt(
     ref=guid,
     vendor=input["vendor"],
@@ -328,17 +260,17 @@ def resolve_update_receipt(*_, guid, input):
 
 
 @mutation.field("deleteReceipt")
-def resolve_delete_receipt(*_, guid):
+def resolve_delete_receipt(*_, guid: str):
   return DeleteReceipt(ref=guid).execute()
 
 
 @mutation.field("updateVendor")
-def resolve_update_vendor(*_, guid, name):
+def resolve_update_vendor(*_, guid: str, name: str):
   return UpdateVendor(ref=VendorRef(guid), name=name).execute()
 
 
 @mutation.field("uploadReceiptFile")
-def resolve_upload_receipt_file(*_, hash, filename, data):
+def resolve_upload_receipt_file(*_, hash: str, filename: str, data: str):
   tenant = require_tenant()
   files_dir = get_files_dir(tenant.guid)
   zip_path = files_dir / f"{hash}.zip"
@@ -457,16 +389,6 @@ def resolve_allocation_bucket(allocation, *_):
   return LoadBucket(ref=ref).execute()
 
 
-@bucket_summary_type.field("totalAmount")
-def resolve_bucket_summary_total_amount(summary, *_):
-  return summary.total_amount
-
-
-@bucket_summary_type.field("receiptCount")
-def resolve_bucket_summary_receipt_count(summary, *_):
-  return summary.receipt_count
-
-
 # --- Schema + app ---
 
 schema = make_executable_schema(
@@ -475,7 +397,6 @@ schema = make_executable_schema(
   mutation,
   vendor_type,
   bucket_type,
-  bucket_summary_type,
   receipt_type,
   allocation_type,
 )

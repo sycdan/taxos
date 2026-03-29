@@ -4,13 +4,11 @@ type Query {
 	buckets: [Bucket!]!
 	bucket(guid: ID!): Bucket
 	receipts(
-		vendorGuid: ID
-		bucketGuid: ID
+		vendor: ID
+		bucket: ID
 		months: [String!]
-		vendor: String
 	): [Receipt!]!
 	receipt(guid: ID!): Receipt
-	dashboard(months: [String!]): Dashboard
 }
 
 type Mutation {
@@ -56,18 +54,6 @@ type Receipt {
 type Allocation {
 	amount: Float!
 	bucket: Bucket!
-}
-
-type Dashboard {
-	buckets: [BucketSummary!]!
-	unallocated: [Receipt!]!
-}
-
-type BucketSummary {
-	guid: ID!
-	name: String!
-	totalAmount: Float!
-	receiptCount: Int!
 }
 
 type FileInfo {

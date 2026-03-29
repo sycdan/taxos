@@ -4,13 +4,15 @@ from pathlib import Path
 from typing import Optional
 
 from taxos import DATA_DIR
-from taxos.bucket.entity import Bucket, BucketRef
+from taxos.bucket.entity import Bucket, BucketRef, UnallocatedBucket
 from taxos.bucket.load.query import LoadBucket
+from taxos.concepts import UNALLOCATED_BUCKET_V1_SINGLETON
 from taxos.context.entity import Context
 from taxos.receipt.entity import Receipt, ReceiptRef
 from taxos.receipt.load.query import LoadReceipt
 from taxos.tenant.entity import Tenant, TenantRef
 from taxos.tools import json
+from taxos.tools.guid import parse_guid
 from taxos.vendor.entity import Vendor, VendorRef
 from taxos.vendor.load.query import LoadVendor
 
@@ -107,6 +109,8 @@ def with_context(context: Context):
 def require_bucket(value) -> Bucket:
   if isinstance(value, Bucket):
     return value
+  if parse_guid(value) == UNALLOCATED_BUCKET_V1_SINGLETON:
+    return UnallocatedBucket()
   elif not isinstance(value, BucketRef):
     value = BucketRef(value)
   return LoadBucket(value).execute()

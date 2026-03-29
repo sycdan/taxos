@@ -38,7 +38,9 @@ test.describe("Vendor Management Flow", () => {
 
 		// Click through to vendor detail and verify receipt list view appears.
 		await vendorCard.click();
-		await expect(page.getByRole("heading", { level: 2, name: "Acme Corp" })).toBeVisible();
+		await expect(
+			page.getByRole("heading", { level: 2, name: "Acme Corp" }),
+		).toBeVisible();
 		await expect(page.getByText("$25.00").first()).toBeVisible();
 	});
 
@@ -73,10 +75,16 @@ test.describe("Vendor Management Flow", () => {
 		// Top bar controls are preserved in vendors view.
 		await expect(page.getByRole("button", { name: "Year" })).toBeVisible();
 		await expect(page.getByRole("button", { name: "Month" })).toBeVisible();
-		await expect(page.getByRole("button", { name: "Add Receipt" })).toBeVisible();
-		await expect(page.getByRole("button", { name: "Upload File" })).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Add Receipt" }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Upload File" }),
+		).toBeVisible();
 
 		// Vendor card should be present in vendors mode.
-		await expect(page.locator(".card").filter({ hasText: "ValidVendor" })).toBeVisible();
+		await expect(
+			page.locator(".card").filter({ hasText: "ValidVendor" }),
+		).toBeVisible();
 	});
 });

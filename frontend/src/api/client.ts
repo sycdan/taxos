@@ -53,41 +53,18 @@ const apolloClient = new ApolloClient({
 // GraphQL documents
 // ---------------------------------------------------------------------------
 
-const DASHBOARD_QUERY = gql`
-	query GetDashboard($months: [String!]) {
-		dashboard(months: $months) {
-			buckets {
-				guid
-				name
-				totalAmount
-				receiptCount
-			}
-			unallocated {
-				guid
-				vendor
-				total
-				date
-				timezone
-				notes
-				hash
-				reference
-				allocations {
-					amount
-					bucket {
-						guid
-					}
-				}
-			}
-		}
-		vendors {
+const LIST_BUCKETS_QUERY = gql`
+	query ListBuckets {
+		buckets {
+			guid
 			name
 		}
 	}
 `;
 
 const LIST_RECEIPTS_QUERY = gql`
-	query ListReceipts($bucketGuid: ID, $months: [String!], $vendor: String) {
-		receipts(bucketGuid: $bucketGuid, months: $months, vendor: $vendor) {
+	query ListReceipts($bucket: ID, $months: [String!], $vendor: ID) {
+		receipts(bucket: $bucket, months: $months, vendor: $vendor) {
 			guid
 			vendor
 			total
@@ -228,22 +205,12 @@ function mapReceiptResponse(r: {
 export type MappedReceipt = ReturnType<typeof mapReceiptResponse>;
 
 export const client = {
-	async getDashboard(params?: { months?: string[] }) {
+	async listBuckets() {
 		const { data = {} as Record<string, any> } = await apolloClient.query<
 			Record<string, any>
-		>({
-			query: DASHBOARD_QUERY,
-			variables: { months: params?.months },
-		});
+		>({ query: LIST_BUCKETS_QUERY });
 		return {
-			buckets: data.dashboard.buckets as {
-				guid: string;
-				name: string;
-				totalAmount: number;
-				receiptCount: number;
-			}[],
-			unallocatedReceipts: data.dashboard.unallocated.map(mapReceiptResponse),
-			vendorNames: (data.vendors as { name: string }[]).map((v) => v.name),
+			buckets: data.buckets as { guid: string; name: string }[],
 		};
 	},
 
@@ -257,7 +224,7 @@ export const client = {
 		>({
 			query: LIST_RECEIPTS_QUERY,
 			variables: {
-				bucketGuid: params?.bucket,
+				bucket: params?.bucket,
 				months: params?.months,
 				vendor: params?.vendor,
 			},

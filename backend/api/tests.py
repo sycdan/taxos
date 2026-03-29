@@ -286,7 +286,7 @@ class TestReceipts:
       }}
     """)
 
-    receipts = gql(f'query {{ receipts(bucketGuid: "{b1}") {{ vendor }} }}')["receipts"]
+    receipts = gql(f'query {{ receipts(bucket: "{b1}") {{ vendor }} }}')["receipts"]
     assert len(receipts) == 1
     assert receipts[0]["vendor"] == "Restaurant"
 
@@ -362,85 +362,3 @@ class TestVendors:
     totals = sorted(r["total"] for r in receipts)
     assert totals == [25.0, 40.0]
 
-
-# ---------------------------------------------------------------------------
-# Dashboard
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.integration
-class TestDashboard:
-  def test_bucket_totals_and_unallocated(self, gql):
-    bucket_guid = gql('mutation { createBucket(name: "Travel") { guid } }')[
-      "createBucket"
-    ]["guid"]
-
-    gql(f"""
-      mutation {{
-        createReceipt(input: {{
-          vendor: "Acme"
-          total: 100.0
-          date: "2024-03-15T12:00:00"
-          timezone: "UTC"
-          allocations: [{{ bucketGuid: "{bucket_guid}", amount: 100.0 }}]
-        }}) {{ guid }}
-      }}
-    """)
-    gql("""
-      mutation {
-        createReceipt(input: { vendor: "Misc", total: 50.0, date: "2024-03-20T00:00:00", timezone: "UTC" }) { guid }
-      }
-    """)
-
-    dashboard = gql("""
-      query {
-        dashboard {
-          buckets { name totalAmount receiptCount }
-          unallocated { vendor total }
-        }
-      }
-    """)["dashboard"]
-
-    travel = next(b for b in dashboard["buckets"] if b["name"] == "Travel")
-    assert travel["totalAmount"] == 100.0
-    assert travel["receiptCount"] == 1
-
-    assert len(dashboard["unallocated"]) == 1
-    assert dashboard["unallocated"][0]["vendor"] == "Misc"
-    assert dashboard["unallocated"][0]["total"] == 50.0
-
-  def test_dashboard_month_filter(self, gql):
-    bucket_guid = gql('mutation { createBucket(name: "Office") { guid } }')[
-      "createBucket"
-    ]["guid"]
-
-    gql(f"""
-      mutation {{
-        createReceipt(input: {{
-          vendor: "Jan Vendor"
-          total: 100.0
-          date: "2024-01-15T00:00:00"
-          timezone: "UTC"
-          allocations: [{{ bucketGuid: "{bucket_guid}", amount: 100.0 }}]
-        }}) {{ guid }}
-      }}
-    """)
-    gql(f"""
-      mutation {{
-        createReceipt(input: {{
-          vendor: "Feb Vendor"
-          total: 200.0
-          date: "2024-02-15T00:00:00"
-          timezone: "UTC"
-          allocations: [{{ bucketGuid: "{bucket_guid}", amount: 200.0 }}]
-        }}) {{ guid }}
-      }}
-    """)
-
-    jan_dashboard = gql("""
-      query { dashboard(months: ["2024-01"]) { buckets { totalAmount receiptCount } } }
-    """)["dashboard"]
-
-    office = jan_dashboard["buckets"][0]
-    assert office["totalAmount"] == 100.0
-    assert office["receiptCount"] == 1

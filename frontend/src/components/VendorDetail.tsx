@@ -20,8 +20,14 @@ const VendorDetail: React.FC<VendorDetailProps> = ({
 	endDate,
 	onEditReceipt,
 }) => {
-	const { loadReceiptsForVendor, currentReceiptsList, setActiveBucketId } =
-		useTaxos();
+	const {
+		loadReceiptsForVendor,
+		currentReceiptsList,
+		setActiveBucketId,
+	} = useTaxos();
+
+	// vendor is the vendor name string from the receipt aggregation
+	const vendorName = vendor;
 
 	// Fetch receipts when vendor changes or date range changes
 	useEffect(() => {
@@ -65,7 +71,7 @@ const VendorDetail: React.FC<VendorDetailProps> = ({
 					<ArrowLeft size={20} />
 				</button>
 				<div>
-					<h2 className="text-2xl font-bold">{vendor}</h2>
+					<h2 className="text-2xl font-bold">{vendorName}</h2>
 					<p className="text-muted text-sm">
 						{sortedReceipts.length} receipt
 						{sortedReceipts.length !== 1 ? "s" : ""}

@@ -17,45 +17,13 @@ If a contract is broken (e.g. field removed, field type changed, other breaking 
 - increment the version on the new row (e.g. V1 above V2)
 """
 
-from dataclasses import dataclass
 from uuid import UUID
 
 
-@dataclass(frozen=True)
-class Concept:
-  guid: UUID
-  description: str
-
-
-@dataclass(frozen=True)
-class Contract(Concept):
-  pass
-
-
-@dataclass(frozen=True)
-class Handler(Concept):
-  pass
-
-
-@dataclass(frozen=True)
-class Query(Concept):
-  pass
-
-
-@dataclass(frozen=True)
-class Command(Concept):
-  pass
-
-
-UNALLOCATED_BUCKET = Concept(
-  UUID("0410c8ed-2026-0328-1251-000000000000"),
-  """A special bucket representing unallocated receipts. Common to all tenants.
-```
-""",
-)
+UNSPECIFIED = UUID("00000000-0000-0000-0000-000000000000")
 
 UNALLOCATED_BUCKET_V1_SINGLETON = UUID("0410c8ed-2026-0328-1251-000000000001")
 
-LIST_RECEIPTS_V1_QUERY = UUID("11572ec8-2024-0601-0000-000000000000")
-LIST_RECEIPTS_V1_HANDLER = UUID("11572ec8-2024-0601-0000-000000000001")
-LIST_RECEIPTS_V1_RESULT = UUID("11572ec8-2024-0601-0000-000000000002")
+LIST_RECEIPTS_QUERY = UUID("11572ec8-2024-0601-0000-000000000000")
+LIST_RECEIPTS_HANDLER = UUID("11572ec8-2024-0601-0000-000000000001")
+LIST_RECEIPTS_RESULT = UUID("11572ec8-2024-0601-0000-000000000002")

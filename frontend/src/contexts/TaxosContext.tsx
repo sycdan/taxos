@@ -259,29 +259,22 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				}
 
 				currentDateFilterRef.current = { start: startDate, end: endDate };
+				const months = getMonthsInRange(startDate, endDate);
 
-				const response = await client.getDashboard({
-					months: getMonthsInRange(startDate, endDate),
-				});
+				const [bucketsResponse, allReceiptsResponse, vendorsResponse] =
+					await Promise.all([
+						client.listBuckets(),
+						client.listReceipts({ months }),
+						client.listVendors(),
+					]);
 
-				const apiBuckets: Bucket[] = response.buckets.map((bucket) => ({
+				const apiBuckets: Bucket[] = bucketsResponse.buckets.map((bucket) => ({
 					id: bucket.guid,
 					name: bucket.name,
 				}));
 
-				const apiSummaries: BucketSummary[] = response.buckets.map(
-					(summary) => ({
-						bucket: {
-							id: summary.guid,
-							name: summary.name,
-						},
-						totalAmount: summary.totalAmount,
-						receiptCount: summary.receiptCount,
-					}),
-				);
-
-				const apiUnallocatedReceipts: Receipt[] =
-					response.unallocatedReceipts.map((r: MappedReceipt) => ({
+				const allReceipts: Receipt[] = allReceiptsResponse.receipts.map(
+					(r: MappedReceipt) => ({
 						id: r.guid,
 						vendor: r.vendor,
 						total: r.total,
@@ -294,7 +287,40 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 						ref: r.vendorRef || undefined,
 						notes: r.notes || undefined,
 						hash: r.hash || undefined,
-					}));
+					}),
+				);
+
+				const bucketTotals = new Map<string, { total: number; receipts: Set<string> }>();
+				for (const bucket of apiBuckets) {
+					bucketTotals.set(bucket.id, { total: 0, receipts: new Set<string>() });
+				}
+
+				const apiUnallocatedReceipts: Receipt[] = [];
+
+				for (const receipt of allReceipts) {
+					let allocatedAmount = 0;
+					for (const allocation of receipt.allocations) {
+						allocatedAmount += allocation.amount;
+						const bucketEntry = bucketTotals.get(allocation.bucketId);
+						if (bucketEntry) {
+							bucketEntry.total += allocation.amount;
+							bucketEntry.receipts.add(receipt.id);
+						}
+					}
+
+					if (receipt.total - allocatedAmount > 0) {
+						apiUnallocatedReceipts.push(receipt);
+					}
+				}
+
+				const apiSummaries: BucketSummary[] = apiBuckets.map((bucket) => {
+					const totals = bucketTotals.get(bucket.id);
+					return {
+						bucket,
+						totalAmount: totals?.total ?? 0,
+						receiptCount: totals?.receipts.size ?? 0,
+					};
+				});
 
 				let unallocatedTotal = 0;
 				let unallocatedCount = 0;
@@ -311,12 +337,8 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					}
 				}
 
-				const vendorReceiptsResponse = await client.listReceipts({
-					months: getMonthsInRange(startDate, endDate),
-				});
-
 				const vendorMap = new Map<string, { total: number; count: number }>();
-				for (const r of vendorReceiptsResponse.receipts) {
+				for (const r of allReceipts) {
 					const key = r.vendor;
 					if (!vendorMap.has(key)) {
 						vendorMap.set(key, { total: 0, count: 0 });
@@ -346,7 +368,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				setBucketSummaries(apiSummaries);
 				setVendorSummaries(apiVendorSummaries);
 				setUnallocatedReceipts(apiUnallocatedReceipts);
-				setVendorNames(response.vendorNames || []);
+				setVendorNames(vendorsResponse.vendors.map((v) => v.name));
 				setUnallocatedSummary({
 					totalAmount: unallocatedTotal,
 					receiptCount: unallocatedCount,
@@ -366,13 +388,13 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 
 				setReceipts((prev) => {
 					const updated = { ...prev };
-					for (const r of apiUnallocatedReceipts) {
+					for (const r of allReceipts) {
 						updated[r.id] = r;
 					}
 					return updated;
 				});
 			} catch (error) {
-				console.error("Failed to load dashboard:", error);
+				console.error("Failed to refresh receipts and summaries:", error);
 			} finally {
 				isRefreshingRef.current = false;
 				setLoading(false);
@@ -595,7 +617,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 	};
 
 	const getUnallocatedReceipts = useCallback(async (): Promise<Receipt[]> => {
-		// Dashboard handles the refresh which populates unallocatedReceipts
+		// refreshBuckets populates unallocatedReceipts for the active date range
 		return unallocatedReceipts;
 	}, [unallocatedReceipts]);
 

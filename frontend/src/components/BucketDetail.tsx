@@ -49,7 +49,7 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
 	const [editName, setEditName] = React.useState("");
 
 	const getUnallocatedReceipts = useCallback(async (): Promise<Receipt[]> => {
-		// Dashboard handles the refresh which populates unallocatedReceipts
+		// TaxosContext refreshes and populates unallocatedReceipts
 		return unallocatedReceipts;
 	}, [unallocatedReceipts]);
 
