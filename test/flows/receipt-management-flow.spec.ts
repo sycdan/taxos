@@ -1,46 +1,12 @@
 import { test, expect } from "../fixtures";
-import type { Page } from "@playwright/test";
-
-async function createBucket(page: Page, name: string) {
-	await page.getByRole("button", { name: "Add Bucket" }).click();
-	await page.getByPlaceholder("e.g. Travel, Office Supplies").fill(name);
-	await page.getByRole("button", { name: "Create Bucket" }).click();
-	// Wait for the form to close AND for the bucket to appear in the sidebar
-	// click-through button (Show Empty) so we know state has settled.
-	await expect(
-		page.getByPlaceholder("e.g. Travel, Office Supplies"),
-	).not.toBeVisible();
-}
-
-async function addReceipt(
-	page: Page,
-	options: { vendor: string; total: string; buckets?: string[] },
-) {
-	await page.getByRole("button", { name: "Add Receipt" }).click();
-	const modal = page.locator(".modal-overlay");
-	await expect(modal).toBeVisible();
-	await modal.getByPlaceholder("e.g. Amazon").fill(options.vendor);
-	await modal
-		.locator('input[type="number"][placeholder="0.00"]')
-		.fill(options.total);
-	for (const bucketName of options.buckets ?? []) {
-		// Wait for the chip to appear (it depends on the bucketSummaries context
-		// state settling after the async bucket creation).
-		const chip = modal.locator(".chip", { hasText: bucketName });
-		await expect(chip).toBeVisible({ timeout: 15_000 });
-		await chip.click();
-	}
-	await modal.getByRole("button", { name: "Save Receipt" }).click();
-	await expect(modal).not.toBeVisible();
-}
+import { addReceipt, createBucket, openApp } from "./helpers";
 
 test.describe("Receipt Management Flow", () => {
 	test("view, edit, and delete a receipt from bucket detail", async ({
 		page,
 		tenant: _tenant,
 	}) => {
-		await page.goto("/");
-		await expect(page.getByText("TAXOS")).toBeVisible();
+		await openApp(page);
 
 		// Create a bucket and add an allocated receipt
 		await createBucket(page, "Travel");
@@ -95,8 +61,7 @@ test.describe("Receipt Management Flow", () => {
 		page,
 		tenant: _tenant,
 	}) => {
-		await page.goto("/");
-		await expect(page.getByText("TAXOS")).toBeVisible();
+		await openApp(page);
 
 		// Create a bucket, then add a receipt with no allocation
 		await createBucket(page, "Entertainment");
@@ -135,24 +100,17 @@ test.describe("Receipt Management Flow", () => {
 		page,
 		tenant: _tenant,
 	}) => {
-		await page.goto("/");
-		await expect(page.getByText("TAXOS")).toBeVisible();
+		await openApp(page);
 
 		await createBucket(page, "Food");
 		await createBucket(page, "Work");
 
 		// Create receipt and add both buckets — auto-split distributes evenly
-		await page.getByRole("button", { name: "Add Receipt" }).click();
-		const modal = page.locator(".modal-overlay");
-		await expect(modal).toBeVisible();
-		await modal.getByPlaceholder("e.g. Amazon").fill("Costco");
-		await modal
-			.locator('input[type="number"][placeholder="0.00"]')
-			.fill("100.00");
-		await modal.locator(".chip", { hasText: "Food" }).click();
-		await modal.locator(".chip", { hasText: "Work" }).click();
-		await modal.getByRole("button", { name: "Save Receipt" }).click();
-		await expect(modal).not.toBeVisible();
+		await addReceipt(page, {
+			vendor: "Costco",
+			total: "100.00",
+			buckets: ["Food", "Work"],
+		});
 
 		// Both buckets should each show $50.00
 		await expect(
@@ -167,8 +125,7 @@ test.describe("Receipt Management Flow", () => {
 		page,
 		tenant: _tenant,
 	}) => {
-		await page.goto("/");
-		await expect(page.getByText("TAXOS")).toBeVisible();
+		await openApp(page);
 
 		await createBucket(page, "OldBucket");
 

@@ -1,23 +1,15 @@
 import { test, expect } from "../fixtures";
+import { addReceipt, openApp, switchToYear } from "./helpers";
 
 test.describe("Vendor Management Flow", () => {
 	test("open vendor card and view vendor detail", async ({
 		page,
 		tenant: _tenant,
 	}) => {
-		await page.goto("/");
-		await expect(page.getByText("TAXOS")).toBeVisible();
+		await openApp(page);
 
 		// Create a receipt to register a vendor
-		await page.getByRole("button", { name: "Add Receipt" }).click();
-		const modal = page.locator(".modal-overlay");
-		await expect(modal).toBeVisible();
-		await modal.getByPlaceholder("e.g. Amazon").fill("Acme Corp");
-		await modal
-			.locator('input[type="number"][placeholder="0.00"]')
-			.fill("25.00");
-		await modal.getByRole("button", { name: "Save Receipt" }).click();
-		await expect(modal).not.toBeVisible();
+		await addReceipt(page, { vendor: "Acme Corp", total: "25.00" });
 		// Wait for the receipt to be saved and dashboard to reflect it before
 		// navigating away; ensures the vendor exists on the server.
 		await expect(
@@ -48,19 +40,10 @@ test.describe("Vendor Management Flow", () => {
 		page,
 		tenant: _tenant,
 	}) => {
-		await page.goto("/");
-		await expect(page.getByText("TAXOS")).toBeVisible();
+		await openApp(page);
 
 		// Create a receipt to register a vendor
-		await page.getByRole("button", { name: "Add Receipt" }).click();
-		const modal = page.locator(".modal-overlay");
-		await expect(modal).toBeVisible();
-		await modal.getByPlaceholder("e.g. Amazon").fill("ValidVendor");
-		await modal
-			.locator('input[type="number"][placeholder="0.00"]')
-			.fill("10.00");
-		await modal.getByRole("button", { name: "Save Receipt" }).click();
-		await expect(modal).not.toBeVisible();
+		await addReceipt(page, { vendor: "ValidVendor", total: "10.00" });
 		// Wait for dashboard to confirm receipt saved
 		await expect(
 			page.locator(".card", { has: page.getByText("Unallocated") }),
@@ -86,5 +69,41 @@ test.describe("Vendor Management Flow", () => {
 		await expect(
 			page.locator(".card").filter({ hasText: "ValidVendor" }),
 		).toBeVisible();
+	});
+
+	test("empty vendor stays hidden in an empty year until show empty is enabled", async ({
+		page,
+		tenant: _tenant,
+	}) => {
+		const nextYear = String(new Date().getFullYear() + 1);
+
+		await openApp(page);
+		await addReceipt(page, { vendor: "Year Switch Vendor", total: "18.25" });
+
+		await expect(
+			page.locator(".card", { has: page.getByText("Unallocated") }),
+		).toContainText("$18.25");
+
+		await page.getByRole("button", { name: "Vendors" }).click();
+		await expect(
+			page.getByRole("heading", { level: 2, name: "Vendors" }),
+		).toBeVisible();
+
+		await expect(
+			page.locator(".card").filter({ hasText: "Year Switch Vendor" }),
+		).toBeVisible();
+
+		await switchToYear(page, nextYear);
+
+		const vendorCard = page
+			.locator(".card")
+			.filter({ has: page.getByText("Year Switch Vendor") });
+		await expect(vendorCard).not.toBeVisible();
+
+		await page.getByRole("button", { name: "Show Empty" }).click();
+
+		await expect(vendorCard).toBeVisible();
+		await expect(vendorCard).toContainText("$0.00");
+		await expect(vendorCard).toContainText("(0)");
 	});
 });

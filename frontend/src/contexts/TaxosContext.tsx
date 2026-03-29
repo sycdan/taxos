@@ -272,6 +272,10 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					id: bucket.guid,
 					name: bucket.name,
 				}));
+				const apiVendors: Vendor[] = vendorsResponse.vendors.map((vendor) => ({
+					id: vendor.guid,
+					name: vendor.name,
+				}));
 
 				const allReceipts: Receipt[] = allReceiptsResponse.receipts.map(
 					(r: MappedReceipt) => ({
@@ -290,9 +294,15 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					}),
 				);
 
-				const bucketTotals = new Map<string, { total: number; receipts: Set<string> }>();
+				const bucketTotals = new Map<
+					string,
+					{ total: number; receipts: Set<string> }
+				>();
 				for (const bucket of apiBuckets) {
-					bucketTotals.set(bucket.id, { total: 0, receipts: new Set<string>() });
+					bucketTotals.set(bucket.id, {
+						total: 0,
+						receipts: new Set<string>(),
+					});
 				}
 
 				const apiUnallocatedReceipts: Receipt[] = [];
@@ -337,28 +347,40 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					}
 				}
 
-				const vendorMap = new Map<string, { total: number; count: number }>();
-				for (const r of allReceipts) {
-					const key = r.vendor;
-					if (!vendorMap.has(key)) {
-						vendorMap.set(key, { total: 0, count: 0 });
-					}
-					const current = vendorMap.get(key);
-					if (current) {
-						current.total += r.total;
-						current.count += 1;
-					}
+				const vendorIdsByName = new Map(
+					apiVendors.map((vendor) => [vendor.name, vendor.id]),
+				);
+				const vendorSummaryMap = new Map<
+					string,
+					import("../types").VendorSummary
+				>();
+
+				for (const vendor of apiVendors) {
+					vendorSummaryMap.set(vendor.id, {
+						vendor,
+						totalAmount: 0,
+						receiptCount: 0,
+					});
 				}
 
-				const apiVendorSummaries: import("../types").VendorSummary[] =
-					Array.from(vendorMap.entries()).map(([vendorName, data]) => ({
+				for (const receipt of allReceipts) {
+					const vendorId =
+						vendorIdsByName.get(receipt.vendor) ?? receipt.vendor;
+					const existing = vendorSummaryMap.get(vendorId) ?? {
 						vendor: {
-							id: vendorName,
-							name: vendorName,
+							id: vendorId,
+							name: receipt.vendor,
 						},
-						totalAmount: data.total,
-						receiptCount: data.count,
-					}));
+						totalAmount: 0,
+						receiptCount: 0,
+					};
+
+					existing.totalAmount += receipt.total;
+					existing.receiptCount += 1;
+					vendorSummaryMap.set(vendorId, existing);
+				}
+
+				const apiVendorSummaries = Array.from(vendorSummaryMap.values());
 
 				if (mySeq !== refreshSeqRef.current) {
 					return;
@@ -368,7 +390,8 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				setBucketSummaries(apiSummaries);
 				setVendorSummaries(apiVendorSummaries);
 				setUnallocatedReceipts(apiUnallocatedReceipts);
-				setVendorNames(vendorsResponse.vendors.map((v) => v.name));
+				setVendorNames(apiVendors.map((vendor) => vendor.name));
+				setVendors(apiVendors);
 				setUnallocatedSummary({
 					totalAmount: unallocatedTotal,
 					receiptCount: unallocatedCount,

@@ -1,4 +1,5 @@
 import { test, expect } from "../fixtures";
+import { addReceipt, createBucket, openApp, switchToMonth } from "./helpers";
 
 test.describe("Backdated Receipt Flow", () => {
 	test("backdated receipt appears in the correct month on the dashboard", async ({
@@ -18,15 +19,10 @@ test.describe("Backdated Receipt Flow", () => {
 		const receiptTotal = "75.50";
 
 		// ── 1. Load the app ──────────────────────────────────────────────────────
-		await page.goto("/");
-		await expect(page.getByText("TAXOS")).toBeVisible();
+		await openApp(page);
 
 		// ── 2. Create a bucket via the dashboard UI ──────────────────────────────
-		await page.getByRole("button", { name: "Add Bucket" }).click();
-		await page
-			.getByPlaceholder("e.g. Travel, Office Supplies")
-			.fill(bucketName);
-		await page.getByRole("button", { name: "Create Bucket" }).click();
+		await createBucket(page, bucketName);
 
 		// ── 3. Verify the filter is in month mode at the current month ──────────
 		const monthInput = page.locator('input[type="month"]');
@@ -45,31 +41,12 @@ test.describe("Backdated Receipt Flow", () => {
 		await expect(bucketCard).not.toBeVisible();
 
 		// ── 5. Add a backdated receipt allocated to the bucket ───────────────────
-		await page.getByRole("button", { name: "Add Receipt" }).click();
-
-		const modal = page.locator(".modal-overlay");
-		await expect(modal).toBeVisible();
-
-		// Fill in vendor name
-		await modal.getByPlaceholder("e.g. Amazon").fill("Backdated Vendor");
-
-		// Fill in amount
-		await modal
-			.locator('input[type="number"][placeholder="0.00"]')
-			.fill(receiptTotal);
-
-		// Fill in the backdated timestamp
-		await modal.locator('input[type="datetime-local"]').fill(backdatedDatetime);
-
-		// Allocate to the bucket via the chip — wait for it to appear first since
-		// bucketSummaries state may still be settling after bucket creation.
-		const bucketChip = modal.getByRole("button", { name: bucketNameRegex });
-		await expect(bucketChip).toBeVisible({ timeout: 15_000 });
-		await bucketChip.click();
-
-		// Save the receipt and close the modal
-		await modal.getByRole("button", { name: "Save Receipt" }).click();
-		await expect(modal).not.toBeVisible();
+		await addReceipt(page, {
+			vendor: "Backdated Vendor",
+			total: receiptTotal,
+			dateTime: backdatedDatetime,
+			buckets: [bucketName],
+		});
 
 		// ── 6. Ensure app auto-switches to the backdated month ───────────────────
 		// After saving a new receipt the app updates the filter to match the
@@ -83,8 +60,7 @@ test.describe("Backdated Receipt Flow", () => {
 		await expect(backdatedCard.getByText(`$${receiptTotal}`)).toBeVisible();
 
 		// ── 7. Switch back to current month — bucket is hidden again (empty) ─────
-		await monthInput.fill(currentMonth);
-		await monthInput.dispatchEvent("change");
+		await switchToMonth(page, currentMonth);
 
 		// Empty bucket should not appear since we did not click "Show Empty"
 		await expect(
