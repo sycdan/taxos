@@ -361,4 +361,3 @@ class TestVendors:
     ]["receipts"]
     totals = sorted(r["total"] for r in receipts)
     assert totals == [25.0, 40.0]
-

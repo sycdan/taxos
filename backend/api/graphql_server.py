@@ -171,14 +171,20 @@ def resolve_receipts(*_, vendor=None, bucket=None, months=None):
   if vendor:
     # Support both GUID and name for backward compatibility during migration
     # GUID is a 32-char hex string
-    is_guid = isinstance(vendor, str) and len(vendor) == 32 and all(c in '0123456789abcdefABCDEF' for c in vendor)
-    
+    is_guid = (
+      isinstance(vendor, str)
+      and len(vendor) == 32
+      and all(c in "0123456789abcdefABCDEF" for c in vendor)
+    )
+
     if is_guid:
       conditions.append(
         "EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {guid: $vendor}) }"
       )
     else:
-      conditions.append("EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {name: $vendor}) }")
+      conditions.append(
+        "EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {name: $vendor}) }"
+      )
     params["vendor"] = vendor
   if bucket:
     conditions.append(

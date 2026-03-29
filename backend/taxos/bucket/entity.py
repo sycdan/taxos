@@ -35,7 +35,7 @@ class BucketRef:
   def __post_init__(self):
     if not isinstance(self.guid, UUID):
       self.guid = UUID(self.guid)
-    
+
     if self.guid == concepts.UNSPECIFIED:
       if not (key := str(self.key).strip()):
         raise ValueError("BucketRef key cannot be empty or whitespace.")
