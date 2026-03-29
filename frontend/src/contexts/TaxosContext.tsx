@@ -21,6 +21,8 @@ const slugify = (text: string) => {
 		.replace(/^-+|-+$/g, "");
 };
 
+const isGuid = (value: string) => /^[0-9a-f]{32}$/i.test(value);
+
 interface TaxosContextType {
 	buckets: Bucket[];
 	bucketSummaries: BucketSummary[];
@@ -183,6 +185,17 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 			endDate: Date,
 		): Promise<Receipt[]> => {
 			try {
+				if (!isGuid(vendor)) {
+					console.warn(
+						"Skipping vendor receipt query with non-GUID vendor id",
+						{
+							vendor,
+						},
+					);
+					setCurrentReceiptsList([]);
+					return [];
+				}
+
 				const response = await client.listReceipts({
 					vendor: vendor,
 					months: getMonthsInRange(startDate, endDate),

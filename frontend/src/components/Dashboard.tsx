@@ -37,6 +37,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 	onAddBucket,
 	isNameTaken,
 }) => {
+	const isGuid = (value: string) => /^[0-9a-f]{32}$/i.test(value);
 	const {
 		bucketSummaries,
 		vendorSummaries,
@@ -151,6 +152,14 @@ const Dashboard: React.FC<DashboardProps> = ({
 		return vendorTotals.filter((v) => v.total > 0);
 	}, [vendorTotals, showEmpty]);
 
+	const handleVendorSelect = (vendorId: string) => {
+		if (!isGuid(vendorId)) {
+			console.warn("Skipping vendor selection with non-GUID id", { vendorId });
+			return;
+		}
+		onSelectVendor(vendorId);
+	};
+
 	const totalFunds = useMemo(() => {
 		if (viewMode === "vendors") {
 			return vendorTotals.reduce((sum, v) => sum + v.total, 0);
@@ -263,7 +272,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 									animate={{ opacity: 1, scale: 1 }}
 									transition={{ delay: index * 0.05 }}
 									className="card cursor-pointer group"
-								onClick={() => onSelectVendor(vendor.id)}
+									onClick={() => handleVendorSelect(vendor.id)}
 								>
 									<div className="flex justify-between items-start mb-4">
 										<div className="p-2 bg-primary/10 rounded-lg text-primary">

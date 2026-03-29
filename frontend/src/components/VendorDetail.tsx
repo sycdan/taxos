@@ -31,7 +31,12 @@ const VendorDetail: React.FC<VendorDetailProps> = ({
 	const [isEditing, setIsEditing] = useState(false);
 	const [editName, setEditName] = useState("");
 
-	const vendorName = vendors.find((v) => v.id === vendorId)?.name ?? vendorId;
+	const isGuid = (value: string) => /^[0-9a-f]{32}$/i.test(value);
+	const resolvedVendor =
+		vendors.find((v) => v.id === vendorId) ??
+		vendors.find((v) => v.name === vendorId);
+	const resolvedVendorId = resolvedVendor?.id ?? vendorId;
+	const vendorName = resolvedVendor?.name ?? vendorId;
 
 	const handleStartEdit = () => {
 		setEditName(vendorName);
@@ -43,7 +48,14 @@ const VendorDetail: React.FC<VendorDetailProps> = ({
 			setIsEditing(false);
 			return;
 		}
-		const result = await updateVendor(vendorId, editName.trim());
+		if (!isGuid(resolvedVendorId)) {
+			console.error("Cannot rename vendor: unresolved vendor GUID", {
+				vendorId,
+				resolvedVendorId,
+			});
+			return;
+		}
+		const result = await updateVendor(resolvedVendorId, editName.trim());
 		if (result) setIsEditing(false);
 	};
 
@@ -52,13 +64,19 @@ const VendorDetail: React.FC<VendorDetailProps> = ({
 		setActiveBucketId(null);
 		const fetchReceipts = async () => {
 			try {
-				await loadReceiptsForVendor(vendorId, startDate, endDate);
+				await loadReceiptsForVendor(resolvedVendorId, startDate, endDate);
 			} catch (error) {
 				console.error("Failed to fetch receipts:", error);
 			}
 		};
 		void fetchReceipts();
-	}, [vendorId, startDate, endDate, setActiveBucketId, loadReceiptsForVendor]);
+	}, [
+		resolvedVendorId,
+		startDate,
+		endDate,
+		setActiveBucketId,
+		loadReceiptsForVendor,
+	]);
 
 	const sortedReceipts = useMemo(() => {
 		return [...currentReceiptsList].sort((a, b) => {
@@ -101,7 +119,11 @@ const VendorDetail: React.FC<VendorDetailProps> = ({
 									if (e.key === "Escape") setIsEditing(false);
 								}}
 							/>
-							<button className="icon-btn active" onClick={() => void handleSaveEdit()} disabled={!editName.trim()}>
+							<button
+								className="icon-btn active"
+								onClick={() => void handleSaveEdit()}
+								disabled={!editName.trim()}
+							>
 								<Check size={20} />
 							</button>
 							<button className="icon-btn" onClick={() => setIsEditing(false)}>
