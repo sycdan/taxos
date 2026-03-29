@@ -2,7 +2,7 @@ import logging
 
 from taxos import db
 from taxos.allocation.entity import Allocation
-from taxos.bucket.entity import Bucket, BucketRef
+from taxos.bucket.entity import BucketRef
 from taxos.context.tools import require_bucket, require_tenant
 from taxos.concepts import UNALLOCATED_BUCKET_V1_SINGLETON
 from taxos.receipt.entity import Receipt
