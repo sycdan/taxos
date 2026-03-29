@@ -1,12 +1,12 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Edit2 } from "lucide-react";
+import { ArrowLeft, Edit2, Check, X } from "lucide-react";
 import type { Receipt } from "../types";
 import { format } from "date-fns";
 import { useTaxos } from "../contexts/TaxosContext";
 
 interface VendorDetailProps {
-	vendor: string;
+	vendorId: string;
 	onBack: () => void;
 	startDate: Date;
 	endDate: Date;
@@ -14,33 +14,51 @@ interface VendorDetailProps {
 }
 
 const VendorDetail: React.FC<VendorDetailProps> = ({
-	vendor,
+	vendorId,
 	onBack,
 	startDate,
 	endDate,
 	onEditReceipt,
 }) => {
 	const {
+		vendors,
 		loadReceiptsForVendor,
 		currentReceiptsList,
 		setActiveBucketId,
+		updateVendor,
 	} = useTaxos();
 
-	// vendor is the vendor name string from the receipt aggregation
-	const vendorName = vendor;
+	const [isEditing, setIsEditing] = useState(false);
+	const [editName, setEditName] = useState("");
+
+	const vendorName = vendors.find((v) => v.id === vendorId)?.name ?? vendorId;
+
+	const handleStartEdit = () => {
+		setEditName(vendorName);
+		setIsEditing(true);
+	};
+
+	const handleSaveEdit = async () => {
+		if (!editName.trim() || editName.trim() === vendorName) {
+			setIsEditing(false);
+			return;
+		}
+		const result = await updateVendor(vendorId, editName.trim());
+		if (result) setIsEditing(false);
+	};
 
 	// Fetch receipts when vendor changes or date range changes
 	useEffect(() => {
 		setActiveBucketId(null);
 		const fetchReceipts = async () => {
 			try {
-				await loadReceiptsForVendor(vendor, startDate, endDate);
+				await loadReceiptsForVendor(vendorId, startDate, endDate);
 			} catch (error) {
 				console.error("Failed to fetch receipts:", error);
 			}
 		};
 		void fetchReceipts();
-	}, [vendor, startDate, endDate, setActiveBucketId, loadReceiptsForVendor]);
+	}, [vendorId, startDate, endDate, setActiveBucketId, loadReceiptsForVendor]);
 
 	const sortedReceipts = useMemo(() => {
 		return [...currentReceiptsList].sort((a, b) => {
@@ -70,8 +88,38 @@ const VendorDetail: React.FC<VendorDetailProps> = ({
 				<button className="btn btn-ghost p-1" onClick={onBack}>
 					<ArrowLeft size={20} />
 				</button>
-				<div>
-					<h2 className="text-2xl font-bold">{vendorName}</h2>
+				<div className="flex-1">
+					{isEditing ? (
+						<div className="flex items-center gap-2">
+							<input
+								autoFocus
+								className="text-2xl font-bold bg-transparent border-b-2 border-primary focus:outline-none"
+								value={editName}
+								onChange={(e) => setEditName(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") void handleSaveEdit();
+									if (e.key === "Escape") setIsEditing(false);
+								}}
+							/>
+							<button className="icon-btn active" onClick={() => void handleSaveEdit()} disabled={!editName.trim()}>
+								<Check size={20} />
+							</button>
+							<button className="icon-btn" onClick={() => setIsEditing(false)}>
+								<X size={20} />
+							</button>
+						</div>
+					) : (
+						<div className="flex items-center gap-4 group/header">
+							<h2 className="text-2xl font-bold">{vendorName}</h2>
+							<button
+								className="icon-btn opacity-0 group-hover/header:opacity-100 transition-opacity"
+								onClick={handleStartEdit}
+								title="Rename Vendor"
+							>
+								<Edit2 size={18} />
+							</button>
+						</div>
+					)}
 					<p className="text-muted text-sm">
 						{sortedReceipts.length} receipt
 						{sortedReceipts.length !== 1 ? "s" : ""}

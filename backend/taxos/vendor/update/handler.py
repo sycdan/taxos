@@ -15,6 +15,9 @@ def handle(command: UpdateVendor) -> Vendor:
     """
     MATCH (v:Vendor {guid: $guid})
     SET v.name = $name, v.name_lower = toLower($name)
+    WITH v
+    OPTIONAL MATCH (v)<-[:FROM_VENDOR]-(r:Receipt)
+    SET r.vendor = $name
     RETURN v.name AS name
     """,
     {"guid": command.ref.guid.hex, "name": command.name},

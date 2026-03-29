@@ -106,4 +106,45 @@ test.describe("Vendor Management Flow", () => {
 		await expect(vendorCard).toContainText("$0.00");
 		await expect(vendorCard).toContainText("(0)");
 	});
+
+	test("rename a vendor from the vendor detail page", async ({
+		page,
+		tenant: _tenant,
+	}) => {
+		await openApp(page);
+		await addReceipt(page, { vendor: "Old Vendor", total: "33.40" });
+
+		await expect(
+			page.locator(".card", { has: page.getByText("Unallocated") }),
+		).toContainText("$33.40");
+
+		await page.getByRole("button", { name: "Vendors" }).click();
+		await expect(
+			page.getByRole("heading", { level: 2, name: "Vendors" }),
+		).toBeVisible();
+
+		await page.locator(".card").filter({ hasText: "Old Vendor" }).click();
+		await expect(
+			page.getByRole("heading", { level: 2, name: "Old Vendor" }),
+		).toBeVisible();
+
+		await page.getByRole("heading", { level: 2, name: "Old Vendor" }).hover();
+		await page.getByTitle("Rename Vendor").click();
+
+		const renameInput = page.getByRole("textbox");
+		await expect(renameInput).toBeVisible();
+		await renameInput.fill("Renamed Vendor");
+		await page.keyboard.press("Enter");
+
+		await expect(
+			page.getByRole("heading", { level: 2, name: "Renamed Vendor" }),
+		).toBeVisible();
+
+		// Navigate back using the in-detail back arrow (inside the main content)
+		await page.locator("main").getByRole("button").first().click();
+
+		await expect(
+			page.locator(".card").filter({ has: page.getByText("Renamed Vendor") }),
+		).toBeVisible();
+	});
 });

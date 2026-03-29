@@ -663,13 +663,18 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				const response = await client.updateVendor({ guid: id, name });
 				const updated: Vendor = { id: response.guid, name: response.name };
 				setVendors((prev) => prev.map((v) => (v.id === id ? updated : v)));
+				await refreshBuckets(
+					currentDateFilterRef.current.start,
+					currentDateFilterRef.current.end,
+					true,
+				);
 				return updated;
 			} catch (error) {
 				console.error("Failed to update vendor:", error);
 				return null;
 			}
 		},
-		[],
+		[refreshBuckets],
 	);
 
 	return (

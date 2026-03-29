@@ -263,7 +263,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 									animate={{ opacity: 1, scale: 1 }}
 									transition={{ delay: index * 0.05 }}
 									className="card cursor-pointer group"
-									onClick={() => onSelectVendor(vendor.name)}
+								onClick={() => onSelectVendor(vendor.id)}
 								>
 									<div className="flex justify-between items-start mb-4">
 										<div className="p-2 bg-primary/10 rounded-lg text-primary">

@@ -321,7 +321,7 @@ const App: React.FC = () => {
 				<main className="py-8">
 					{selectedVendor ? (
 						<VendorDetail
-							vendor={selectedVendor}
+							vendorId={selectedVendor}
 							onBack={() => setSelectedVendor(null)}
 							startDate={dateRange.start}
 							endDate={dateRange.end}
