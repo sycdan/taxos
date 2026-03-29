@@ -21,15 +21,15 @@ if ! ruff check "$REPO_ROOT/backend" "$REPO_ROOT/dev"; then
   exit 1
 fi
 
-echo "==> Running backend tests..."
-if ! (cd "$REPO_ROOT" && scaf call dev/test); then
-  echo "❌ Backend tests failed." >&2
-  exit 1
-fi
-
 echo "==> Checking frontend lint (eslint)..."
 if ! (cd "$REPO_ROOT/frontend" && npm run lint); then
   echo "❌ Frontend lint issues found. Run: cd frontend && npm run lint" >&2
+  exit 1
+fi
+
+echo "==> Running backend tests..."
+if ! (cd "$REPO_ROOT" && scaf call dev/test); then
+  echo "❌ Backend tests failed." >&2
   exit 1
 fi
 
