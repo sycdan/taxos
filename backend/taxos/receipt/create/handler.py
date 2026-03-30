@@ -6,7 +6,7 @@ from taxos.receipt.create.command import CreateReceipt
 from taxos.receipt.entity import Receipt
 from taxos.receipt.save.command import SaveReceipt
 from taxos.tools.guid import parse_guid
-from taxos.vendor.entity import Vendor, VendorRef
+from taxos.vendor.entity import VendorRef
 from taxos.vendor.find_or_create.command import FindOrCreateVendor
 from taxos.vendor.load.query import LoadVendor
 
