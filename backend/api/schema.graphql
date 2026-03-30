@@ -4,9 +4,9 @@ type Query {
 	buckets: [Bucket!]!
 	bucket(guid: ID!): Bucket
 	receipts(
-		vendor: ID
-		bucket: ID
 		months: [String!]
+		bucket: ID
+		vendor: ID
 	): [Receipt!]!
 	receipt(guid: ID!): Receipt
 }
@@ -19,8 +19,8 @@ type Mutation {
 	createReceipt(input: ReceiptInput!): Receipt!
 	updateReceipt(guid: ID!, input: ReceiptInput!): Receipt!
 	deleteReceipt(guid: ID!): Boolean!
+	
 	upsertVendor(name: String!): Vendor!
-
 	updateVendor(guid: ID!, name: String!): Vendor!
 
 	uploadReceiptFile(hash: String!, filename: String!, data: String!): FileInfo!
