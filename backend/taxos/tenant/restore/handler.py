@@ -41,8 +41,7 @@ def _load_from_export_file(path: Path) -> tuple[Optional[UUID], dict]:
         "date": receipt["date"],
         "timezone": receipt.get("timezone", "UTC"),
         "allocations": receipt.get("allocations", []),
-        "reference": receipt.get("reference", receipt.get("vendor_ref", ""))
-        or "",
+        "reference": receipt.get("reference", receipt.get("vendor_ref", "")) or "",
         "notes": receipt.get("notes", "") or "",
         "hash": receipt.get("hash", "") or "",
       }
