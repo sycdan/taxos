@@ -299,23 +299,31 @@ class TestBackupRestore:
     from taxos import db
     from taxos.tenant.restore.command import RestoreTenant
 
-    tenant_guid = "33333333333333333333333333333333"
+    tenant_guid = "33333333-3333-3333-3333-333333333333"
     bucket_guid = "11111111-1111-1111-1111-111111111111"
     receipt_guid = "22222222-2222-2222-2222-222222222222"
     vendor_guid = "44444444-4444-4444-4444-444444444444"
 
-    flat_dir = tmp_path / tenant_guid
-    (flat_dir / "buckets" / bucket_guid.replace("-", "")).mkdir(parents=True)
-    (flat_dir / "vendors" / vendor_guid.replace("-", "")).mkdir(parents=True)
-    (flat_dir / "receipts" / receipt_guid.replace("-", "")).mkdir(parents=True)
+    flat_dir = tmp_path / tenant_guid.replace("-", "")
+    buckets_dir = flat_dir / "buckets"
+    vendors_dir = flat_dir / "vendors"
+    receipts_dir = flat_dir / "receipts"
 
-    (flat_dir / "buckets" / bucket_guid.replace("-", "") / "state.json").write_text(
+    bucket_dir = buckets_dir / bucket_guid.replace("-", "")
+    bucket_dir.mkdir(parents=True)
+    (bucket_dir / "state.json").write_text(
       json.dumps({"guid": bucket_guid, "name": "Food"})
     )
-    (flat_dir / "vendors" / vendor_guid.replace("-", "") / "state.json").write_text(
+
+    vendor_dir = vendors_dir / vendor_guid.replace("-", "")
+    vendor_dir.mkdir(parents=True)
+    (vendor_dir / "state.json").write_text(
       json.dumps({"guid": vendor_guid, "name": "Grocery Store"})
     )
-    (flat_dir / "receipts" / receipt_guid.replace("-", "") / "state.json").write_text(
+    
+    receipt_dir = receipts_dir / receipt_guid.replace("-", "")
+    receipt_dir.mkdir(parents=True)
+    (receipt_dir / "state.json").write_text(
       json.dumps(
         {
           "guid": receipt_guid,
@@ -332,9 +340,11 @@ class TestBackupRestore:
     )
 
     with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
-      token = RestoreTenant(source=str(flat_dir), name="Flat Test", nuke=True).execute()
+      token = RestoreTenant(source=flat_dir, name="Flat Test", nuke=True).execute()
 
     tenant = token.tenant
+    assert isinstance(tenant, Tenant), "Expected tenant in access token"
+
     try:
       rows = db.query(
         """

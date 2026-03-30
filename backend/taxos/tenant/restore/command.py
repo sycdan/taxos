@@ -22,7 +22,7 @@ class RestoreTenant:
     if not isinstance(self.source, Path):
       self.source = Path(self.source)
 
-  def execute(self) -> dict:
+  def execute(self):
     from taxos.tenant.restore.handler import handle
 
     return handle(self)
