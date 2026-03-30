@@ -267,7 +267,7 @@ class TestBackupRestore:
     _delete_tenant_for_backup(tmp_path, src)
 
     with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
-      token = RestoreTenant(source=str(backup_file), name="Restored Tenant").execute()
+      token = RestoreTenant(source=backup_file, name="Restored Tenant").execute()
 
     tenant = token.tenant
     try:
@@ -320,7 +320,7 @@ class TestBackupRestore:
     (vendor_dir / "state.json").write_text(
       json.dumps({"guid": vendor_guid, "name": "Grocery Store"})
     )
-    
+
     receipt_dir = receipts_dir / receipt_guid.replace("-", "")
     receipt_dir.mkdir(parents=True)
     (receipt_dir / "state.json").write_text(
