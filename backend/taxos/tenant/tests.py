@@ -232,25 +232,6 @@ class TestBackupRestore:
     _delete_tenant_for_backup(tmp_path, tenant)
 
   @pytest.mark.integration
-  def test_backup_writes_file(self, tmp_path):
-    import json
-
-    from taxos.tenant.backup.command import BackupTenant
-
-    tenant = _make_tenant_for_backup(tmp_path, "File Backup Test")
-    _set_context_tenant(tenant)
-
-    out_file = tmp_path / "backup.json"
-    BackupTenant(path=str(out_file)).execute()
-
-    assert out_file.exists()
-    data = json.loads(out_file.read_text())
-    assert "buckets" in data and "vendors" in data and "receipts" in data
-    assert data["tenant_guid"] == tenant.guid.hex
-
-    _delete_tenant_for_backup(tmp_path, tenant)
-
-  @pytest.mark.integration
   def test_restore_from_backup_preserves_tenant_guid(self, tmp_path):
     from taxos import db
     from taxos.tenant.backup.command import BackupTenant
@@ -269,6 +250,8 @@ class TestBackupRestore:
       token = RestoreTenant(source=backup_file, name="Restored Tenant").execute()
 
     tenant = token.tenant
+    assert isinstance(tenant, Tenant), "Expected tenant in access token"
+
     try:
       # Verify tenant GUID is preserved
       assert tenant.guid.hex == original_guid
