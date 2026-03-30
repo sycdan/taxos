@@ -1,6 +1,7 @@
 from taxos import db
 from taxos.context.tools import require_tenant
 from taxos.receipt.save.command import SaveReceipt
+from taxos.tools.guid import parse_guid
 
 
 def handle(command: SaveReceipt):
@@ -29,14 +30,32 @@ def handle(command: SaveReceipt):
 
   if r.vendor:
     db.run(
-      """
-      MATCH (r:Receipt {guid: $receipt_guid})
-      MATCH (v:Vendor {name_lower: toLower($vendor_name)})
-      MERGE (r)-[:FROM_VENDOR]->(v)
-      """,
-      {"receipt_guid": r.guid.hex, "vendor_name": r.vendor},
+      "MATCH (r:Receipt {guid: $receipt_guid})-[rel:FROM_VENDOR]->(:Vendor) DELETE rel",
+      {"receipt_guid": r.guid.hex},
       database=tenant.db_name,
     )
+
+    vendor_guid = parse_guid(r.vendor_ref)
+    if vendor_guid:
+      db.run(
+        """
+        MATCH (r:Receipt {guid: $receipt_guid})
+        MATCH (v:Vendor {guid: $vendor_guid})
+        MERGE (r)-[:FROM_VENDOR]->(v)
+        """,
+        {"receipt_guid": r.guid.hex, "vendor_guid": vendor_guid.hex},
+        database=tenant.db_name,
+      )
+    else:
+      db.run(
+        """
+        MATCH (r:Receipt {guid: $receipt_guid})
+        MATCH (v:Vendor {name_lower: toLower($vendor_name)})
+        MERGE (r)-[:FROM_VENDOR]->(v)
+        """,
+        {"receipt_guid": r.guid.hex, "vendor_name": r.vendor},
+        database=tenant.db_name,
+      )
 
   # Remove stale allocation edges before re-writing (handles updates)
   db.run(

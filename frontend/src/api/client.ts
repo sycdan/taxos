@@ -148,6 +148,15 @@ const UPDATE_VENDOR_MUTATION = gql`
 	}
 `;
 
+const UPSERT_VENDOR_MUTATION = gql`
+	mutation UpsertVendor($name: String!) {
+		upsertVendor(name: $name) {
+			guid
+			name
+		}
+	}
+`;
+
 const UPLOAD_FILE_MUTATION = gql`
 	mutation UploadReceiptFile(
 		$hash: String!
@@ -337,6 +346,14 @@ export const client = {
 			variables: args,
 		});
 		return data!.updateVendor as { guid: string; name: string };
+	},
+
+	async upsertVendor(args: { name: string }) {
+		const { data } = await apolloClient.mutate<Record<string, any>>({
+			mutation: UPSERT_VENDOR_MUTATION,
+			variables: args,
+		});
+		return data!.upsertVendor as { guid: string; name: string };
 	},
 };
 

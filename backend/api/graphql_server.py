@@ -34,6 +34,7 @@ from taxos.receipt.update.command import UpdateReceipt
 from taxos.tenant.list_receipts.query import ListReceipts
 from taxos.tenant.tools import get_files_dir
 from taxos.vendor.entity import Vendor, VendorRef
+from taxos.vendor.find_or_create.command import FindOrCreateVendor
 from taxos.vendor.list.query import ListVendors
 from taxos.vendor.load.query import LoadVendor
 from taxos.vendor.update.command import UpdateVendor
@@ -273,6 +274,11 @@ def resolve_delete_receipt(*_, guid: str):
 @mutation.field("updateVendor")
 def resolve_update_vendor(*_, guid: str, name: str):
   return UpdateVendor(ref=VendorRef(guid), name=name).execute()
+
+
+@mutation.field("upsertVendor")
+def resolve_upsert_vendor(*_, name: str):
+  return FindOrCreateVendor(name=name).execute()
 
 
 @mutation.field("uploadReceiptFile")

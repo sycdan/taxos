@@ -307,6 +307,25 @@ class TestReceipts:
     assert "Jan" in vendors
     assert "Feb" not in vendors
 
+  def test_create_accepts_vendor_guid(self, gql):
+    vendor = gql('mutation { upsertVendor(name: "Guid Vendor") { guid name } }')[
+      "upsertVendor"
+    ]
+
+    created = gql(f'''
+      mutation {{
+        createReceipt(input: {{
+          vendor: "{vendor["guid"]}"
+          total: 12.5
+          date: "2024-03-01T00:00:00"
+          timezone: "UTC"
+        }}) {{ guid vendor reference }}
+      }}
+    ''')["createReceipt"]
+
+    assert created["vendor"] == "Guid Vendor"
+    assert created["reference"] == ""
+
 
 # ---------------------------------------------------------------------------
 # Vendors
@@ -315,6 +334,16 @@ class TestReceipts:
 
 @pytest.mark.integration
 class TestVendors:
+  def test_upsert_vendor_returns_same_guid_case_insensitive(self, gql):
+    first = gql('mutation { upsertVendor(name: "Acme Corp") { guid name } }')[
+      "upsertVendor"
+    ]
+    second = gql('mutation { upsertVendor(name: "ACME CORP") { guid name } }')[
+      "upsertVendor"
+    ]
+
+    assert first["guid"] == second["guid"]
+
   def test_create_via_receipt_and_list(self, gql):
     gql("""
       mutation {

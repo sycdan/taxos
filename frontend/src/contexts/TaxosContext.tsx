@@ -541,8 +541,11 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 		refreshDates?: { start: Date; end: Date },
 	) => {
 		try {
+			const upsertedVendor = await client.upsertVendor({
+				name: receipt.vendor,
+			});
 			const response = await client.createReceipt({
-				vendor: receipt.vendor,
+				vendor: upsertedVendor.guid,
 				total: receipt.total,
 				date: new Date(receipt.date),
 				timezone: receipt.timezone,
@@ -597,9 +600,12 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 		setReceipts((prev) => ({ ...prev, [receipt.id]: receipt }));
 
 		try {
+			const upsertedVendor = await client.upsertVendor({
+				name: receipt.vendor,
+			});
 			const response = await client.updateReceipt({
 				guid: receipt.id,
-				vendor: receipt.vendor,
+				vendor: upsertedVendor.guid,
 				total: receipt.total,
 				date: new Date(receipt.date),
 				timezone: receipt.timezone,

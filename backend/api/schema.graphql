@@ -19,6 +19,7 @@ type Mutation {
 	createReceipt(input: ReceiptInput!): Receipt!
 	updateReceipt(guid: ID!, input: ReceiptInput!): Receipt!
 	deleteReceipt(guid: ID!): Boolean!
+	upsertVendor(name: String!): Vendor!
 
 	updateVendor(guid: ID!, name: String!): Vendor!
 
