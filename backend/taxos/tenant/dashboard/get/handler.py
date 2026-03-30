@@ -51,9 +51,9 @@ def handle(query: GetDashboard) -> Dashboard:
   unallocated_records = db.query(
     f"""
     MATCH (r:Receipt)
+    {unallocated_where}
     OPTIONAL MATCH (r)-[:FROM_VENDOR]->(v:Vendor)
     OPTIONAL MATCH (vf:Vendor {{name_lower: toLower(r.vendor)}})
-    {unallocated_where}
     RETURN
       r,
       coalesce(v.guid, vf.guid) AS vendor_guid,

@@ -30,6 +30,25 @@ def _load_from_export_file(path: Path) -> tuple[Optional[UUID], dict]:
   if "tenant_guid" in data:
     if parsed_guid := parse_guid(data["tenant_guid"]):
       tenant_guid = parsed_guid
+
+  normalized_receipts = []
+  for receipt in data.get("receipts", []):
+    normalized_receipts.append(
+      {
+        "guid": receipt["guid"],
+        "vendor": receipt.get("vendor", ""),
+        "total": receipt["total"],
+        "date": receipt["date"],
+        "timezone": receipt.get("timezone", "UTC"),
+        "allocations": receipt.get("allocations", []),
+        "reference": receipt.get("reference", receipt.get("vendor_ref", ""))
+        or "",
+        "notes": receipt.get("notes", "") or "",
+        "hash": receipt.get("hash", "") or "",
+      }
+    )
+  data["receipts"] = normalized_receipts
+
   return tenant_guid, data
 
 

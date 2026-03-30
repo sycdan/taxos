@@ -196,11 +196,10 @@ def _create_test_data(
 ):
   from taxos.allocation.entity import Allocation
   from taxos.bucket.create.command import CreateBucket
-  from taxos.bucket.entity import BucketRef
   from taxos.receipt.create.command import CreateReceipt
 
   bucket = CreateBucket(name=bucket_name).execute()
-  allocs = {Allocation(BucketRef(bucket.guid.hex), total)}
+  allocs = {Allocation(bucket, total)}
   CreateReceipt(
     vendor=vendor, total=total, date=date, timezone="UTC", allocations=allocs
   ).execute()

@@ -24,8 +24,13 @@ def handle(command: BackupTenant) -> dict:
   receipt_records = db.query(
     """
     MATCH (r:Receipt)
+    OPTIONAL MATCH (r)-[:FROM_VENDOR]->(v:Vendor)
+    OPTIONAL MATCH (vf:Vendor {name_lower: toLower(r.vendor)})
     OPTIONAL MATCH (r)-[a:ALLOCATED_TO]->(b:Bucket)
-    RETURN r, collect({bucket: b.guid, amount: a.amount}) AS allocations
+    RETURN
+      r,
+      coalesce(v.name, vf.name, r.vendor, "") AS vendor,
+      collect({bucket: b.guid, amount: a.amount}) AS allocations
     ORDER BY r.date
     """,
     database=tenant.db_name,
@@ -42,7 +47,7 @@ def handle(command: BackupTenant) -> dict:
     receipts.append(
       {
         "guid": node["guid"],
-        "vendor": node["vendor"],
+        "vendor": record["vendor"],
         "total": node["total"],
         "date": node["date"],
         "timezone": node["timezone"],
