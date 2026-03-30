@@ -1,6 +1,6 @@
 from unittest.mock import patch
 from uuid import UUID
-
+import json
 import pytest
 
 from taxos.tenant.entity import Tenant
@@ -281,7 +281,11 @@ class TestBackupRestore:
       assert buckets[0]["name"] == "Office"
 
       rows = db.query(
-        "MATCH (r:Receipt) OPTIONAL MATCH (r)-[a:ALLOCATED_TO]->(b) RETURN r.vendor AS vendor, collect(a.amount) AS amounts",
+        """
+        MATCH (r:Receipt)-[:FROM_VENDOR]->(v:Vendor)
+        OPTIONAL MATCH (r)-[a:ALLOCATED_TO]->(b)
+        RETURN v.name AS vendor, collect(a.amount) AS amounts
+        """,
         database=tenant.db_name,
       )
       assert rows[0]["vendor"] == "Staples"
@@ -292,8 +296,6 @@ class TestBackupRestore:
   @pytest.mark.integration
   def test_restore_from_flat_dir(self, tmp_path):
     """Restore from old flat-file tenant directory structure."""
-    import json
-
     from taxos import db
     from taxos.tenant.restore.command import RestoreTenant
 
@@ -322,7 +324,7 @@ class TestBackupRestore:
           "date": "2024-05-10T14:00:00",
           "timezone": "UTC",
           "allocations": [{"bucket": bucket_guid, "amount": 120.0}],
-          "vendor_ref": "",
+          "vendor_ref": "INV-LEGACY-001",
           "notes": "weekly shop",
           "hash": "",
         }
@@ -335,11 +337,15 @@ class TestBackupRestore:
     tenant = token.tenant
     try:
       rows = db.query(
-        "MATCH (r:Receipt) RETURN r.vendor AS vendor, r.total AS total, r.notes AS notes",
+        """
+        MATCH (r:Receipt)-[:FROM_VENDOR]->(v:Vendor)
+        RETURN v.name AS vendor, r.total AS total, r.notes AS notes, r.reference AS reference
+        """,
         database=tenant.db_name,
       )
       assert rows[0]["vendor"] == "Grocery Store"
       assert rows[0]["total"] == 120.0
       assert rows[0]["notes"] == "weekly shop"
+      assert rows[0]["reference"] == "INV-LEGACY-001"
     finally:
       _delete_tenant_for_backup(tmp_path, tenant)

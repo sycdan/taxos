@@ -33,6 +33,7 @@ from taxos.receipt.load.query import LoadReceipt
 from taxos.receipt.update.command import UpdateReceipt
 from taxos.tenant.list_receipts.query import ListReceipts
 from taxos.tenant.tools import get_files_dir
+from taxos.tools.guid import parse_guid
 from taxos.vendor.entity import Vendor, VendorRef
 from taxos.vendor.find_or_create.command import FindOrCreateVendor
 from taxos.vendor.list.query import ListVendors
@@ -102,12 +103,12 @@ def _receipts_from_records(records) -> list[Receipt]:
     receipts.append(
       Receipt(
         guid=node["guid"],
-        vendor=node["vendor"],
+        vendor=Vendor(record["vendor_guid"], record["vendor_name"]),
         total=node["total"],
         date=node["date"],
         timezone=node["timezone"],
         allocations=allocations,
-        vendor_ref=node.get("reference", ""),
+        reference=node.get("reference", ""),
         notes=node.get("notes", ""),
         hash=node.get("hash", ""),
       )
@@ -170,23 +171,10 @@ def resolve_receipts(*_, vendor=None, bucket=None, months=None):
   params: dict = {"months": months or []}
 
   if vendor:
-    # Support both GUID and name for backward compatibility during migration
-    # GUID is a 32-char hex string
-    is_guid = (
-      isinstance(vendor, str)
-      and len(vendor) == 32
-      and all(c in "0123456789abcdefABCDEF" for c in vendor)
-    )
-
-    if is_guid:
-      conditions.append(
-        "EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {guid: $vendor}) }"
-      )
-    else:
-      conditions.append(
-        "EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {name: $vendor}) }"
-      )
-    params["vendor"] = vendor
+    if not (vendor_guid := parse_guid(vendor)):
+      raise ValueError("vendor filter must be a valid GUID")
+    conditions.append("EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {guid: $vendor}) }")
+    params["vendor"] = vendor_guid.hex
   if bucket:
     conditions.append(
       "EXISTS { MATCH (r)-[:ALLOCATED_TO]->(b:Bucket {guid: $bucket}) }"
@@ -200,9 +188,15 @@ def resolve_receipts(*_, vendor=None, bucket=None, months=None):
   records = db.query(
     f"""
     MATCH (r:Receipt)
+    OPTIONAL MATCH (r)-[:FROM_VENDOR]->(v:Vendor)
+    OPTIONAL MATCH (vf:Vendor {{name_lower: toLower(r.vendor)}})
     {where}
     OPTIONAL MATCH (r)-[a:ALLOCATED_TO]->(b2:Bucket)
-    RETURN r, collect({{bucket: b2.guid, amount: a.amount}}) AS allocations
+    RETURN
+      r,
+      coalesce(v.guid, vf.guid) AS vendor_guid,
+      coalesce(v.name, vf.name, r.vendor) AS vendor_name,
+      collect({{bucket: b2.guid, amount: a.amount}}) AS allocations
     ORDER BY r.date DESC
     """,
     params,
@@ -247,7 +241,7 @@ def resolve_create_receipt(*_, input: dict):
     allocations=_parse_allocations(input.get("allocations")),
     notes=input.get("notes", ""),
     hash=input.get("hash", ""),
-    vendor_ref=input.get("reference", ""),
+    reference=input.get("reference", ""),
   ).execute()
 
 
@@ -262,7 +256,7 @@ def resolve_update_receipt(*_, guid: str, input: dict):
     allocations=_parse_allocations(input.get("allocations")),
     notes=input.get("notes", ""),
     hash=input.get("hash", ""),
-    vendor_ref=input.get("reference", ""),
+    reference=input.get("reference", ""),
   ).execute()
 
 
@@ -316,8 +310,14 @@ def resolve_vendor_receipts(vendor, *_):
   records = db.query(
     """
     MATCH (v:Vendor {guid: $guid})<-[:FROM_VENDOR]-(r:Receipt)
+    WITH r, v
+    OPTIONAL MATCH (vf:Vendor {name_lower: toLower(r.vendor)})
     OPTIONAL MATCH (r)-[a:ALLOCATED_TO]->(b:Bucket)
-    RETURN r, collect({bucket: b.guid, amount: a.amount}) AS allocations
+    RETURN
+      r,
+      coalesce(v.guid, vf.guid) AS vendor_guid,
+      coalesce(v.name, vf.name, r.vendor) AS vendor_name,
+      collect({bucket: b.guid, amount: a.amount}) AS allocations
     ORDER BY r.date DESC
     """,
     {"guid": vendor.guid.hex},
@@ -371,6 +371,12 @@ def resolve_receipt_guid(receipt, *_):
   return receipt.guid.hex
 
 
+@receipt_type.field("vendor")
+def resolve_receipt_vendor(receipt, *_):
+  vendor = receipt.vendor
+  return vendor.name if isinstance(vendor, Vendor) else LoadVendor(ref=vendor).execute().name
+
+
 @receipt_type.field("date")
 def resolve_receipt_date(receipt, *_):
   return receipt.date.isoformat()
@@ -378,7 +384,7 @@ def resolve_receipt_date(receipt, *_):
 
 @receipt_type.field("reference")
 def resolve_receipt_reference(receipt, *_):
-  return receipt.vendor_ref or ""
+  return receipt.reference or ""
 
 
 @receipt_type.field("notes")

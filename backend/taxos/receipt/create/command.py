@@ -15,7 +15,7 @@ class CreateReceipt:
   date: Union[datetime, str]
   timezone: str
   allocations: set[Allocation] = field(default_factory=set)
-  vendor_ref: str = ""
+  reference: str = ""
   notes: str = ""
   hash: str = field(
     default="",
@@ -37,7 +37,7 @@ class CreateReceipt:
         raise ValueError("Allocations must be a set of Allocation objects.")
     if not isinstance(self.allocations, set):
       self.allocations = set(self.allocations)
-    self.vendor_ref = str(self.vendor_ref or "").strip()
+    self.reference = str(self.reference or "").strip()
 
   def execute(self):
     from taxos.receipt.create.handler import handle

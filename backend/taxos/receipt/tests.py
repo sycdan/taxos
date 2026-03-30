@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
@@ -8,10 +9,12 @@ from taxos.allocation.entity import Allocation
 from taxos.bucket.entity import BucketRef
 from taxos.receipt.entity import Receipt, ReceiptRef
 from taxos.tenant.entity import Tenant
+from taxos.vendor.entity import Vendor
 
 TENANT = Tenant(guid=UUID("01930000-0000-7000-8000-000000000001"), name="Test")
 RECEIPT_GUID = UUID("01930000-0000-7000-8000-000000000010")
 BUCKET_GUID = UUID("01930000-0000-7000-8000-000000000020")
+VENDOR_GUID = UUID("01930000-0000-7000-8000-000000000002")
 
 DATE = datetime(2024, 3, 15, 12, 0, 0)
 DATE_ISO = "2024-03-15T12:00:00"
@@ -24,15 +27,30 @@ def _ctx(tenant=TENANT):
 
 
 def _receipt(**kwargs):
-  defaults = dict(
-    guid=RECEIPT_GUID,
-    vendor="Acme",
-    total=100.0,
-    date=DATE,
-    timezone="UTC",
+  guid = kwargs.get("guid", RECEIPT_GUID)
+  vendor = kwargs.get("vendor", Vendor(VENDOR_GUID, "Acme"))
+  total = kwargs.get("total", 100.0)
+  date = kwargs.get("date", DATE)
+  timezone = kwargs.get("timezone", "UTC")
+  allocations = kwargs.get("allocations", set())
+  reference = kwargs.get("reference", "")
+  notes = kwargs.get("notes", "")
+  hash_value = kwargs.get("hash", "")
+  return Receipt(
+    guid=guid,
+    vendor=vendor,
+    total=total,
+    date=date,
+    timezone=timezone,
+    allocations=allocations,
+    reference=reference,
+    notes=notes,
+    hash=hash_value,
   )
-  defaults.update(kwargs)
-  return Receipt(**defaults)
+
+
+def _vendor_name(value: Any) -> str:
+  return value.name if isinstance(value, Vendor) else ""
 
 
 def _node(props: dict):
@@ -63,6 +81,8 @@ class TestSaveReceiptHandler:
     first_call = mock_db.run.call_args_list[0]
     assert "MERGE" in first_call[0][0]
     assert first_call[0][1]["guid"] == RECEIPT_GUID.hex
+    assert "vendor" not in first_call[0][1]
+    assert "REMOVE r.vendor" in first_call[0][0]
 
   @pytest.mark.unit
   def test_writes_allocation_edges(self):
@@ -77,6 +97,22 @@ class TestSaveReceiptHandler:
 
     cypher_calls = [c[0][0] for c in mock_db.run.call_args_list]
     assert any("ALLOCATED_TO" in c and "CREATE" in c for c in cypher_calls)
+
+  @pytest.mark.unit
+  def test_rejects_duplicate_reference_for_vendor(self):
+    from taxos.receipt.save.handler import handle
+    from taxos.receipt.save.command import SaveReceipt
+    from taxos.context.tools import set_context
+
+    set_context(_ctx())
+    r = _receipt(
+      reference="INV-1001",
+      vendor=Vendor(UUID("01930000-0000-7000-8000-000000000002"), "Acme"),
+    )
+    with patch("taxos.receipt.save.handler.db") as mock_db:
+      mock_db.query.return_value = [{"cnt": 1}]
+      with pytest.raises(ValueError, match="Reference 'INV-1001' already exists"):
+        handle(SaveReceipt(receipt=r))
 
 
 # ---------------------------------------------------------------------------
@@ -105,14 +141,19 @@ class TestLoadReceiptHandler:
       }
     )
     record = MagicMock()
-    record.__getitem__ = lambda self, k: node if k == "r" else []
+    record.__getitem__ = lambda self, k: {
+      "r": node,
+      "vendor_guid": VENDOR_GUID.hex,
+      "vendor_name": "Acme",
+      "allocations": [],
+    }[k]
 
     with patch("taxos.receipt.load.handler.db") as mock_db:
       mock_db.query.return_value = [record]
       result = handle(LoadReceipt(ref=ReceiptRef(RECEIPT_GUID.hex)))
 
     assert result.guid == RECEIPT_GUID
-    assert result.vendor == "Acme"
+    assert _vendor_name(result.vendor) == "Acme"
 
   @pytest.mark.unit
   def test_raises_does_not_exist(self):
@@ -203,7 +244,7 @@ class TestReceiptLifecycleIntegration:
         notes="Business trip",
       ).execute()
 
-      assert receipt.vendor == "Acme Hotels"
+      assert _vendor_name(receipt.vendor) == "Acme Hotels"
       assert receipt.total == 100.0
 
       # load — check allocations round-tripped
@@ -279,7 +320,7 @@ class TestReceiptLifecycleIntegration:
       assert dashboard.buckets[0].receipt_count == 1
 
       assert len(dashboard.unallocated) == 1
-      assert dashboard.unallocated[0].vendor == "Unknown"
+      assert _vendor_name(dashboard.unallocated[0].vendor) == "Unknown"
 
     finally:
       with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):

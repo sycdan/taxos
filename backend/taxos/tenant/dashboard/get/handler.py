@@ -6,6 +6,7 @@ from taxos.receipt.entity import Receipt
 from taxos.tenant.dashboard.entity import BucketSummary, Dashboard
 from taxos.tenant.dashboard.get.query import GetDashboard
 from taxos.vendor.list.query import ListVendors
+from taxos.vendor.entity import Vendor
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +51,13 @@ def handle(query: GetDashboard) -> Dashboard:
   unallocated_records = db.query(
     f"""
     MATCH (r:Receipt)
+    OPTIONAL MATCH (r)-[:FROM_VENDOR]->(v:Vendor)
+    OPTIONAL MATCH (vf:Vendor {{name_lower: toLower(r.vendor)}})
     {unallocated_where}
-    RETURN r
+    RETURN
+      r,
+      coalesce(v.guid, vf.guid) AS vendor_guid,
+      coalesce(v.name, vf.name, r.vendor) AS vendor_name
     """,
     {"months": query.months},
     database=tenant.db_name,
@@ -60,13 +66,13 @@ def handle(query: GetDashboard) -> Dashboard:
   unallocated_receipts = [
     Receipt(
       guid=row["r"]["guid"],
-      vendor=row["r"]["vendor"],
+      vendor=Vendor(row["vendor_guid"], row["vendor_name"]),
       total=row["r"]["total"],
       date=row["r"]["date"],
       timezone=row["r"]["timezone"],
       notes=row["r"].get("notes", ""),
       hash=row["r"].get("hash", ""),
-      vendor_ref=row["r"].get("reference", ""),
+      reference=row["r"].get("reference", ""),
     )
     for row in unallocated_records
   ]

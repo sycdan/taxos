@@ -59,7 +59,7 @@ def _load_from_flat_dir(source: Path) -> tuple[UUID, dict]:
         "date": data["date"],
         "timezone": data.get("timezone", "UTC"),
         "allocations": data.get("allocations", []),
-        "vendor_ref": data.get("vendor_ref", "") or "",
+        "reference": data.get("reference", data.get("vendor_ref", "")) or "",
         "notes": data.get("notes", "") or "",
         "hash": data.get("hash", "") or "",
       }
@@ -122,7 +122,7 @@ def handle(command: RestoreTenant) -> AccessToken:
           date=r["date"],
           timezone=r.get("timezone", "UTC"),
           allocations=allocations,
-          vendor_ref=r["vendor_ref"],
+          reference=r["reference"],
           notes=r["notes"],
           hash=r["hash"],
           guid=receipt_guid,

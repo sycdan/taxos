@@ -34,12 +34,12 @@ def handle(command: UpdateReceipt) -> Receipt:
     except ValueError:
       vendor = FindOrCreateVendor(vendor_key).execute()
 
-  receipt.vendor = vendor.name if vendor else command.vendor
+  receipt.vendor = vendor if vendor else receipt.vendor
   receipt.total = command.total
   receipt.allocations = command.allocations
   receipt.date = command.date
   receipt.timezone = command.timezone
-  receipt.vendor_ref = command.vendor_ref
+  receipt.reference = command.reference
   receipt.notes = command.notes
   receipt.hash = command.hash
 

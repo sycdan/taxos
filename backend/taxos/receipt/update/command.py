@@ -15,7 +15,7 @@ class UpdateReceipt:
   date: Union[datetime, str]
   timezone: str
   allocations: set[Allocation] = field(default_factory=set)
-  vendor_ref: str = ""
+  reference: str = ""
   notes: str = ""
   hash: str = ""
 

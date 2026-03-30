@@ -1,10 +1,12 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Union
 from uuid import UUID
 
 from taxos.allocation.entity import Allocation
 from taxos.tools.guid import parse_guid
 from taxos.tools.time import parse_datetime
+from taxos.vendor.entity import Vendor, VendorRef
 
 
 @dataclass
@@ -13,7 +15,7 @@ class Receipt:
     pass
 
   guid: UUID
-  vendor: str
+  vendor: Union[Vendor, VendorRef]
   total: float
   date: datetime
   timezone: str
@@ -21,7 +23,7 @@ class Receipt:
     default_factory=set,
     doc="How much of the total is assigned to which buckets.",
   )
-  vendor_ref: str = ""
+  reference: str = ""
   notes: str = ""
   hash: str = ""
 
@@ -30,6 +32,9 @@ class Receipt:
       self.guid = UUID(self.guid)
     if isinstance(self.date, str):
       self.date = parse_datetime(self.date, self.timezone)
+    if not isinstance(self.vendor, (Vendor, VendorRef)):
+      self.vendor = VendorRef(self.vendor)
+    self.reference = str(self.reference or "").strip()
 
   def __hash__(self) -> int:
     return hash(self.guid)
