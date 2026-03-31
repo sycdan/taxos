@@ -188,9 +188,9 @@ def resolve_receipts(*_, vendor=None, bucket=None, months=None):
   records = db.query(
     f"""
     MATCH (r:Receipt)
+    {where}
     OPTIONAL MATCH (r)-[:FROM_VENDOR]->(v:Vendor)
     OPTIONAL MATCH (vf:Vendor {{name_lower: toLower(r.vendor)}})
-    {where}
     OPTIONAL MATCH (r)-[a:ALLOCATED_TO]->(b2:Bucket)
     RETURN
       r,
