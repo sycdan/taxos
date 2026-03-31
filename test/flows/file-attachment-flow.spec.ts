@@ -34,7 +34,7 @@ test.describe("File Attachment Flow", () => {
 		await expect(modal.getByText(filename)).toBeVisible({ timeout: 15_000 });
 
 		// Complete the receipt form and save
-		await modal.getByPlaceholder("e.g. Amazon").fill("Test Vendor");
+		await modal.getByPlaceholder("e.g. The Awesome Store").fill("Test Vendor");
 		await modal
 			.locator('input[type="number"][placeholder="0.00"]')
 			.fill("55.00");
@@ -87,7 +87,9 @@ test.describe("File Attachment Flow", () => {
 		await expect(modal.getByText(filename)).toBeVisible({ timeout: 15_000 });
 
 		// Save the first receipt
-		await modal.getByPlaceholder("e.g. Amazon").fill("First Upload Vendor");
+		await modal
+			.getByPlaceholder("e.g. The Awesome Store")
+			.fill("First Upload Vendor");
 		await modal
 			.locator('input[type="number"][placeholder="0.00"]')
 			.fill("10.00");

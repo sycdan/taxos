@@ -29,7 +29,7 @@ export async function addReceipt(
 	await expect(
 		modal.getByRole("heading", { name: "New Receipt" }),
 	).toBeVisible();
-	await modal.getByPlaceholder("e.g. Amazon").fill(options.vendor);
+	await modal.getByPlaceholder("e.g. The Awesome Store").fill(options.vendor);
 	await modal
 		.locator('input[type="number"][placeholder="0.00"]')
 		.fill(options.total);

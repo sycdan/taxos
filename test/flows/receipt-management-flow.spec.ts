@@ -36,7 +36,7 @@ test.describe("Receipt Management Flow", () => {
 			modal.getByRole("heading", { name: "Edit Receipt" }),
 		).toBeVisible();
 
-		await modal.getByPlaceholder("e.g. Amazon").fill("Uber Eats");
+		await modal.getByPlaceholder("e.g. The Awesome Store").fill("Uber Eats");
 		await modal.getByRole("button", { name: "Save Receipt" }).click();
 		await expect(modal).not.toBeVisible();
 
