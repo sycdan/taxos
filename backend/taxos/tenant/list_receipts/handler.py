@@ -17,12 +17,12 @@ def handle(query: ListReceipts) -> list[Receipt]:
   bucket = require_bucket(query.bucket)
 
   months_filter = (
-    "AND any(m IN $months WHERE r.date STARTS WITH m)" if query.months else ""
+    "AND substring(toString(r.date), 0, 7) IN $months" if query.months else ""
   )
 
   if isinstance(query.bucket, UnallocatedBucket):
     months_clause = (
-      "WHERE any(m IN $months WHERE r.date STARTS WITH m)" if query.months else ""
+      "WHERE substring(toString(r.date), 0, 7) IN $months" if query.months else ""
     )
     records = db.query(
       f"""

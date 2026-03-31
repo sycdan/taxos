@@ -181,7 +181,7 @@ def resolve_receipts(*_, vendor=None, bucket=None, months=None):
     )
     params["bucket"] = bucket
   if months:
-    conditions.append("any(m IN $months WHERE r.date STARTS WITH m)")
+    conditions.append("substring(toString(r.date), 0, 7) IN $months")
 
   where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 

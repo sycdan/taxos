@@ -23,6 +23,21 @@ const slugify = (text: string) => {
 
 const isGuid = (value: string) => /^[0-9a-f]{32}$/i.test(value);
 
+const sameDateRange = (
+	left?: { start?: Date; end?: Date },
+	right?: { start?: Date; end?: Date },
+) => {
+	const sameStart =
+		(!left?.start && !right?.start) ||
+		(left?.start &&
+			right?.start &&
+			left.start.getTime() === right.start.getTime());
+	const sameEnd =
+		(!left?.end && !right?.end) ||
+		(left?.end && right?.end && left.end.getTime() === right.end.getTime());
+	return sameStart && sameEnd;
+};
+
 interface TaxosContextType {
 	buckets: Bucket[];
 	bucketSummaries: BucketSummary[];
@@ -582,8 +597,15 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 			}
 			setReceipts((prev) => ({ ...prev, [createdReceipt.id]: createdReceipt }));
 			if (refreshDates) {
-				refreshSeqRef.current += 1;
-				void refreshBuckets(refreshDates.start, refreshDates.end, true);
+				const currentFilter = currentDateFilterRef.current;
+				const shouldRefreshSavedRange = sameDateRange(
+					currentFilter,
+					refreshDates,
+				);
+				if (shouldRefreshSavedRange) {
+					refreshSeqRef.current += 1;
+					void refreshBuckets(refreshDates.start, refreshDates.end, true);
+				}
 			} else {
 				triggerRefresh();
 			}
