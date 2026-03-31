@@ -69,7 +69,7 @@ def handle(query: ListReceipts) -> list[Receipt]:
     vendor_guid = record["vendor_guid"]
     vendor_name = record["vendor_name"]
     if not vendor_guid or not vendor_name:
-      raise RuntimeError(f"Receipt {node['guid']} is missing vendor linkage.")
+      logger.warning(f"Receipt {node['guid']} is missing vendor linkage.")
     allocations = set()
     for alloc in record["allocations"]:
       if alloc["bucket"] is not None:
