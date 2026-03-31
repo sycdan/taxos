@@ -50,5 +50,5 @@ class BucketRef:
 
 @dataclass(frozen=True)
 class UnallocatedBucket(Bucket):
-  guid: UUID = concepts.UNALLOCATED_BUCKET_V1_SINGLETON
+  guid: UUID = concepts.UNALLOCATED_BUCKET_SINGLETON
   name: str = "Unallocated"

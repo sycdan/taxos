@@ -4,7 +4,7 @@ from taxos import db
 from taxos.allocation.entity import Allocation
 from taxos.bucket.entity import BucketRef
 from taxos.context.tools import require_bucket, require_tenant
-from taxos.concepts import UNALLOCATED_BUCKET_V1_SINGLETON
+from taxos.concepts import UNALLOCATED_BUCKET_SINGLETON
 from taxos.receipt.entity import Receipt
 from taxos.tenant.list_receipts.query import ListReceipts
 from taxos.vendor.entity import Vendor
@@ -21,7 +21,7 @@ def handle(query: ListReceipts) -> list[Receipt]:
     "AND any(m IN $months WHERE r.date STARTS WITH m)" if query.months else ""
   )
 
-  if query.bucket.guid == UNALLOCATED_BUCKET_V1_SINGLETON:
+  if query.bucket.guid == UNALLOCATED_BUCKET_SINGLETON:
     months_clause = (
       "WHERE any(m IN $months WHERE r.date STARTS WITH m)" if query.months else ""
     )
