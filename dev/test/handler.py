@@ -50,11 +50,9 @@ def handle(command: Test, *tests):
       pyt_args.append("--run-integration")
     if tests:
       pyt_args.extend(["-k", " or ".join(tests)])
-    try:
-      pytest.main(pyt_args)
-    except SystemExit as e:
-      if e.code != 0:
-        raise RuntimeError("Backend tests failed") from e
+    result = pytest.main(pyt_args)
+    if result != 0:
+      raise RuntimeError("Backend tests failed")
 
   if command.flows:
     _ensure_test_node_modules()

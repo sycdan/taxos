@@ -52,7 +52,7 @@ def handle(command: BackupTenant) -> dict:
         "date": node["date"],
         "timezone": node["timezone"],
         "allocations": allocs,
-        "vendor_ref": node.get("reference", "") or "",
+        "reference": node.get("reference", "") or "",
         "notes": node.get("notes", "") or "",
         "hash": node.get("hash", "") or "",
       }
