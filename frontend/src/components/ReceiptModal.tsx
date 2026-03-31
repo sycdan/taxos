@@ -424,7 +424,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 									ref={vendorRef}
 									tabIndex={1}
 									className="w-full text-lg font-semibold"
-									placeholder="e.g. Amazon"
+									placeholder="e.g. The Awesome Store"
 									value={vendor}
 									onKeyDown={(e) => {
 										// Detect deletion keys
@@ -532,7 +532,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 										className="w-full text-lg font-bold"
 										style={{ paddingLeft: "2.5rem" }}
 										placeholder="0.00"
-										value={total || ""}
+										value={total > 0 ? total : ""}
 										onChange={(e) =>
 											handleTotalChange(parseFloat(e.target.value) || 0)
 										}
@@ -559,7 +559,9 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 										style={{ paddingLeft: "2.5rem" }}
 										value={date}
 										onChange={(e) => setDate(e.target.value)}
-										onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+										onClick={(e) =>
+											(e.target as HTMLInputElement).showPicker?.()
+										}
 									/>
 								</div>
 							</div>
