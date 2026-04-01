@@ -9,6 +9,7 @@ launch task) whenever you need to re-attach after a hot-reload.
 
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -57,15 +58,37 @@ def setup_volume() -> None:
 
 def find_backend_pid() -> int | None:
   """Return PID of the backend Python process, or None if not found yet."""
+  current_pid = os.getpid()
   result = subprocess.run(
-    ["ps", "-eo", "pid,comm,args"],
+    ["ps", "-ewwo", "pid=,ppid=,comm=,args="],
     capture_output=True,
     text=True,
   )
   for line in result.stdout.splitlines():
-    parts = line.strip().split(None, 2)
-    if len(parts) == 3 and parts[1] == "python" and "connect_http_server" in parts[2]:
-      return int(parts[0])
+    parts = line.strip().split(None, 3)
+    if len(parts) != 4:
+      continue
+    pid_str, ppid_str, comm, args = parts
+    pid = int(pid_str)
+    ppid = int(ppid_str)
+    if pid == current_pid:
+      continue
+    if comm not in {"python", "python3"}:
+      continue
+    if "sidecar.py" in args:
+      continue
+    # In this container, backend app is usually the python child of PID 1.
+    if ppid == 1:
+      return pid
+    if any(
+      needle in args
+      for needle in (
+        "graphql_server.py",
+        "runserver.py",
+        "connect_http_server",
+      )
+    ):
+      return pid
   return None
 
 
@@ -83,6 +106,17 @@ def inject_via_remote_exec(pid: int) -> bool:
   except Exception as e:
     print(f"[sidecar] sys.remote_exec failed: {e} — falling back to gdb")
     return False
+
+
+def wait_for_debugpy_port(timeout_s: int = 5) -> bool:
+  deadline = time.time() + timeout_s
+  while time.time() < deadline:
+    with socket.socket() as s:
+      s.settimeout(0.5)
+      if s.connect_ex(("127.0.0.1", 5678)) == 0:
+        return True
+    time.sleep(0.2)
+  return False
 
 
 def inject_via_gdb(pid: int) -> None:
@@ -113,12 +147,19 @@ def inject_via_gdb(pid: int) -> None:
   ]
 
   print(f"[sidecar] Running gdb injection into PID {pid}...")
-  subprocess.run(gdb_cmd)  # errors logged to stdout by gdb; || true semantics
+  subprocess.run(gdb_cmd, check=False, timeout=30)
 
 
 def inject_debugpy(pid: int) -> None:
-  if not inject_via_remote_exec(pid):
-    inject_via_gdb(pid)
+  if inject_via_remote_exec(pid) and wait_for_debugpy_port():
+    print("[sidecar] Verified debugpy port open after sys.remote_exec")
+    return
+  print("[sidecar] debugpy port still closed after sys.remote_exec; using gdb")
+  inject_via_gdb(pid)
+  if wait_for_debugpy_port():
+    print("[sidecar] Verified debugpy port open after gdb injection")
+  else:
+    print("[sidecar] debugpy port still closed after gdb injection")
 
 
 # ---------------------------------------------------------------------------
