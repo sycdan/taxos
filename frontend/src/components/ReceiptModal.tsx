@@ -24,7 +24,7 @@ import { uploadReceiptFile, downloadReceiptFile } from "../api/client";
 interface ReceiptModalProps {
 	isOpen: boolean;
 	onClose: () => void;
-	onSave: (receipt: Omit<Receipt, "id">) => void;
+	onSave: (receipt: Omit<Receipt, "id">) => Promise<boolean> | boolean;
 	onDelete: (id: string) => void;
 	bucketSummaries: BucketSummary[];
 	vendorNames?: string[];
@@ -250,8 +250,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 		}
 	};
 
-	const handleSave = () => {
-		onSave({
+	const handleSave = async () => {
+		const shouldClose = await onSave({
 			...(editingReceipt ? { id: editingReceipt.id } : {}),
 			vendor,
 			total,
@@ -263,7 +263,9 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 			file: uploadedFileName || initialFile || editingReceipt?.file,
 			hash: uploadedFileHash || editingReceipt?.hash,
 		} as Receipt);
-		onClose();
+		if (shouldClose !== false) {
+			onClose();
+		}
 	};
 
 	// Handle file upload when uploadingFile prop changes

@@ -211,6 +211,60 @@ function mapReceiptResponse(r: {
 	};
 }
 
+function extractGraphqlErrorMessage(error: unknown): string | undefined {
+	const err = error as {
+		graphQLErrors?: Array<{ message?: string }>;
+		networkError?: {
+			result?: { errors?: Array<{ message?: string }> };
+			bodyText?: string;
+		};
+		cause?: {
+			result?: { errors?: Array<{ message?: string }> };
+			bodyText?: string;
+		};
+		result?: { errors?: Array<{ message?: string }> };
+		bodyText?: string;
+	};
+
+	const direct = err?.graphQLErrors?.map((e) => e?.message).find(Boolean);
+	if (direct) return direct;
+
+	const fromNetwork = err?.networkError?.result?.errors
+		?.map((e) => e?.message)
+		.find(Boolean);
+	if (fromNetwork) return fromNetwork;
+
+	const fromCause = err?.cause?.result?.errors
+		?.map((e) => e?.message)
+		.find(Boolean);
+	if (fromCause) return fromCause;
+
+	const fromResult = err?.result?.errors?.map((e) => e?.message).find(Boolean);
+	if (fromResult) return fromResult;
+
+	const bodyText = err?.networkError?.bodyText ?? err?.cause?.bodyText ?? err?.bodyText;
+	if (bodyText) {
+		try {
+			const parsed = JSON.parse(bodyText) as {
+				errors?: Array<{ message?: string }>;
+			};
+			const parsedMessage = parsed?.errors?.map((e) => e?.message).find(Boolean);
+			if (parsedMessage) return parsedMessage;
+		} catch {
+			// Ignore JSON parse failures and fall through to default handling.
+		}
+	}
+
+	return undefined;
+}
+
+function normalizeApolloError(operation: string, error: unknown): Error {
+	const gqlMessage = extractGraphqlErrorMessage(error);
+	if (gqlMessage) return new Error(gqlMessage);
+	if (error instanceof Error) return error;
+	return new Error(`GraphQL ${operation} failed`);
+}
+
 export type MappedReceipt = ReturnType<typeof mapReceiptResponse>;
 
 export const client = {
@@ -274,23 +328,27 @@ export const client = {
 		notes?: string;
 		hash?: string;
 	}) {
-		const dateIso = args.date.toISOString();
-		const { data } = await apolloClient.mutate<Record<string, any>>({
-			mutation: CREATE_RECEIPT_MUTATION,
-			variables: {
-				input: {
-					vendor: args.vendor,
-					total: args.total,
-					date: dateIso,
-					timezone: args.timezone,
-					allocations: mapAllocationsInput(args.allocations ?? []),
-					reference: args.vendorRef ?? "",
-					notes: args.notes ?? "",
-					hash: args.hash ?? "",
+		try {
+			const dateIso = args.date.toISOString();
+			const { data } = await apolloClient.mutate<Record<string, any>>({
+				mutation: CREATE_RECEIPT_MUTATION,
+				variables: {
+					input: {
+						vendor: args.vendor,
+						total: args.total,
+						date: dateIso,
+						timezone: args.timezone,
+						allocations: mapAllocationsInput(args.allocations ?? []),
+						reference: args.vendorRef ?? "",
+						notes: args.notes ?? "",
+						hash: args.hash ?? "",
+					},
 				},
-			},
-		});
-		return mapReceiptResponse(data!.createReceipt);
+			});
+			return mapReceiptResponse(data!.createReceipt);
+		} catch (error) {
+			throw normalizeApolloError("createReceipt", error);
+		}
 	},
 
 	async updateReceipt(args: {

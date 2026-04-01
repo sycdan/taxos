@@ -611,6 +611,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 			}
 		} catch (error) {
 			console.error("Failed to create receipt:", error);
+			throw error;
 		}
 	};
 

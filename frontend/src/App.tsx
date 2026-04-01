@@ -32,6 +32,11 @@ interface FilterConfig {
 	value: string;
 }
 
+interface ToastState {
+	message: string;
+	kind: "error";
+}
+
 const App: React.FC = () => {
 	const {
 		buckets,
@@ -62,6 +67,7 @@ const App: React.FC = () => {
 	const [uploadingFile, setUploadingFile] = useState<
 		{ file: File; hash: string } | undefined
 	>();
+	const [toast, setToast] = useState<ToastState | null>(null);
 
 	const [filterConfig, setFilterConfig] = useState<FilterConfig>(() => {
 		try {
@@ -79,6 +85,12 @@ const App: React.FC = () => {
 	useEffect(() => {
 		localStorage.setItem("taxos_filter_config", JSON.stringify(filterConfig));
 	}, [filterConfig]);
+
+	useEffect(() => {
+		if (!toast) return;
+		const timeout = window.setTimeout(() => setToast(null), 5000);
+		return () => window.clearTimeout(timeout);
+	}, [toast]);
 
 	const totalAllocated = useMemo(() => {
 		return bucketSummaries
@@ -170,6 +182,38 @@ const App: React.FC = () => {
 		setIsModalOpen(true);
 	};
 
+	const getErrorMessage = (error: unknown) => {
+		const err = error as {
+			message?: string;
+			graphQLErrors?: Array<{ message?: string }>;
+			networkError?: {
+				result?: { errors?: Array<{ message?: string }> };
+			};
+			cause?: {
+				result?: { errors?: Array<{ message?: string }> };
+			};
+		};
+
+		const gqlMessage = err?.graphQLErrors
+			?.map((e) => e?.message)
+			.find(Boolean);
+		if (gqlMessage) return gqlMessage;
+
+		const networkGqlMessage = err?.networkError?.result?.errors
+			?.map((e) => e?.message)
+			.find(Boolean);
+		if (networkGqlMessage) return networkGqlMessage;
+
+		const causeGqlMessage = err?.cause?.result?.errors
+			?.map((e) => e?.message)
+			.find(Boolean);
+		if (causeGqlMessage) return causeGqlMessage;
+
+		if (error instanceof Error) return error.message;
+		if (typeof error === "string") return error;
+		return "Unable to save receipt. Please try again.";
+	};
+
 	const navigateToBuckets = () => {
 		setCurrentBucketId(null);
 		setSelectedVendor(null);
@@ -193,6 +237,13 @@ const App: React.FC = () => {
 
 	return (
 		<div className="app-layout">
+			{toast && (
+				<div className={`toast toast-${toast.kind}`} role="alert">
+					<div className="toast-title">Could not save receipt</div>
+					<div className="toast-message">{toast.message}</div>
+				</div>
+			)}
+
 			<aside className="sidebar">
 				<div className="logo mb-12">TAXOS</div>
 				<nav className="flex flex-col gap-2 flex-1">
@@ -361,9 +412,10 @@ const App: React.FC = () => {
 				<ReceiptModal
 					isOpen={isModalOpen}
 					onClose={handleCloseModal}
-					onSave={(data) => {
+					onSave={async (data) => {
 						if (editingReceipt) {
 							updateReceipt({ ...data, id: editingReceipt.id });
+							return true;
 						} else {
 							const receiptDate = new Date(data.date);
 							const newValue =
@@ -384,7 +436,19 @@ const App: React.FC = () => {
 								...prev,
 								value: newValue,
 							}));
-							void addReceipt(data, refreshDates);
+							try {
+								await addReceipt(data, refreshDates);
+								return true;
+							} catch (error) {
+								const message = getErrorMessage(error);
+								setToast({
+									kind: "error",
+									message: message.includes("already exists for vendor")
+										? message
+										: `Failed to create receipt. ${message}`,
+								});
+								return false;
+							}
 						}
 					}}
 					onDelete={deleteReceipt}

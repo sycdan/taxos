@@ -459,3 +459,36 @@ input:focus {
 .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 .tracking-wider { letter-spacing: 0.05em; }
 .font-black { font-weight: 900; }
+
+.toast {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  width: min(460px, calc(100vw - 3rem));
+  padding: 0.9rem 1rem;
+  border-radius: 0.8rem;
+  border: 1px solid;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  z-index: 100;
+}
+
+.toast-error {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.45);
+}
+
+.toast-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #fecaca;
+  margin-bottom: 0.25rem;
+}
+
+.toast-message {
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: #fee2e2;
+}
