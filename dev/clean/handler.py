@@ -13,8 +13,11 @@ TEST_TENANT_NAMES = [
   "E2E Flow Test",
 ]
 
+
 def _is_test_tenant_name(name: str) -> bool:
-  return any(test_name.lower() in str(name).strip().lower() for test_name in TEST_TENANT_NAMES)
+  return any(
+    test_name.lower() in str(name).strip().lower() for test_name in TEST_TENANT_NAMES
+  )
 
 
 def _remove_test_tenants() -> int:
@@ -59,7 +62,9 @@ def _remove_orphaned_tokens() -> int:
       tenant_guid = data.get("tenant")
       if tenant_guid and not (TENANTS_DIR / tenant_guid).exists():
         token_file.unlink()
-        print(f"  removed orphaned token {token_file.stem[:12]}... (tenant {tenant_guid})")
+        print(
+          f"  removed orphaned token {token_file.stem[:12]}... (tenant {tenant_guid})"
+        )
         removed += 1
     except Exception as e:
       print(f"  warning: could not read {token_file.name}: {e}")
