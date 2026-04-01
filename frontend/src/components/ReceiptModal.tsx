@@ -292,10 +292,11 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 					setIsUploading(false);
 					lastUploadedHashRef.current = uploadingFile.hash;
 
-					// Set initial values based on uploaded file
-					if (!vendor) {
-						setVendor(uploadingFile.file.name.split(".")[0] || "");
-					}
+					// Seed vendor name only when the user has not entered one yet.
+					setVendor((previousVendor) => {
+						if (previousVendor.trim()) return previousVendor;
+						return uploadingFile.file.name.split(".")[0] || "";
+					});
 
 					onFileUploadComplete?.(uploadingFile.hash, uploadingFile.file.name);
 				} catch (error) {
@@ -309,7 +310,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
 			uploadFile();
 		}
-	}, [uploadingFile, isOpen, onFileUploadComplete, vendor]);
+	}, [uploadingFile, isOpen, onFileUploadComplete]);
 
 	// Create a bucket lookup map for O(1) access in allocation rendering
 	// Must be called before early return to avoid hook order violations

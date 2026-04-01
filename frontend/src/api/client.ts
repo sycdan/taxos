@@ -242,13 +242,16 @@ function extractGraphqlErrorMessage(error: unknown): string | undefined {
 	const fromResult = err?.result?.errors?.map((e) => e?.message).find(Boolean);
 	if (fromResult) return fromResult;
 
-	const bodyText = err?.networkError?.bodyText ?? err?.cause?.bodyText ?? err?.bodyText;
+	const bodyText =
+		err?.networkError?.bodyText ?? err?.cause?.bodyText ?? err?.bodyText;
 	if (bodyText) {
 		try {
 			const parsed = JSON.parse(bodyText) as {
 				errors?: Array<{ message?: string }>;
 			};
-			const parsedMessage = parsed?.errors?.map((e) => e?.message).find(Boolean);
+			const parsedMessage = parsed?.errors
+				?.map((e) => e?.message)
+				.find(Boolean);
 			if (parsedMessage) return parsedMessage;
 		} catch {
 			// Ignore JSON parse failures and fall through to default handling.
