@@ -109,10 +109,10 @@ def with_context(context: Context):
 def require_bucket(value) -> Bucket:
   if isinstance(value, Bucket):
     return value
-  if parse_guid(value) == UNALLOCATED_BUCKET_SINGLETON:
-    return UnallocatedBucket()
   elif not isinstance(value, BucketRef):
     value = BucketRef(value)
+    if value.guid == UNALLOCATED_BUCKET_SINGLETON:
+      return UnallocatedBucket()
   return LoadBucket(value).execute()
 
 
