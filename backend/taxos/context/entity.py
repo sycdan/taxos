@@ -13,9 +13,7 @@ class Context:
   access_token: AccessToken | None = None
   request_guid: str = field(
     default_factory=lambda: uuid4().hex,
-    metadata={
-      "help": "A unique identifier for the current request, used for tracing and logging.",
-    },
+    doc="A unique identifier for the current request, used for tracing and logging.",
   )
 
   def __post_init__(self):

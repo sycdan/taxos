@@ -88,34 +88,6 @@ def _parse_allocations(items: list | None) -> set[Allocation]:
   return allocations
 
 
-def _receipts_from_records(records) -> list[Receipt]:
-  """Convert neo4j records (r node + allocations list) to Receipt objects."""
-  from taxos.allocation.entity import Allocation
-  from taxos.bucket.entity import BucketRef
-
-  receipts = []
-  for record in records:
-    node = record["r"]
-    allocations = set()
-    for alloc in record["allocations"]:
-      if alloc["bucket"] is not None:
-        allocations.add(Allocation(BucketRef(alloc["bucket"]), alloc["amount"]))
-    receipts.append(
-      Receipt(
-        guid=node["guid"],
-        vendor=Vendor(record["vendor_guid"], record["vendor_name"]),
-        total=node["total"],
-        date=node["date"],
-        timezone=node["timezone"],
-        allocations=allocations,
-        reference=node.get("reference", ""),
-        notes=node.get("notes", ""),
-        hash=node.get("hash", ""),
-      )
-    )
-  return receipts
-
-
 # ---------------------------------------------------------------------------
 # Resolvers
 # ---------------------------------------------------------------------------
@@ -166,43 +138,11 @@ def resolve_bucket(*_, guid: str):
 
 @query.field("receipts")
 def resolve_receipts(*_, vendor=None, bucket=None, months=None):
-  tenant = require_tenant()
-  conditions = []
-  params: dict = {"months": months or []}
-
-  if vendor:
-    if not (vendor_guid := parse_guid(vendor)):
-      raise ValueError("vendor filter must be a valid GUID")
-    conditions.append("EXISTS { MATCH (r)-[:FROM_VENDOR]->(v:Vendor {guid: $vendor}) }")
-    params["vendor"] = vendor_guid.hex
-  if bucket:
-    conditions.append(
-      "EXISTS { MATCH (r)-[:ALLOCATED_TO]->(b:Bucket {guid: $bucket}) }"
-    )
-    params["bucket"] = bucket
-  if months:
-    conditions.append("substring(toString(r.date), 0, 7) IN $months")
-
-  where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
-
-  records = db.query(
-    f"""
-    MATCH (r:Receipt)
-    {where}
-    OPTIONAL MATCH (r)-[:FROM_VENDOR]->(v:Vendor)
-    OPTIONAL MATCH (vf:Vendor {{name_lower: toLower(r.vendor)}})
-    OPTIONAL MATCH (r)-[a:ALLOCATED_TO]->(b2:Bucket)
-    RETURN
-      r,
-      coalesce(v.guid, vf.guid) AS vendor_guid,
-      coalesce(v.name, vf.name, r.vendor) AS vendor_name,
-      collect({{bucket: b2.guid, amount: a.amount}}) AS allocations
-    ORDER BY r.date DESC
-    """,
-    params,
-    database=tenant.db_name,
-  )
-  return _receipts_from_records(records)
+  if vendor and not parse_guid(vendor):
+    raise ValueError("vendor filter must be a valid GUID")
+  if bucket and not parse_guid(bucket):
+    raise ValueError("bucket filter must be a valid GUID")
+  return ListReceipts(vendor=vendor, bucket=bucket, months=months or []).execute()
 
 
 @query.field("receipt")
@@ -306,24 +246,7 @@ def resolve_vendor_guid(vendor, *_):
 
 @vendor_type.field("receipts")
 def resolve_vendor_receipts(vendor, *_):
-  tenant = require_tenant()
-  records = db.query(
-    """
-    MATCH (v:Vendor {guid: $guid})<-[:FROM_VENDOR]-(r:Receipt)
-    WITH r, v
-    OPTIONAL MATCH (vf:Vendor {name_lower: toLower(r.vendor)})
-    OPTIONAL MATCH (r)-[a:ALLOCATED_TO]->(b:Bucket)
-    RETURN
-      r,
-      coalesce(v.guid, vf.guid) AS vendor_guid,
-      coalesce(v.name, vf.name, r.vendor) AS vendor_name,
-      collect({bucket: b.guid, amount: a.amount}) AS allocations
-    ORDER BY r.date DESC
-    """,
-    {"guid": vendor.guid.hex},
-    database=tenant.db_name,
-  )
-  return _receipts_from_records(records)
+  return ListReceipts(vendor=vendor).execute()
 
 
 @bucket_type.field("guid")
