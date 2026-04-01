@@ -12,7 +12,6 @@ from taxos.receipt.entity import Receipt, ReceiptRef
 from taxos.receipt.load.query import LoadReceipt
 from taxos.tenant.entity import Tenant, TenantRef
 from taxos.tools import json
-from taxos.tools.guid import parse_guid
 from taxos.vendor.entity import Vendor, VendorRef
 from taxos.vendor.load.query import LoadVendor
 
