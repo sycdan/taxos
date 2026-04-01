@@ -11,7 +11,6 @@ import {
 	X,
 } from "lucide-react";
 import type { Bucket, Receipt } from "../types";
-import { UNALLOCATED_BUCKET_ID } from "../types";
 import { format } from "date-fns";
 import { useTaxos } from "../contexts/TaxosContext";
 
@@ -19,8 +18,6 @@ interface BucketDetailProps {
 	bucketId: string;
 	buckets: Bucket[];
 	onBack: () => void;
-	startDate: Date;
-	endDate: Date;
 	onUpdateBucket: (id: string, name: string) => void;
 	onDeleteBucket: (id: string) => void;
 	onEditReceipt: (receipt: Receipt) => void;
@@ -36,13 +33,12 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
 	onEditReceipt,
 	isNameTaken,
 }) => {
-	const { receipts, unallocatedReceipts } = useTaxos();
+	const { receipts } = useTaxos();
 	const [isEditing, setIsEditing] = React.useState(false);
 	const [editName, setEditName] = React.useState("");
 
 	const bucketName = useMemo(() => {
-		if (bucketId === UNALLOCATED_BUCKET_ID) return "Unallocated";
-		return buckets.find((b) => b.id === bucketId)?.name || "Unknown Bucket";
+		return buckets.find((b) => b.id === bucketId)?.name ?? "Unknown Bucket";
 	}, [bucketId, buckets]);
 
 	const handleStartEdit = () => {
@@ -67,32 +63,16 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
 		}
 	};
 
-	// Derive receipts for this bucket directly from the in-memory receipts map —
-	// no API call needed.
 	const filteredReceipts = useMemo(() => {
-		if (bucketId === UNALLOCATED_BUCKET_ID) {
-			return [...unallocatedReceipts].sort(
-				(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-			);
-		}
 		return Object.values(receipts)
 			.filter((r) => r.allocations.some((a) => a.bucketId === bucketId))
 			.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-	}, [receipts, unallocatedReceipts, bucketId]);
+	}, [receipts, bucketId]);
 
 	const bucketTotal = useMemo(() => {
-		if (bucketId === UNALLOCATED_BUCKET_ID) {
-			return filteredReceipts.reduce((sum, r) => {
-				const allocatedAmount = r.allocations.reduce(
-					(s, a) => s + a.amount,
-					0,
-				);
-				return sum + (r.total - allocatedAmount);
-			}, 0);
-		}
 		return filteredReceipts.reduce((sum, r) => {
 			const alloc = r.allocations.find((a) => a.bucketId === bucketId);
-			return sum + (alloc?.amount || 0);
+			return sum + (alloc?.amount ?? 0);
 		}, 0);
 	}, [filteredReceipts, bucketId]);
 
@@ -145,24 +125,22 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
 					) : (
 						<div className="flex items-center gap-4 group/header">
 							<h1 className="text-3xl font-bold">{bucketName}</h1>
-							{bucketId !== UNALLOCATED_BUCKET_ID && (
-								<div className="flex gap-2 opacity-0 group-hover/header:opacity-100 transition-opacity">
-									<button
-										className="icon-btn"
-										onClick={handleStartEdit}
-										title="Rename Bucket"
-									>
-										<Edit2 size={18} />
-									</button>
-									<button
-										className="icon-btn danger"
-										onClick={handleDelete}
-										title="Delete Bucket"
-									>
-										<Trash2 size={18} />
-									</button>
-								</div>
-							)}
+							<div className="flex gap-2 opacity-0 group-hover/header:opacity-100 transition-opacity">
+								<button
+									className="icon-btn"
+									onClick={handleStartEdit}
+									title="Rename Bucket"
+								>
+									<Edit2 size={18} />
+								</button>
+								<button
+									className="icon-btn danger"
+									onClick={handleDelete}
+									title="Delete Bucket"
+								>
+									<Trash2 size={18} />
+								</button>
+							</div>
 						</div>
 					)}
 					<p className="text-muted mt-2">
@@ -197,12 +175,9 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
 					</div>
 				) : (
 					filteredReceipts.map((receipt) => {
-						const amountForThisBucket =
-							bucketId === UNALLOCATED_BUCKET_ID
-								? receipt.total -
-									receipt.allocations.reduce((sum, a) => sum + a.amount, 0)
-								: receipt.allocations.find((a) => a.bucketId === bucketId)
-										?.amount || 0;
+						const allocationAmount =
+							receipt.allocations.find((a) => a.bucketId === bucketId)?.amount ??
+							0;
 
 						return (
 							<motion.div
@@ -234,7 +209,7 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
 								<div className="text-right">
 									<div className="text-xl font-bold">
 										$
-										{amountForThisBucket.toLocaleString(undefined, {
+										{allocationAmount.toLocaleString(undefined, {
 											minimumFractionDigits: 2,
 											maximumFractionDigits: 2,
 										})}

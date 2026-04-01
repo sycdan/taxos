@@ -10,6 +10,7 @@ import {
 import Dashboard from "./components/Dashboard";
 import BucketDetail from "./components/BucketDetail";
 import VendorDetail from "./components/VendorDetail";
+import UnallocatedDetail from "./components/UnallocatedDetail";
 import ReceiptModal from "./components/ReceiptModal";
 import LoginModal from "./components/LoginModal";
 import { useTaxos } from "./contexts/TaxosContext";
@@ -23,7 +24,6 @@ import {
 } from "date-fns";
 import type { Receipt } from "./types";
 import { sha256 } from "js-sha256";
-import { UNALLOCATED_BUCKET_ID } from "./types";
 
 type FilterMode = "year" | "month";
 
@@ -55,6 +55,7 @@ const App: React.FC = () => {
 	const [currentBucketId, setCurrentBucketId] = useState<string | null>(null);
 	const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
 	const [showVendors, setShowVendors] = useState(false);
+	const [showUnallocated, setShowUnallocated] = useState(false);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [uploadedFile, setUploadedFile] = useState<string | undefined>(
 		undefined,
@@ -93,9 +94,7 @@ const App: React.FC = () => {
 	}, [toast]);
 
 	const totalAllocated = useMemo(() => {
-		return bucketSummaries
-			.filter((summary) => summary.bucket.id !== UNALLOCATED_BUCKET_ID)
-			.reduce((sum, summary) => sum + summary.totalAmount, 0);
+		return bucketSummaries.reduce((sum, summary) => sum + summary.totalAmount, 0);
 	}, [bucketSummaries]);
 
 	const dateRange = useMemo(() => {
@@ -218,6 +217,7 @@ const App: React.FC = () => {
 		setCurrentBucketId(null);
 		setSelectedVendor(null);
 		setShowVendors(false);
+		setShowUnallocated(false);
 	};
 
 	const navigateToVendors = () => {
@@ -279,12 +279,13 @@ const App: React.FC = () => {
 					style={{ position: "sticky", top: "1rem", zIndex: 40 }}
 				>
 					<div className="flex items-center gap-4">
-						{(currentBucketId || selectedVendor) && (
+						{(currentBucketId || selectedVendor || showUnallocated) && (
 							<button
 								className="btn btn-ghost p-1"
 								onClick={() => {
 									setCurrentBucketId(null);
 									setSelectedVendor(null);
+									setShowUnallocated(false);
 								}}
 							>
 								<ArrowLeft size={20} />
@@ -293,7 +294,7 @@ const App: React.FC = () => {
 						<div className="text-sm font-bold uppercase tracking-wider text-muted">
 							Receipts
 						</div>
-						{!currentBucketId && !selectedVendor && !showVendors && (
+						{!currentBucketId && !selectedVendor && !showVendors && !showUnallocated && (
 							<>
 								<div className="h-4 w-px bg-gray-600"></div>
 								<div className="flex items-center gap-2">
@@ -370,12 +371,15 @@ const App: React.FC = () => {
 				</header>
 
 				<main className="py-8">
-					{selectedVendor ? (
+					{showUnallocated ? (
+						<UnallocatedDetail
+							onBack={() => setShowUnallocated(false)}
+							onEditReceipt={handleEditReceipt}
+						/>
+					) : selectedVendor ? (
 						<VendorDetail
 							vendorId={selectedVendor}
 							onBack={() => setSelectedVendor(null)}
-							startDate={dateRange.start}
-							endDate={dateRange.end}
 							onEditReceipt={handleEditReceipt}
 						/>
 					) : currentBucketId ? (
@@ -383,8 +387,6 @@ const App: React.FC = () => {
 							bucketId={currentBucketId}
 							buckets={buckets}
 							onBack={() => setCurrentBucketId(null)}
-							startDate={dateRange.start}
-							endDate={dateRange.end}
 							onUpdateBucket={updateBucket}
 							onDeleteBucket={(id) => {
 								deleteBucket(id);
@@ -398,6 +400,7 @@ const App: React.FC = () => {
 							viewMode={showVendors ? "vendors" : "buckets"}
 							onSelectBucket={setCurrentBucketId}
 							onSelectVendor={setSelectedVendor}
+							onSelectUnallocated={() => setShowUnallocated(true)}
 							onUpload={handleFileUpload}
 							showEmpty={showEmpty}
 							setShowEmpty={setShowEmpty}

@@ -8,8 +8,6 @@ import { useTaxos } from "../contexts/TaxosContext";
 interface VendorDetailProps {
 	vendorId: string;
 	onBack: () => void;
-	startDate: Date;
-	endDate: Date;
 	onEditReceipt: (receipt: Receipt) => void;
 }
 
