@@ -6,20 +6,19 @@ Receipt and bucket management system.
 
 ### Backend
 
-- python, connectrpc, protobuf, scaf
+- python, GraphQL, scaf
 - Docker container: taxos-backend-1
-- Port: 50051 (connectrpc)
-- API definitions in `proto/v1/taxos_service.proto`
+- Port: 50052 (GraphQL)
 - Domain: tenants, receipts, buckets
 - Auth: custom tokens (identifying a Tenant)
 - Tenant data stored in `backend/data/tenants/`
 
 ### Frontend
 
-- react, vite, typescript, connectrpc
+- react, vite, typescript
 - Docker container: taxos-frontend-1
 - Port: 5173
-- Connects to backend API via Connect-RPC
+- Connects to backend API via GraphQL
 
 ### Dev Commands
 

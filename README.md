@@ -23,8 +23,8 @@ Aliases are available for [scaf](http://scaf.sycdan.com) commands within the dev
 # Reset data (rebulding the devcontainer will re-seed)
 dev.nuke
 
-# Make classes from proto
-dev.proto.gen
+# Generate frontend constants from backend concepts
+dev.gen
 ```
 
 You can also run them directly (from repo root):
@@ -44,8 +44,8 @@ dev.test
 # Run a specific unit test:
 dev.test time --no-integration
 
-# Run only the backend integration tests
-dev.test --no-frontend
+# Run only the frontend integration tests
+dev.test --no-backend
 ```
 
 It is possible to debug either backend tests or endpoint hits via VSCode launch commands:
