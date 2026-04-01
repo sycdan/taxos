@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 @dataclass
 class Clean:
-  """Remove orphaned access tokens whose tenant no longer exists."""
+  """Remove test tenants and orphaned access tokens."""
 
   def execute(self):
     from dev.clean.handler import handle
