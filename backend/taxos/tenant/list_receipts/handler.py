@@ -84,7 +84,12 @@ def _to_receipts(records) -> list[Receipt]:
 def handle(query: ListReceipts) -> list[Receipt]:
   logger.debug(f"Handling {query=}")
   tenant = require_tenant()
-  bucket = require_bucket(query.bucket) if query.bucket is not None else None
+  if query.bucket is None:
+    bucket = None
+  elif isinstance(query.bucket, BucketRef):
+    bucket = require_bucket(query.bucket.guid.hex)
+  else:
+    bucket = require_bucket(query.bucket)
   vendor = require_vendor(query.vendor) if query.vendor is not None else None
 
   params = {
