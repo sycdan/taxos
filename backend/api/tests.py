@@ -150,9 +150,9 @@ class TestReceipts:
       }
     """)["createReceipt"]["guid"]
 
-    fetched = gql(f'query {{ receipt(guid: "{guid}") {{ vendor {{ guid }} total notes }} }}')[
-      "receipt"
-    ]
+    fetched = gql(
+      f'query {{ receipt(guid: "{guid}") {{ vendor {{ guid }} total notes }} }}'
+    )["receipt"]
     vendors = gql("query { vendors { guid name } }")["vendors"]
     acme_guid = next(v["guid"] for v in vendors if v["name"] == "Acme")
     assert fetched["vendor"]["guid"] == acme_guid
@@ -207,9 +207,9 @@ class TestReceipts:
       }}
     """)
 
-    fetched = gql(f'query {{ receipt(guid: "{guid}") {{ vendor {{ guid }} total notes }} }}')[
-      "receipt"
-    ]
+    fetched = gql(
+      f'query {{ receipt(guid: "{guid}") {{ vendor {{ guid }} total notes }} }}'
+    )["receipt"]
     vendors = gql("query { vendors { guid name } }")["vendors"]
     new_vendor_guid = next(v["guid"] for v in vendors if v["name"] == "New Vendor")
     assert fetched["vendor"]["guid"] == new_vendor_guid
@@ -292,7 +292,9 @@ class TestReceipts:
       }}
     """)
 
-    receipts = gql(f'query {{ receipts(bucket: "{b1}") {{ vendor {{ guid }} }} }}')["receipts"]
+    receipts = gql(f'query {{ receipts(bucket: "{b1}") {{ vendor {{ guid }} }} }}')[
+      "receipts"
+    ]
     assert len(receipts) == 1
     vendors = gql("query { vendors { guid name } }")["vendors"]
     restaurant_guid = next(v["guid"] for v in vendors if v["name"] == "Restaurant")
@@ -310,10 +312,11 @@ class TestReceipts:
       }
     """)
 
-    receipts = gql('query { receipts(months: ["2024-01"]) { vendor { guid } } }')["receipts"]
+    receipts = gql('query { receipts(months: ["2024-01"]) { vendor { guid } } }')[
+      "receipts"
+    ]
     vendor_names_by_guid = {
-      v["guid"]: v["name"]
-      for v in gql("query { vendors { guid name } }")["vendors"]
+      v["guid"]: v["name"] for v in gql("query { vendors { guid name } }")["vendors"]
     }
     vendors = [vendor_names_by_guid[r["vendor"]["guid"]] for r in receipts]
     assert "Jan" in vendors
