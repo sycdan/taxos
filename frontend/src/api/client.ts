@@ -66,7 +66,9 @@ const LIST_RECEIPTS_QUERY = gql`
 	query ListReceipts($bucket: ID, $months: [String!], $vendor: ID) {
 		receipts(bucket: $bucket, months: $months, vendor: $vendor) {
 			guid
-			vendor
+			vendor {
+				guid
+			}
 			total
 			date
 			timezone
@@ -108,7 +110,7 @@ const DELETE_BUCKET_MUTATION = gql`
 `;
 
 const RECEIPT_FIELDS = `
-  guid vendor total date timezone notes hash reference
+	guid vendor { guid } total date timezone notes hash reference
   allocations { amount bucket { guid } }
 `;
 
@@ -186,7 +188,7 @@ function mapAllocationsInput(
 
 function mapReceiptResponse(r: {
 	guid: string;
-	vendor: string;
+	vendor: { guid: string };
 	total: number;
 	date: string;
 	timezone: string;
@@ -197,7 +199,7 @@ function mapReceiptResponse(r: {
 }) {
 	return {
 		guid: r.guid,
-		vendor: r.vendor,
+		vendorGuid: r.vendor.guid,
 		total: r.total,
 		date: r.date,
 		timezone: r.timezone,

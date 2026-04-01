@@ -121,10 +121,12 @@ class TestBuckets:
     """)
 
     receipts = gql(f"""
-      query {{ bucket(guid: "{bucket_guid}") {{ receipts {{ vendor total }} }} }}
+      query {{ bucket(guid: "{bucket_guid}") {{ receipts {{ vendor {{ guid }} total }} }} }}
     """)["bucket"]["receipts"]
+    vendors = gql("query { vendors { guid name } }")["vendors"]
+    staples_guid = next(v["guid"] for v in vendors if v["name"] == "Staples")
     assert len(receipts) == 1
-    assert receipts[0]["vendor"] == "Staples"
+    assert receipts[0]["vendor"]["guid"] == staples_guid
     assert receipts[0]["total"] == 30.0
 
 
@@ -148,10 +150,12 @@ class TestReceipts:
       }
     """)["createReceipt"]["guid"]
 
-    fetched = gql(f'query {{ receipt(guid: "{guid}") {{ vendor total notes }} }}')[
+    fetched = gql(f'query {{ receipt(guid: "{guid}") {{ vendor {{ guid }} total notes }} }}')[
       "receipt"
     ]
-    assert fetched["vendor"] == "Acme"
+    vendors = gql("query { vendors { guid name } }")["vendors"]
+    acme_guid = next(v["guid"] for v in vendors if v["name"] == "Acme")
+    assert fetched["vendor"]["guid"] == acme_guid
     assert fetched["total"] == 100.0
     assert fetched["notes"] == "business lunch"
 
@@ -203,10 +207,12 @@ class TestReceipts:
       }}
     """)
 
-    fetched = gql(f'query {{ receipt(guid: "{guid}") {{ vendor total notes }} }}')[
+    fetched = gql(f'query {{ receipt(guid: "{guid}") {{ vendor {{ guid }} total notes }} }}')[
       "receipt"
     ]
-    assert fetched["vendor"] == "New Vendor"
+    vendors = gql("query { vendors { guid name } }")["vendors"]
+    new_vendor_guid = next(v["guid"] for v in vendors if v["name"] == "New Vendor")
+    assert fetched["vendor"]["guid"] == new_vendor_guid
     assert fetched["total"] == 75.0
     assert fetched["notes"] == "updated"
 
@@ -286,9 +292,11 @@ class TestReceipts:
       }}
     """)
 
-    receipts = gql(f'query {{ receipts(bucket: "{b1}") {{ vendor }} }}')["receipts"]
+    receipts = gql(f'query {{ receipts(bucket: "{b1}") {{ vendor {{ guid }} }} }}')["receipts"]
     assert len(receipts) == 1
-    assert receipts[0]["vendor"] == "Restaurant"
+    vendors = gql("query { vendors { guid name } }")["vendors"]
+    restaurant_guid = next(v["guid"] for v in vendors if v["name"] == "Restaurant")
+    assert receipts[0]["vendor"]["guid"] == restaurant_guid
 
   def test_receipts_query_filtered_by_months(self, gql):
     gql("""
@@ -302,8 +310,12 @@ class TestReceipts:
       }
     """)
 
-    receipts = gql('query { receipts(months: ["2024-01"]) { vendor } }')["receipts"]
-    vendors = [r["vendor"] for r in receipts]
+    receipts = gql('query { receipts(months: ["2024-01"]) { vendor { guid } } }')["receipts"]
+    vendor_names_by_guid = {
+      v["guid"]: v["name"]
+      for v in gql("query { vendors { guid name } }")["vendors"]
+    }
+    vendors = [vendor_names_by_guid[r["vendor"]["guid"]] for r in receipts]
     assert "Jan" in vendors
     assert "Feb" not in vendors
 
@@ -319,11 +331,11 @@ class TestReceipts:
           total: 12.5
           date: "2024-03-01T00:00:00"
           timezone: "UTC"
-        }}) {{ guid vendor reference }}
+        }}) {{ guid vendor {{ guid }} reference }}
       }}
     ''')["createReceipt"]
 
-    assert created["vendor"] == "Guid Vendor"
+    assert created["vendor"]["guid"] == vendor["guid"]
     assert created["reference"] == ""
 
 

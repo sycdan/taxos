@@ -297,9 +297,9 @@ def resolve_receipt_guid(receipt, *_):
 @receipt_type.field("vendor")
 def resolve_receipt_vendor(receipt, *_):
   vendor = receipt.vendor
-  return (
-    vendor.name if isinstance(vendor, Vendor) else LoadVendor(ref=vendor).execute().name
-  )
+  if isinstance(vendor, Vendor):
+    return {"guid": vendor.guid.hex}
+  return {"guid": vendor.guid.hex}
 
 
 @receipt_type.field("date")

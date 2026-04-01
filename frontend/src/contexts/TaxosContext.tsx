@@ -105,6 +105,10 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 	const [vendorNames, setVendorNames] = useState<string[]>([]);
 	const [vendors, setVendors] = useState<Vendor[]>([]);
 	const [activeBucketId, setActiveBucketId] = useState<string | null>(null);
+	const vendorNameById = useMemo(
+		() => new Map(vendors.map((vendor) => [vendor.id, vendor.name])),
+		[vendors],
+	);
 
 	// Track receipt hashes for O(1) duplicate detection
 	const receiptHashes = useMemo(() => {
@@ -158,7 +162,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				const bucketReceipts: Receipt[] = response.receipts.map(
 					(r: MappedReceipt) => ({
 						id: r.guid,
-						vendor: r.vendor,
+						vendor: vendorNameById.get(r.vendorGuid) ?? r.vendorGuid,
 						total: r.total,
 						date: r.date,
 						timezone: r.timezone,
@@ -190,7 +194,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				return [];
 			}
 		},
-		[],
+		[vendorNameById],
 	);
 
 	const loadReceiptsForVendor = useCallback(
@@ -219,7 +223,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				const vendorReceipts: Receipt[] = response.receipts.map(
 					(r: MappedReceipt) => ({
 						id: r.guid,
-						vendor: r.vendor,
+						vendor: vendorNameById.get(r.vendorGuid) ?? r.vendorGuid,
 						total: r.total,
 						date: r.date,
 						timezone: r.timezone,
@@ -251,7 +255,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				return [];
 			}
 		},
-		[],
+		[vendorNameById],
 	);
 
 	const refreshBuckets = useCallback(
@@ -308,7 +312,9 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				const allReceipts: Receipt[] = allReceiptsResponse.receipts.map(
 					(r: MappedReceipt) => ({
 						id: r.guid,
-						vendor: r.vendor,
+						vendor:
+							apiVendors.find((vendor) => vendor.id === r.vendorGuid)?.name ??
+							r.vendorGuid,
 						total: r.total,
 						date: r.date,
 						timezone: r.timezone,
@@ -375,9 +381,6 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 					}
 				}
 
-				const vendorIdsByName = new Map(
-					apiVendors.map((vendor) => [vendor.name, vendor.id]),
-				);
 				const vendorSummaryMap = new Map<
 					string,
 					import("../types").VendorSummary
@@ -393,7 +396,8 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 
 				for (const receipt of allReceipts) {
 					const vendorId =
-						vendorIdsByName.get(receipt.vendor) ?? receipt.vendor;
+						apiVendors.find((vendor) => vendor.name === receipt.vendor)?.id ??
+						receipt.vendor;
 					const existing = vendorSummaryMap.get(vendorId) ?? {
 						vendor: {
 							id: vendorId,
@@ -575,7 +579,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 
 			const createdReceipt: Receipt = {
 				id: response.guid,
-				vendor: response.vendor,
+				vendor: receipt.vendor,
 				total: response.total,
 				date: response.date,
 				timezone: response.timezone,
@@ -643,7 +647,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 
 			const updatedReceipt: Receipt = {
 				id: response.guid,
-				vendor: response.vendor,
+				vendor: receipt.vendor,
 				total: response.total,
 				date: response.date,
 				timezone: response.timezone,

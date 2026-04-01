@@ -32,6 +32,10 @@ type Vendor {
 	receipts: [Receipt!]!
 }
 
+type VendorRef {
+	guid: ID!
+}
+
 type Bucket {
 	guid: ID!
 	name: String!
@@ -42,7 +46,7 @@ type Bucket {
 
 type Receipt {
 	guid: ID!
-	vendor: String!
+	vendor: VendorRef!
 	total: Float!
 	date: String!
 	timezone: String!
