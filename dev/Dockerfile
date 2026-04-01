@@ -55,6 +55,9 @@ RUN curl -sSL \
   | tar -xz -C $HOME/.local/bin \
   && chmod +x $HOME/.local/bin/grpcurl
 
+# Install Claude CLI
+RUN curl -fsSL https://claude.ai/install.sh | bash
+
 ENV PATH="${HOME}/.local/bin:${PATH}"
 ENV PYTHONPATH="/workspaces/taxos/backend:/workspaces/taxos/dev"
 

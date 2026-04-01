@@ -38,22 +38,19 @@ const Dashboard: React.FC<DashboardProps> = ({
 	isNameTaken,
 }) => {
 	const isGuid = (value: string) => /^[0-9a-f]{32}$/i.test(value);
-	const {
-		bucketSummaries,
-		vendorSummaries,
-		unallocatedSummary,
-		refreshBuckets,
-		setActiveBucketId,
-	} = useTaxos();
+	const { bucketSummaries, vendorSummaries, unallocatedSummary, refreshBuckets } =
+		useTaxos();
 	const [isDragging, setIsDragging] = React.useState(false);
 	const [isAddingBucket, setIsAddingBucket] = React.useState(false);
 	const [newBucketName, setNewBucketName] = React.useState("");
 	const dragCounter = React.useRef(0);
 
+	// Trigger data load on mount and whenever the date filter changes.
+	// refreshBuckets loads buckets+vendors once, then only reloads receipts
+	// on subsequent calls.
 	React.useEffect(() => {
-		setActiveBucketId(UNALLOCATED_BUCKET_ID);
 		void refreshBuckets(startDate, endDate);
-	}, [startDate, endDate, setActiveBucketId, refreshBuckets]);
+	}, [startDate, endDate, refreshBuckets]);
 
 	React.useEffect(() => {
 		const handleWindowDragOver = (e: DragEvent) => {

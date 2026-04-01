@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Edit2, Check, X } from "lucide-react";
 import type { Receipt } from "../types";
@@ -16,17 +16,9 @@ interface VendorDetailProps {
 const VendorDetail: React.FC<VendorDetailProps> = ({
 	vendorId,
 	onBack,
-	startDate,
-	endDate,
 	onEditReceipt,
 }) => {
-	const {
-		vendors,
-		loadReceiptsForVendor,
-		currentReceiptsList,
-		setActiveBucketId,
-		updateVendor,
-	} = useTaxos();
+	const { vendors, receipts, updateVendor } = useTaxos();
 
 	const [isEditing, setIsEditing] = useState(false);
 	const [editName, setEditName] = useState("");
@@ -59,30 +51,13 @@ const VendorDetail: React.FC<VendorDetailProps> = ({
 		if (result) setIsEditing(false);
 	};
 
-	// Fetch receipts when vendor changes or date range changes
-	useEffect(() => {
-		setActiveBucketId(null);
-		const fetchReceipts = async () => {
-			try {
-				await loadReceiptsForVendor(resolvedVendorId, startDate, endDate);
-			} catch (error) {
-				console.error("Failed to fetch receipts:", error);
-			}
-		};
-		void fetchReceipts();
-	}, [
-		resolvedVendorId,
-		startDate,
-		endDate,
-		setActiveBucketId,
-		loadReceiptsForVendor,
-	]);
-
+	// Derive receipts for this vendor directly from the in-memory receipts map —
+	// no API call needed. Receipts store vendor name, so filter by name.
 	const sortedReceipts = useMemo(() => {
-		return [...currentReceiptsList].sort((a, b) => {
-			return new Date(b.date).getTime() - new Date(a.date).getTime();
-		});
-	}, [currentReceiptsList]);
+		return Object.values(receipts)
+			.filter((r) => r.vendor === vendorName)
+			.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+	}, [receipts, vendorName]);
 
 	const totalAmount = useMemo(() => {
 		return sortedReceipts.reduce((sum, r) => sum + r.total, 0);

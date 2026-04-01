@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useCallback } from "react";
+import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
 	ArrowLeft,
@@ -31,51 +31,14 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
 	bucketId,
 	buckets,
 	onBack,
-	startDate,
-	endDate,
 	onUpdateBucket,
 	onDeleteBucket,
 	onEditReceipt,
 	isNameTaken,
 }) => {
-	const {
-		loadReceiptsForBucket,
-		currentReceiptsList,
-		unallocatedSummary,
-		unallocatedReceipts,
-		setActiveBucketId,
-	} = useTaxos();
+	const { receipts, unallocatedReceipts } = useTaxos();
 	const [isEditing, setIsEditing] = React.useState(false);
 	const [editName, setEditName] = React.useState("");
-
-	const getUnallocatedReceipts = useCallback(async (): Promise<Receipt[]> => {
-		// TaxosContext refreshes and populates unallocatedReceipts
-		return unallocatedReceipts;
-	}, [unallocatedReceipts]);
-
-	// Fetch receipts when bucket changes or date range changes
-	useEffect(() => {
-		setActiveBucketId(bucketId);
-		const fetchReceipts = async () => {
-			try {
-				if (bucketId === UNALLOCATED_BUCKET_ID) {
-					await getUnallocatedReceipts();
-				} else {
-					await loadReceiptsForBucket(bucketId, startDate, endDate);
-				}
-			} catch (error) {
-				console.error("Failed to fetch receipts:", error);
-			}
-		};
-		void fetchReceipts();
-	}, [
-		bucketId,
-		startDate,
-		endDate,
-		setActiveBucketId,
-		loadReceiptsForBucket,
-		getUnallocatedReceipts,
-	]);
 
 	const bucketName = useMemo(() => {
 		if (bucketId === UNALLOCATED_BUCKET_ID) return "Unallocated";
@@ -104,21 +67,34 @@ const BucketDetail: React.FC<BucketDetailProps> = ({
 		}
 	};
 
+	// Derive receipts for this bucket directly from the in-memory receipts map —
+	// no API call needed.
 	const filteredReceipts = useMemo(() => {
-		return [...currentReceiptsList].sort(
-			(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-		);
-	}, [currentReceiptsList]);
+		if (bucketId === UNALLOCATED_BUCKET_ID) {
+			return [...unallocatedReceipts].sort(
+				(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+			);
+		}
+		return Object.values(receipts)
+			.filter((r) => r.allocations.some((a) => a.bucketId === bucketId))
+			.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+	}, [receipts, unallocatedReceipts, bucketId]);
 
 	const bucketTotal = useMemo(() => {
-		if (bucketId === UNALLOCATED_BUCKET_ID)
-			return unallocatedSummary.totalAmount;
-
+		if (bucketId === UNALLOCATED_BUCKET_ID) {
+			return filteredReceipts.reduce((sum, r) => {
+				const allocatedAmount = r.allocations.reduce(
+					(s, a) => s + a.amount,
+					0,
+				);
+				return sum + (r.total - allocatedAmount);
+			}, 0);
+		}
 		return filteredReceipts.reduce((sum, r) => {
 			const alloc = r.allocations.find((a) => a.bucketId === bucketId);
 			return sum + (alloc?.amount || 0);
 		}, 0);
-	}, [filteredReceipts, bucketId, unallocatedSummary.totalAmount]);
+	}, [filteredReceipts, bucketId]);
 
 	return (
 		<motion.div

@@ -3,11 +3,7 @@ type Query {
 	vendor(guid: ID!): Vendor
 	buckets: [Bucket!]!
 	bucket(guid: ID!): Bucket
-	receipts(
-		months: [String!]
-		bucket: ID
-		vendor: ID
-	): [Receipt!]!
+	receipts(months: [String!], bucket: ID, vendor: ID): [Receipt!]!
 	receipt(guid: ID!): Receipt
 }
 
@@ -19,7 +15,7 @@ type Mutation {
 	createReceipt(input: ReceiptInput!): Receipt!
 	updateReceipt(guid: ID!, input: ReceiptInput!): Receipt!
 	deleteReceipt(guid: ID!): Boolean!
-	
+
 	upsertVendor(name: String!): Vendor!
 	updateVendor(guid: ID!, name: String!): Vendor!
 
