@@ -26,7 +26,7 @@ def _write_flat_dir(dest: Path, tenant, buckets, vendors, receipts) -> None:
 
   for b in buckets:
     guid_hex = b["guid"].replace("-", "")
-    _write_state(dest / "buckets" / guid_hex / "state.json",b)
+    _write_state(dest / "buckets" / guid_hex / "state.json", b)
 
   for v in vendors:
     guid_hex = v["guid"].replace("-", "")

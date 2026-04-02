@@ -24,8 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 def _load_from_flat_dir(source: Path) -> tuple[UUID, dict]:
-  """Read per-entity state.json files from a backup or tenant directory.
-  """
+  """Read per-entity state.json files from a backup or tenant directory."""
   # Prefer tenant GUID from state.json; fall back to
   # deriving it from the directory name.
   state_file = source / "state.json"
