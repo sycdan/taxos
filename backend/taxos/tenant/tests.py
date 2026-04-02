@@ -208,31 +208,80 @@ def _create_test_data(
 
 class TestBackupRestore:
   @pytest.mark.integration
-  def test_backup_returns_all_entities(self, tmp_path):
+  def test_backup_writes_flat_dir_format(self, tmp_path):
+    """Backup writes per-entity state.json files in the flat-directory format."""
     from taxos.tenant.backup.command import BackupTenant
 
     tenant = _make_tenant_for_backup(tmp_path, "Backup Test")
     _set_context_tenant(tenant)
-    _create_test_data("Travel", "Airline", 500.0)
+    bucket = _create_test_data("Travel", "Airline", 500.0)
 
-    data = BackupTenant().execute()
+    with patch("taxos.BACKUPS_DIR", tmp_path / "backups"):
+      dest = BackupTenant().execute()
 
-    assert len(data["buckets"]) == 1
-    assert data["buckets"][0]["name"] == "Travel"
-    assert len(data["vendors"]) == 1
-    assert data["vendors"][0]["name"] == "Airline"
-    assert len(data["receipts"]) == 1
-    assert data["tenant_guid"] == tenant.guid.hex
-    r = data["receipts"][0]
-    assert r["vendor"] == "Airline"
+    assert dest.is_dir()
+
+    # Tenant state
+    tenant_state = json.loads((dest / "state.json").read_text())
+    assert tenant_state["guid"] == str(tenant.guid)
+    assert tenant_state["name"] == "Backup Test"
+
+    # Bucket
+    bucket_files = list((dest / "buckets").glob("*/state.json"))
+    assert len(bucket_files) == 1
+    b = json.loads(bucket_files[0].read_text())
+    assert b["name"] == "Travel"
+
+    # Vendor
+    vendor_files = list((dest / "vendors").glob("*/state.json"))
+    assert len(vendor_files) == 1
+    v = json.loads(vendor_files[0].read_text())
+    assert v["name"] == "Airline"
+
+    # Receipt — vendor field must be a GUID, not a name
+    receipt_files = list((dest / "receipts").glob("*/state.json"))
+    assert len(receipt_files) == 1
+    r = json.loads(receipt_files[0].read_text())
     assert r["total"] == 500.0
+    assert r["vendor"] != "Airline", "receipt should store vendor GUID, not name"
+    from taxos.tools.guid import parse_guid
+
+    assert parse_guid(r["vendor"]) is not None, "vendor field should be a valid GUID"
     assert len(r["allocations"]) == 1
     assert r["allocations"][0]["amount"] == 500.0
+    assert "vendor_ref" in r
 
     _delete_tenant_for_backup(tmp_path, tenant)
 
   @pytest.mark.integration
-  def test_restore_from_backup_preserves_tenant_guid(self, tmp_path):
+  def test_backup_zip_creates_archive(self, tmp_path):
+    """BackupTenant(zip=True) creates a .zip archive instead of a directory."""
+    from taxos.tenant.backup.command import BackupTenant
+
+    tenant = _make_tenant_for_backup(tmp_path, "Zip Test")
+    _set_context_tenant(tenant)
+    _create_test_data("Supplies", "Staples", 99.0)
+
+    with patch("taxos.BACKUPS_DIR", tmp_path / "backups"):
+      dest = BackupTenant(zip=True).execute()
+
+    assert dest.suffix == ".zip"
+    assert dest.is_file()
+
+    import zipfile
+
+    with zipfile.ZipFile(dest) as zf:
+      names = zf.namelist()
+    assert any(n == "state.json" for n in names)
+    assert any(n.startswith("buckets/") for n in names)
+    assert any(n.startswith("vendors/") for n in names)
+    assert any(n.startswith("receipts/") for n in names)
+
+    _delete_tenant_for_backup(tmp_path, tenant)
+
+  @pytest.mark.integration
+  def test_restore_from_backup_dir_preserves_tenant_guid(self, tmp_path):
+    """Round-trip: backup to flat-dir, restore, verify data and GUID are preserved."""
     from taxos import db
     from taxos.tenant.backup.command import BackupTenant
     from taxos.tenant.restore.command import RestoreTenant
@@ -241,19 +290,18 @@ class TestBackupRestore:
     _set_context_tenant(src)
     _create_test_data("Office", "Staples", 45.0, "2024-03-01T09:00:00")
 
-    backup_file = tmp_path / "backup.json"
     original_guid = src.guid.hex
-    BackupTenant(path=str(backup_file)).execute()
+    with patch("taxos.BACKUPS_DIR", tmp_path / "backups"):
+      backup_dir = BackupTenant().execute()
     _delete_tenant_for_backup(tmp_path, src)
 
     with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
-      token = RestoreTenant(source=backup_file, name="Restored Tenant").execute()
+      token = RestoreTenant(source=backup_dir, name="Restored Tenant").execute()
 
     tenant = token.tenant
     assert isinstance(tenant, Tenant), "Expected tenant in access token"
 
     try:
-      # Verify tenant GUID is preserved
       assert tenant.guid.hex == original_guid
 
       buckets = db.query(
@@ -276,8 +324,45 @@ class TestBackupRestore:
       _delete_tenant_for_backup(tmp_path, tenant)
 
   @pytest.mark.integration
-  def test_restore_from_flat_dir(self, tmp_path):
-    """Restore from old flat-file tenant directory structure."""
+  def test_restore_from_backup_zip_preserves_tenant_guid(self, tmp_path):
+    """Round-trip: backup to zip, restore from zip, verify data and GUID."""
+    from taxos import db
+    from taxos.tenant.backup.command import BackupTenant
+    from taxos.tenant.restore.command import RestoreTenant
+
+    src = _make_tenant_for_backup(tmp_path, "Zip Source")
+    _set_context_tenant(src)
+    _create_test_data("Hardware", "Home Depot", 200.0, "2024-07-15T10:00:00")
+
+    original_guid = src.guid.hex
+    with patch("taxos.BACKUPS_DIR", tmp_path / "backups"):
+      backup_zip = BackupTenant(zip=True).execute()
+    _delete_tenant_for_backup(tmp_path, src)
+
+    with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
+      token = RestoreTenant(source=backup_zip, name="Zip Restored").execute()
+
+    tenant = token.tenant
+    assert isinstance(tenant, Tenant)
+
+    try:
+      assert tenant.guid.hex == original_guid
+      rows = db.query(
+        """
+        MATCH (r:Receipt)-[:FROM_VENDOR]->(v:Vendor)
+        OPTIONAL MATCH (r)-[a:ALLOCATED_TO]->(b)
+        RETURN v.name AS vendor, collect(a.amount) AS amounts
+        """,
+        database=tenant.db_name,
+      )
+      assert rows[0]["vendor"] == "Home Depot"
+      assert rows[0]["amounts"] == [200.0]
+    finally:
+      _delete_tenant_for_backup(tmp_path, tenant)
+
+  @pytest.mark.integration
+  def test_restore_from_flat_dir_legacy_vendor_name(self, tmp_path):
+    """Restore from old flat-file directory where receipt vendor field is a name."""
     from taxos import db
     from taxos.tenant.restore.command import RestoreTenant
 
@@ -287,29 +372,26 @@ class TestBackupRestore:
     vendor_guid = "44444444-4444-4444-4444-444444444444"
 
     flat_dir = tmp_path / tenant_guid.replace("-", "")
-    buckets_dir = flat_dir / "buckets"
-    vendors_dir = flat_dir / "vendors"
-    receipts_dir = flat_dir / "receipts"
 
-    bucket_dir = buckets_dir / bucket_guid.replace("-", "")
+    bucket_dir = flat_dir / "buckets" / bucket_guid.replace("-", "")
     bucket_dir.mkdir(parents=True)
     (bucket_dir / "state.json").write_text(
       json.dumps({"guid": bucket_guid, "name": "Food"})
     )
 
-    vendor_dir = vendors_dir / vendor_guid.replace("-", "")
+    vendor_dir = flat_dir / "vendors" / vendor_guid.replace("-", "")
     vendor_dir.mkdir(parents=True)
     (vendor_dir / "state.json").write_text(
       json.dumps({"guid": vendor_guid, "name": "Grocery Store"})
     )
 
-    receipt_dir = receipts_dir / receipt_guid.replace("-", "")
+    receipt_dir = flat_dir / "receipts" / receipt_guid.replace("-", "")
     receipt_dir.mkdir(parents=True)
     (receipt_dir / "state.json").write_text(
       json.dumps(
         {
           "guid": receipt_guid,
-          "vendor": "Grocery Store",
+          "vendor": "Grocery Store",  # legacy: name, not GUID
           "total": 120.0,
           "date": "2024-05-10T14:00:00",
           "timezone": "UTC",
@@ -325,7 +407,7 @@ class TestBackupRestore:
       token = RestoreTenant(source=flat_dir, name="Flat Test", nuke=True).execute()
 
     tenant = token.tenant
-    assert isinstance(tenant, Tenant), "Expected tenant in access token"
+    assert isinstance(tenant, Tenant)
 
     try:
       rows = db.query(

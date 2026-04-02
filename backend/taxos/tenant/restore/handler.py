@@ -1,7 +1,8 @@
 import json
 import logging
+import tempfile
+import zipfile
 from pathlib import Path
-from typing import Optional
 from uuid import UUID
 
 from taxos.access.token.entity import AccessToken
@@ -22,66 +23,65 @@ from taxos.vendor.find_or_create.command import FindOrCreateVendor
 logger = logging.getLogger(__name__)
 
 
-def _load_from_export_file(path: Path) -> tuple[Optional[UUID], dict]:
-  with open(path) as f:
-    data = json.load(f)
-  # Extract tenant GUID if present, otherwise None (will generate a new one)
-  tenant_guid = None
-  if "tenant_guid" in data:
-    if parsed_guid := parse_guid(data["tenant_guid"]):
-      tenant_guid = parsed_guid
-
-  normalized_receipts = []
-  for receipt in data.get("receipts", []):
-    normalized_receipts.append(
-      {
-        "guid": receipt["guid"],
-        "vendor": receipt.get("vendor", ""),
-        "total": receipt["total"],
-        "date": receipt["date"],
-        "timezone": receipt.get("timezone", "UTC"),
-        "allocations": receipt.get("allocations", []),
-        "reference": receipt.get("reference", receipt.get("vendor_ref", "")) or "",
-        "notes": receipt.get("notes", "") or "",
-        "hash": receipt.get("hash", "") or "",
-      }
-    )
-  data["receipts"] = normalized_receipts
-
-  return tenant_guid, data
-
-
 def _load_from_flat_dir(source: Path) -> tuple[UUID, dict]:
-  """Read the old per-entity state.json files from a tenant directory."""
-  if not (tenant_guid := parse_guid(source.name)):
-    raise RuntimeError(f"Invalid tenant GUID: {source.name}")
+  """Read per-entity state.json files from a backup or tenant directory.
+  """
+  # Prefer tenant GUID from state.json; fall back to
+  # deriving it from the directory name.
+  state_file = source / "state.json"
+  if state_file.exists():
+    state = json.loads(state_file.read_text())
+    if not (tenant_guid := parse_guid(state.get("guid", ""))):
+      raise RuntimeError(f"Invalid tenant GUID in state.json: {state.get('guid')}")
+  elif not (tenant_guid := parse_guid(source.name)):
+    raise RuntimeError(f"Invalid tenant GUID in directory name: {source.name}")
 
   buckets = []
-  for state_file in sorted((source / "buckets").glob("*/state.json")):
-    data = json.loads(state_file.read_text())
-    buckets.append({"guid": data["guid"], "name": data["name"]})
+  buckets_dir = source / "buckets"
+  if buckets_dir.exists():
+    for bucket_state in sorted(buckets_dir.glob("*/state.json")):
+      data = json.loads(bucket_state.read_text())
+      buckets.append({"guid": data["guid"], "name": data["name"]})
 
   vendors = []
-  for state_file in sorted((source / "vendors").glob("*/state.json")):
-    data = json.loads(state_file.read_text())
-    vendors.append({"guid": data["guid"], "name": data["name"]})
+  vendors_dir = source / "vendors"
+  if vendors_dir.exists():
+    for vendor_state in sorted(vendors_dir.glob("*/state.json")):
+      data = json.loads(vendor_state.read_text())
+      vendors.append({"guid": data["guid"], "name": data["name"]})
+
+  vendor_by_guid: dict[str, str] = {}
+  for v in vendors:
+    if g := parse_guid(v["guid"]):
+      vendor_by_guid[g.hex] = v["name"]
 
   receipts = []
-  for state_file in sorted((source / "receipts").glob("*/state.json")):
-    data = json.loads(state_file.read_text())
-    receipts.append(
-      {
-        "guid": data["guid"],
-        "vendor": data["vendor"],
-        "total": data["total"],
-        "date": data["date"],
-        "timezone": data.get("timezone", "UTC"),
-        "allocations": data.get("allocations", []),
-        "reference": data.get("reference", data.get("vendor_ref", "")) or "",
-        "notes": data.get("notes", "") or "",
-        "hash": data.get("hash", "") or "",
-      }
-    )
+  receipts_dir = source / "receipts"
+  if receipts_dir.exists():
+    for receipt_state in sorted(receipts_dir.glob("*/state.json")):
+      data = json.loads(receipt_state.read_text())
+
+      # Resolve vendor: new format stores a GUID; old format stores a name.
+      vendor_field = data.get("vendor", "")
+      if vendor_guid := parse_guid(vendor_field):
+        vendor_name = vendor_by_guid.get(vendor_guid.hex, vendor_field)
+      else:
+        vendor_name = vendor_field
+
+      receipts.append(
+        {
+          "guid": data["guid"],
+          "vendor": vendor_name,
+          "total": data["total"],
+          "date": data["date"],
+          "timezone": data.get("timezone", "UTC"),
+          "allocations": data.get("allocations", []),
+          # Accept both vendor_ref (new/legacy) and reference (old export).
+          "reference": data.get("vendor_ref", data.get("reference", "")) or "",
+          "notes": data.get("notes", "") or "",
+          "hash": data.get("hash", "") or "",
+        }
+      )
 
   return tenant_guid, {"buckets": buckets, "vendors": vendors, "receipts": receipts}
 
@@ -92,14 +92,15 @@ def handle(command: RestoreTenant) -> AccessToken:
   if not source.exists():
     raise RuntimeError(f"Source not found: {source}")
 
-  if source.is_dir():
+  if source.suffix == ".zip":
+    with tempfile.TemporaryDirectory() as tmp:
+      with zipfile.ZipFile(source) as zf:
+        zf.extractall(tmp)
+      tenant_guid, data = _load_from_flat_dir(Path(tmp))
+  elif source.is_dir():
     tenant_guid, data = _load_from_flat_dir(source)
   else:
-    tenant_guid, data = _load_from_export_file(source)
-    if tenant_guid is None:
-      from taxos.tools.guid import uuid7
-
-      tenant_guid = uuid7()
+    raise RuntimeError(f"Unsupported source format: {source}")
 
   if command.nuke:
     try:
