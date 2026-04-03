@@ -1,4 +1,3 @@
 debugpy
 pytest
 ruff
-scaf @ git+http://github.com/sycdan/scaf
