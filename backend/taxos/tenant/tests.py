@@ -204,7 +204,7 @@ def _create_test_data(
 
   bucket = CreateBucket(name=bucket_name).execute()
   allocs = {Allocation(bucket, total)}
-  CreateReceipt(
+  receipt = CreateReceipt(
     vendor=vendor,
     total=total,
     date=date,
@@ -213,7 +213,7 @@ def _create_test_data(
     reference=reference,
     notes=notes,
   ).execute()
-  return bucket
+  return bucket, receipt
 
 
 def _tenant_state(db, tenant) -> dict:
@@ -285,14 +285,17 @@ def _tenant_state(db, tenant) -> dict:
 class TestBackupRestore:
   @pytest.mark.integration
   def test_backup_restore_round_trip(self, tmp_path):
-    """Full round-trip: create tenant with data, backup, delete, restore, verify state."""
+    """Full round-trip: create tenant with data and a file attachment, backup, delete, restore, verify state."""
+    import zipfile as zf_mod
+
     from taxos import db
+    from taxos.receipt.attach_file.command import AttachFile
     from taxos.tenant.backup.command import BackupTenant
     from taxos.tenant.restore.command import RestoreTenant
 
     tenant = _make_tenant_for_backup(tmp_path, "Round Trip Test")
     _set_context_tenant(tenant)
-    _create_test_data(
+    _, receipt = _create_test_data(
       "Office",
       "Staples",
       120.0,
@@ -301,10 +304,19 @@ class TestBackupRestore:
       notes="monthly supplies",
     )
 
+    fake_file = tmp_path / "invoice.pdf"
+    fake_file.write_bytes(b"fake pdf content")
+    with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
+      receipt = AttachFile(receipt_ref=receipt, filepath=fake_file).execute()
+    file_hash = receipt.hash
+
     original_guid = tenant.guid.hex
     before = _tenant_state(db, tenant)
 
-    with patch("taxos.BACKUPS_DIR", tmp_path / "backups"):
+    with (
+      patch("taxos.tenant.tools.TENANTS_DIR", tmp_path),
+      patch("taxos.BACKUPS_DIR", tmp_path / "backups"),
+    ):
       backup_path = BackupTenant(zip=True).execute()
 
     _delete_tenant_for_backup(tmp_path, tenant)
@@ -318,5 +330,9 @@ class TestBackupRestore:
     try:
       assert restored.guid.hex == original_guid
       assert _tenant_state(db, restored) == before
+      restored_zip = tmp_path / restored.guid.hex / "files" / f"{file_hash}.zip"
+      assert restored_zip.exists(), f"Expected restored file at {restored_zip}"
+      with zf_mod.ZipFile(restored_zip) as zf:
+        assert zf.read(zf.namelist()[0]) == b"fake pdf content"
     finally:
       _delete_tenant_for_backup(tmp_path, restored)

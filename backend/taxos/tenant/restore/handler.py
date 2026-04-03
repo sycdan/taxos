@@ -1,7 +1,9 @@
 import json
 import logging
+import shutil
 import tempfile
 import zipfile
+from contextlib import contextmanager
 from pathlib import Path
 from uuid import UUID
 
@@ -17,6 +19,7 @@ from taxos.tenant.create.command import CreateTenant
 from taxos.tenant.delete.command import DeleteTenant
 from taxos.tenant.entity import Tenant, TenantRef
 from taxos.tenant.restore.command import RestoreTenant
+from taxos.tenant.tools import get_files_dir
 from taxos.tools.guid import parse_guid
 from taxos.vendor.find_or_create.command import FindOrCreateVendor
 
@@ -75,70 +78,90 @@ def _load_from_flat_dir(source: Path) -> tuple[UUID, dict]:
   return tenant_guid, {"buckets": buckets, "vendors": vendors, "receipts": receipts}
 
 
+def _restore_files(source: Path, tenant: Tenant) -> None:
+  """Copy file attachments from the backup source into the tenant's files directory."""
+  src_files = source / "files"
+  if not src_files.exists():
+    return
+  dest_files = get_files_dir(tenant.guid)
+  dest_files.mkdir(parents=True, exist_ok=True)
+  for f in src_files.iterdir():
+    shutil.copy2(f, dest_files / f.name)
+
+
+@contextmanager
+def _flat_source(source: Path):
+  """Yield the flat backup directory, extracting a zip if necessary."""
+  if source.suffix == ".zip":
+    with tempfile.TemporaryDirectory() as tmp:
+      with zipfile.ZipFile(source) as zf:
+        zf.extractall(tmp)
+      yield Path(tmp)
+  elif source.is_dir():
+    yield source
+  else:
+    raise RuntimeError(f"Unsupported source format: {source}")
+
+
 def handle(command: RestoreTenant) -> AccessToken:
   source = command.source
 
   if not source.exists():
     raise RuntimeError(f"Source not found: {source}")
 
-  if source.suffix == ".zip":
-    with tempfile.TemporaryDirectory() as tmp:
-      with zipfile.ZipFile(source) as zf:
-        zf.extractall(tmp)
-      tenant_guid, data = _load_from_flat_dir(Path(tmp))
-  elif source.is_dir():
-    tenant_guid, data = _load_from_flat_dir(source)
-  else:
-    raise RuntimeError(f"Unsupported source format: {source}")
+  with _flat_source(source) as flat_dir:
+    tenant_guid, data = _load_from_flat_dir(flat_dir)
 
-  if command.nuke:
-    try:
-      DeleteTenant(TenantRef(tenant_guid.hex)).execute()
-    except Tenant.DoesNotExist:
-      pass
+    if command.nuke:
+      try:
+        DeleteTenant(TenantRef(tenant_guid.hex)).execute()
+      except Tenant.DoesNotExist:
+        pass
 
-  tenant = CreateTenant(command.name, tenant_guid).execute()
+    tenant = CreateTenant(command.name, tenant_guid).execute()
 
-  @with_context(Context(tenant=tenant))
-  def _restore():
-    counts = {"buckets": 0, "vendors": 0, "receipts": 0}
+    @with_context(Context(tenant=tenant))
+    def _restore() -> dict[str, int]:
+      counts: dict[str, int] = {"buckets": 0, "vendors": 0, "receipts": 0}
 
-    for b in data.get("buckets", []):
-      if bucket_guid := parse_guid(b["guid"]):
-        CreateBucket(name=b["name"], guid=bucket_guid).execute()
-        counts["buckets"] += 1
+      for b in data.get("buckets", []):
+        if bucket_guid := parse_guid(b["guid"]):
+          CreateBucket(name=b["name"], guid=bucket_guid).execute()
+          counts["buckets"] += 1
 
-    for v in data.get("vendors", []):
-      if vendor_guid := parse_guid(v["guid"]):
-        FindOrCreateVendor(name=v["name"], guid=vendor_guid).execute()
-        counts["vendors"] += 1
+      for v in data.get("vendors", []):
+        if vendor_guid := parse_guid(v["guid"]):
+          FindOrCreateVendor(name=v["name"], guid=vendor_guid).execute()
+          counts["vendors"] += 1
 
-    for r in data.get("receipts", []):
-      if receipt_guid := parse_guid(r["guid"]):
-        allocations = set()
-        for alloc in r.get("allocations", []):
-          if alloc_bucket_guid := parse_guid(alloc["bucket"]):
-            allocations.add(
-              Allocation(
-                bucket=BucketRef(alloc_bucket_guid.hex),
-                amount=alloc["amount"],
+      for r in data.get("receipts", []):
+        if receipt_guid := parse_guid(r["guid"]):
+          allocations = set()
+          for alloc in r.get("allocations", []):
+            if alloc_bucket_guid := parse_guid(alloc["bucket"]):
+              allocations.add(
+                Allocation(
+                  bucket=BucketRef(alloc_bucket_guid.hex),
+                  amount=alloc["amount"],
+                )
               )
-            )
-        CreateReceipt(
-          vendor=r["vendor"],
-          total=float(r["total"]),
-          date=r["date"],
-          timezone=r.get("timezone", "UTC"),
-          allocations=allocations,
-          reference=r["reference"],
-          notes=r["notes"],
-          hash=r["hash"],
-          guid=receipt_guid,
-        ).execute()
-        counts["receipts"] += 1
-    return counts
+          CreateReceipt(
+            vendor=r["vendor"],
+            total=float(r["total"]),
+            date=r["date"],
+            timezone=r.get("timezone", "UTC"),
+            allocations=allocations,
+            reference=r["reference"],
+            notes=r["notes"],
+            hash=r["hash"],
+            guid=receipt_guid,
+          ).execute()
+          counts["receipts"] += 1
+      return counts
 
-  counts = _restore()
+    counts = _restore()
+    _restore_files(flat_dir, tenant)
+
   logger.info(
     f"Restored {tenant} ({tenant.guid}): "
     f"{counts['buckets']} buckets, {counts['vendors']} vendors, {counts['receipts']} receipts"

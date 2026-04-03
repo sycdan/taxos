@@ -1,5 +1,6 @@
 import json
 import logging
+import shutil
 import tempfile
 import zipfile
 from datetime import datetime
@@ -8,6 +9,8 @@ from pathlib import Path
 from taxos import BACKUPS_DIR, db
 from taxos.context.tools import require_tenant
 from taxos.tenant.backup.command import BackupTenant
+from taxos.tenant.entity import Tenant
+from taxos.tenant.tools import get_files_dir
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +20,13 @@ def _write_state(path: Path, data: dict) -> None:
   path.write_text(json.dumps(data, indent=2))
 
 
-def _write_flat_dir(dest: Path, tenant, buckets, vendors, receipts) -> None:
+def _write_flat_dir(
+  dest: Path,
+  tenant: Tenant,
+  buckets: list[dict],
+  vendors: list[dict],
+  receipts: list[dict],
+) -> None:
   """Write the backup as a flat-directory of state.json files."""
   _write_state(
     dest / "state.json",
@@ -35,6 +44,17 @@ def _write_flat_dir(dest: Path, tenant, buckets, vendors, receipts) -> None:
   for r in receipts:
     guid_hex = r["guid"].replace("-", "")
     _write_state(dest / "receipts" / guid_hex / "state.json", r)
+
+
+def _copy_files(dest: Path, tenant: Tenant) -> None:
+  """Copy tenant file attachments into the backup directory."""
+  src = get_files_dir(tenant.guid)
+  if not src.exists():
+    return
+  dest_files = dest / "files"
+  dest_files.mkdir(parents=True, exist_ok=True)
+  for f in src.iterdir():
+    shutil.copy2(f, dest_files / f.name)
 
 
 def handle(command: BackupTenant) -> Path:
@@ -106,12 +126,14 @@ def handle(command: BackupTenant) -> Path:
     with tempfile.TemporaryDirectory() as tmp:
       tmp_dir = Path(tmp)
       _write_flat_dir(tmp_dir, tenant, buckets, vendors, receipts)
+      _copy_files(tmp_dir, tenant)
       with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as zf:
         for file in tmp_dir.rglob("*"):
           zf.write(file, file.relative_to(tmp_dir))
   else:
     dest.mkdir(parents=True, exist_ok=True)
     _write_flat_dir(dest, tenant, buckets, vendors, receipts)
+    _copy_files(dest, tenant)
 
   logger.info(f"Backed up tenant {tenant.guid} to {dest}")
   return dest
