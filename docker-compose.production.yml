@@ -41,7 +41,7 @@ services:
       start_period: 10s
 
   neo4j:
-    image: neo4j:5-enterprise
+    image: neo4j:5.26.24-enterprise
     container_name: taxos_neo4j
     environment:
       NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-password}
