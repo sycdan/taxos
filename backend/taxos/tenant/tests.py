@@ -191,8 +191,12 @@ def _set_context_tenant(tenant):
 
 
 def _create_test_data(
-  bucket_name: str, vendor: str, total: float, date: str = "2024-06-01T10:00:00",
-  reference: str = "", notes: str = "",
+  bucket_name: str,
+  vendor: str,
+  total: float,
+  date: str = "2024-06-01T10:00:00",
+  reference: str = "",
+  notes: str = "",
 ):
   from taxos.allocation.entity import Allocation
   from taxos.bucket.create.command import CreateBucket
@@ -201,8 +205,13 @@ def _create_test_data(
   bucket = CreateBucket(name=bucket_name).execute()
   allocs = {Allocation(bucket, total)}
   CreateReceipt(
-    vendor=vendor, total=total, date=date, timezone="UTC", allocations=allocs,
-    reference=reference, notes=notes,
+    vendor=vendor,
+    total=total,
+    date=date,
+    timezone="UTC",
+    allocations=allocs,
+    reference=reference,
+    notes=notes,
   ).execute()
   return bucket
 
@@ -210,18 +219,24 @@ def _create_test_data(
 def _tenant_state(db, tenant) -> dict:
   """Return a normalized, order-stable snapshot of all tenant state."""
   buckets = sorted(
-    [{"guid": r["guid"], "name": r["name"]} for r in db.query(
-      "MATCH (b:Bucket) RETURN b.guid AS guid, b.name AS name",
-      database=tenant.db_name,
-    )],
+    [
+      {"guid": r["guid"], "name": r["name"]}
+      for r in db.query(
+        "MATCH (b:Bucket) RETURN b.guid AS guid, b.name AS name",
+        database=tenant.db_name,
+      )
+    ],
     key=lambda x: x["guid"],
   )
 
   vendors = sorted(
-    [{"guid": r["guid"], "name": r["name"]} for r in db.query(
-      "MATCH (v:Vendor) RETURN v.guid AS guid, v.name AS name",
-      database=tenant.db_name,
-    )],
+    [
+      {"guid": r["guid"], "name": r["name"]}
+      for r in db.query(
+        "MATCH (v:Vendor) RETURN v.guid AS guid, v.name AS name",
+        database=tenant.db_name,
+      )
+    ],
     key=lambda x: x["guid"],
   )
 
@@ -251,7 +266,11 @@ def _tenant_state(db, tenant) -> dict:
         "hash": r["hash"] or "",
         "vendor_guid": r["vendor_guid"],
         "allocations": sorted(
-          [{"bucket": a["bucket"], "amount": a["amount"]} for a in r["allocations"] if a["bucket"] is not None],
+          [
+            {"bucket": a["bucket"], "amount": a["amount"]}
+            for a in r["allocations"]
+            if a["bucket"] is not None
+          ],
           key=lambda a: a["bucket"],
         ),
       }
@@ -274,8 +293,12 @@ class TestBackupRestore:
     tenant = _make_tenant_for_backup(tmp_path, "Round Trip Test")
     _set_context_tenant(tenant)
     _create_test_data(
-      "Office", "Staples", 120.0, "2024-03-01T09:00:00",
-      reference="INV-001", notes="monthly supplies",
+      "Office",
+      "Staples",
+      120.0,
+      "2024-03-01T09:00:00",
+      reference="INV-001",
+      notes="monthly supplies",
     )
 
     original_guid = tenant.guid.hex
