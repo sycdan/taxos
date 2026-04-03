@@ -1,10 +1,12 @@
+import shutil
 import sys
+import time
 
 from dev import BACKEND_ROOT
 from dev.clean.command import Clean
 
 sys.path.insert(0, BACKEND_ROOT.as_posix())
-from taxos import ACCESS_TOKENS_DIR, TENANTS_DIR
+from taxos import ACCESS_TOKENS_DIR, BACKUPS_DIR, TENANTS_DIR
 from taxos.tenant.delete.command import DeleteTenant
 from taxos.tenant.entity import TenantRef
 from taxos.tools import json
@@ -76,6 +78,33 @@ def _remove_orphaned_tokens() -> int:
   return removed
 
 
+def _remove_old_backups(max_age_seconds: int = 3600) -> int:
+  if not BACKUPS_DIR.exists():
+    print("No backups/ directory found - skipping old backup cleanup.")
+    return 0
+
+  removed = 0
+  cutoff = time.time() - max_age_seconds
+  for entry in sorted(BACKUPS_DIR.iterdir()):
+    try:
+      if entry.stat().st_mtime < cutoff:
+        if entry.is_dir():
+          shutil.rmtree(entry)
+        else:
+          entry.unlink()
+        print(f"  removed old backup {entry.name}")
+        removed += 1
+    except Exception as e:
+      print(f"  warning: could not remove backup {entry.name}: {e}")
+
+  if removed:
+    print(f"✅ Removed {removed} old backup(s).")
+  else:
+    print("✅ No old backups found.")
+  return removed
+
+
 def handle(command: Clean):
   _remove_test_tenants()
   _remove_orphaned_tokens()
+  _remove_old_backups()

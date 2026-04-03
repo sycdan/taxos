@@ -49,28 +49,18 @@ def _load_from_flat_dir(source: Path) -> tuple[UUID, dict]:
       data = json.loads(vendor_state.read_text())
       vendors.append({"guid": data["guid"], "name": data["name"]})
 
-  vendor_by_guid: dict[str, str] = {}
-  for v in vendors:
-    if g := parse_guid(v["guid"]):
-      vendor_by_guid[g.hex] = v["name"]
-
   receipts = []
   receipts_dir = source / "receipts"
   if receipts_dir.exists():
     for receipt_state in sorted(receipts_dir.glob("*/state.json")):
       data = json.loads(receipt_state.read_text())
 
-      # Resolve vendor: new format stores a GUID; old format stores a name.
-      vendor_field = data.get("vendor", "")
-      if vendor_guid := parse_guid(vendor_field):
-        vendor_name = vendor_by_guid.get(vendor_guid.hex, vendor_field)
-      else:
-        vendor_name = vendor_field
-
       receipts.append(
         {
           "guid": data["guid"],
-          "vendor": vendor_name,
+          # Pass vendor GUID (new format) or name (legacy) directly to
+          # CreateReceipt, which resolves both via LoadVendor / FindOrCreate.
+          "vendor": data.get("vendor", ""),
           "total": data["total"],
           "date": data["date"],
           "timezone": data.get("timezone", "UTC"),
