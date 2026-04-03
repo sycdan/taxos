@@ -17,11 +17,6 @@ def handle(command: AttachFile) -> Receipt:
   tenant = require_tenant()
   receipt = require_receipt(command.receipt_ref)
 
-  if receipt.hash:
-    raise FileExistsError(
-      f"Receipt {receipt.guid} already has an attached file with hash {receipt.hash}"
-    )
-
   filepath = Path(command.filepath)
   if not filepath.exists():
     raise FileNotFoundError(f"File {filepath} does not exist")
@@ -40,7 +35,8 @@ def handle(command: AttachFile) -> Receipt:
 
   logger.info(f"Saved file {filepath.name} with hash {file_hash} to {zip_path}")
 
-  # 3. Update receipt hash
-  receipt.hash = file_hash
+  # 3. Update receipt file hashes (idempotent — preserves existing name if already attached)
+  if file_hash not in receipt.file_attachments:
+    receipt.file_attachments = {**receipt.file_attachments, file_hash: command.name}
 
   return SaveReceipt(receipt).execute()

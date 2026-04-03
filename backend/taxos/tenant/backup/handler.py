@@ -10,6 +10,7 @@ from taxos import BACKUPS_DIR, db
 from taxos.context.tools import require_tenant
 from taxos.tenant.backup.command import BackupTenant
 from taxos.tenant.entity import Tenant
+from taxos.receipt.load.handler import _read_file_attachments
 from taxos.tenant.tools import get_files_dir
 
 logger = logging.getLogger(__name__)
@@ -109,7 +110,7 @@ def handle(command: BackupTenant) -> Path:
         "allocations": allocs,
         "vendor_ref": node.get("reference", "") or "",
         "notes": node.get("notes", "") or "",
-        "hash": node.get("hash", "") or "",
+        "file_attachments": _read_file_attachments(node),
       }
     )
 

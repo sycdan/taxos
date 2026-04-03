@@ -44,7 +44,7 @@ def handle(command: CreateReceipt) -> Receipt:
     allocations=command.allocations,
     reference=command.reference,
     notes=command.notes,
-    hash=command.hash,
+    file_attachments=command.file_attachments,
   )
 
   return SaveReceipt(receipt).execute()

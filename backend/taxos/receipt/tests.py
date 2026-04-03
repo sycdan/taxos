@@ -35,7 +35,7 @@ def _receipt(**kwargs):
   allocations = kwargs.get("allocations", set())
   reference = kwargs.get("reference", "")
   notes = kwargs.get("notes", "")
-  hash_value = kwargs.get("hash", "")
+  file_attachments = kwargs.get("file_attachments", {})
   return Receipt(
     guid=guid,
     vendor=vendor,
@@ -45,7 +45,7 @@ def _receipt(**kwargs):
     allocations=allocations,
     reference=reference,
     notes=notes,
-    hash=hash_value,
+    file_attachments=file_attachments,
   )
 
 
@@ -136,7 +136,7 @@ class TestLoadReceiptHandler:
         "date": DATE_ISO,
         "timezone": "UTC",
         "notes": "",
-        "hash": "",
+        "file_attachments": "{}",
         "reference": "",
       }
     )
@@ -154,6 +154,28 @@ class TestLoadReceiptHandler:
 
     assert result.guid == RECEIPT_GUID
     assert _vendor_name(result.vendor) == "Acme"
+
+  @pytest.mark.unit
+  def test_backward_compat_legacy_hash_string(self):
+    from taxos.receipt.load.handler import _read_file_attachments
+
+    node = _node({"hash": "abc123"})
+    assert _read_file_attachments(node) == {"abc123": "file"}
+
+  @pytest.mark.unit
+  def test_backward_compat_empty_legacy_hash(self):
+    from taxos.receipt.load.handler import _read_file_attachments
+
+    node = _node({"hash": ""})
+    assert _read_file_attachments(node) == {}
+
+  @pytest.mark.unit
+  def test_reads_new_json_format(self):
+    import json
+    from taxos.receipt.load.handler import _read_file_attachments
+
+    node = _node({"file_attachments": json.dumps({"abc123": "invoice", "def456": "payment"})})
+    assert _read_file_attachments(node) == {"abc123": "invoice", "def456": "payment"}
 
   @pytest.mark.unit
   def test_raises_does_not_exist(self):

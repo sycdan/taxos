@@ -9,6 +9,7 @@ from taxos.receipt.entity import Receipt, ReceiptRef
 class AttachFile:
   receipt_ref: Union[Receipt, ReceiptRef, str]
   filepath: Path
+  name: str = "file"
 
   def execute(self):
     from taxos.receipt.attach_file.handler import handle

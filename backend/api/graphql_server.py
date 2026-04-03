@@ -28,7 +28,7 @@ from taxos.context.entity import Context
 from taxos.context.tools import require_tenant, set_context
 from taxos.receipt.create.command import CreateReceipt
 from taxos.receipt.delete.command import DeleteReceipt
-from taxos.receipt.entity import Receipt, ReceiptRef
+from taxos.receipt.entity import Receipt
 from taxos.receipt.load.query import LoadReceipt
 from taxos.receipt.update.command import UpdateReceipt
 from taxos.tenant.list_receipts.query import ListReceipts
@@ -88,6 +88,12 @@ def _parse_allocations(items: list | None) -> set[Allocation]:
   return allocations
 
 
+def _parse_file_attachments(items: list | None) -> dict[str, str] | None:
+  if items is None:
+    return None
+  return {item["hash"]: item["name"] for item in items}
+
+
 # ---------------------------------------------------------------------------
 # Resolvers
 # ---------------------------------------------------------------------------
@@ -98,6 +104,7 @@ vendor_type = ObjectType("Vendor")
 bucket_type = ObjectType("Bucket")
 receipt_type = ObjectType("Receipt")
 allocation_type = ObjectType("Allocation")
+file_attachment_type = ObjectType("FileAttachment")
 
 
 # --- Query ---
@@ -148,7 +155,7 @@ def resolve_receipts(*_, vendor=None, bucket=None, months=None):
 @query.field("receipt")
 def resolve_receipt(*_, guid: str):
   try:
-    return LoadReceipt(ref=ReceiptRef(guid)).execute()
+    return LoadReceipt(ref=guid).execute()  # type: ignore[arg-type]
   except Receipt.DoesNotExist:
     return None
 
@@ -180,7 +187,7 @@ def resolve_create_receipt(*_, input: dict):
     timezone=input["timezone"],
     allocations=_parse_allocations(input.get("allocations")),
     notes=input.get("notes", ""),
-    hash=input.get("hash", ""),
+    file_attachments=_parse_file_attachments(input.get("fileAttachments")) or {},
     reference=input.get("reference", ""),
   ).execute()
 
@@ -195,7 +202,7 @@ def resolve_update_receipt(*_, guid: str, input: dict):
     timezone=input["timezone"],
     allocations=_parse_allocations(input.get("allocations")),
     notes=input.get("notes", ""),
-    hash=input.get("hash", ""),
+    file_attachments=_parse_file_attachments(input.get("fileAttachments")),
     reference=input.get("reference", ""),
   ).execute()
 
@@ -317,9 +324,9 @@ def resolve_receipt_notes(receipt, *_):
   return receipt.notes or ""
 
 
-@receipt_type.field("hash")
-def resolve_receipt_hash(receipt, *_):
-  return receipt.hash or ""
+@receipt_type.field("fileAttachments")
+def resolve_receipt_file_attachments(receipt, *_):
+  return [{"hash": h, "name": n} for h, n in (receipt.file_attachments or {}).items()]
 
 
 @allocation_type.field("bucket")
@@ -342,6 +349,7 @@ schema = make_executable_schema(
   bucket_type,
   receipt_type,
   allocation_type,
+  file_attachment_type,
 )
 
 

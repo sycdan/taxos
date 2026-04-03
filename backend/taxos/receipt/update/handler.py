@@ -41,6 +41,7 @@ def handle(command: UpdateReceipt) -> Receipt:
   receipt.timezone = command.timezone
   receipt.reference = command.reference
   receipt.notes = command.notes
-  receipt.hash = command.hash
+  if command.file_attachments is not None:
+    receipt.file_attachments = command.file_attachments
 
   return SaveReceipt(receipt).execute()

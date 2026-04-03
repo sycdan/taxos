@@ -1,3 +1,4 @@
+import json
 import logging
 
 from taxos import db
@@ -9,6 +10,23 @@ from taxos.receipt.load.query import LoadReceipt
 from taxos.vendor.entity import Vendor
 
 logger = logging.getLogger(__name__)
+
+
+def _read_file_attachments(node) -> dict[str, str]:
+  raw = node.get("file_attachments", None)
+  if isinstance(raw, str) and raw:
+    try:
+      parsed = json.loads(raw)
+      if isinstance(parsed, dict):
+        return parsed
+      # Old list-as-JSON or unexpected format — fall through
+    except (json.JSONDecodeError, ValueError):
+      pass
+  if isinstance(raw, list):
+    # Transitional list format: upgrade with default name "file"
+    return {h: "file" for h in raw if h}
+  legacy = node.get("hash", "") or ""
+  return {legacy: "file"} if legacy else {}
 
 
 def _record_to_receipt(record) -> Receipt:
@@ -30,7 +48,7 @@ def _record_to_receipt(record) -> Receipt:
     allocations=allocations,
     reference=r.get("reference", ""),
     notes=r.get("notes", ""),
-    hash=r.get("hash", ""),
+    file_attachments=_read_file_attachments(r),
   )
 
 

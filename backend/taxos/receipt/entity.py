@@ -25,7 +25,7 @@ class Receipt:
   )
   reference: str = ""
   notes: str = ""
-  hash: str = ""
+  file_attachments: dict[str, str] = field(default_factory=dict)
 
   def __post_init__(self):
     if not isinstance(self.guid, UUID):

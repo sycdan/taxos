@@ -7,6 +7,7 @@ from taxos.bucket.entity import BucketRef, UnallocatedBucket
 from taxos.concepts import UNSPECIFIED
 from taxos.context.tools import require_bucket, require_tenant, require_vendor
 from taxos.receipt.entity import Receipt
+from taxos.receipt.load.handler import _read_file_attachments
 from taxos.tenant.list_receipts.query import ListReceipts
 from taxos.vendor.entity import Vendor
 
@@ -75,7 +76,7 @@ def _to_receipts(records) -> list[Receipt]:
         allocations=allocations,
         reference=node.get("reference", ""),
         notes=node.get("notes", ""),
-        hash=node.get("hash", ""),
+        file_attachments=_read_file_attachments(node),
       )
     )
   return receipts

@@ -26,6 +26,16 @@ from taxos.vendor.find_or_create.command import FindOrCreateVendor
 logger = logging.getLogger(__name__)
 
 
+def _read_file_attachments_from_dict(data: dict) -> dict[str, str]:
+  raw = data.get("file_attachments", None)
+  if isinstance(raw, dict):
+    return raw
+  if isinstance(raw, list):
+    return {h: f"file_{h}" for h in raw if h}
+  legacy = data.get("hash", "") or ""
+  return {legacy: "file"} if legacy else {}
+
+
 def _load_from_flat_dir(source: Path) -> tuple[UUID, dict]:
   """Read per-entity state.json files from a backup or tenant directory."""
   # Prefer tenant GUID from state.json; fall back to
@@ -71,7 +81,7 @@ def _load_from_flat_dir(source: Path) -> tuple[UUID, dict]:
           # Accept both vendor_ref (new/legacy) and reference (old export).
           "reference": data.get("vendor_ref", data.get("reference", "")) or "",
           "notes": data.get("notes", "") or "",
-          "hash": data.get("hash", "") or "",
+          "file_attachments": _read_file_attachments_from_dict(data),
         }
       )
 
@@ -153,7 +163,7 @@ def handle(command: RestoreTenant) -> AccessToken:
             allocations=allocations,
             reference=r["reference"],
             notes=r["notes"],
-            hash=r["hash"],
+            file_attachments=r["file_attachments"],
             guid=receipt_guid,
           ).execute()
           counts["receipts"] += 1

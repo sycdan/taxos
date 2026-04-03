@@ -47,7 +47,7 @@ type Receipt {
 	date: String!
 	timezone: String!
 	notes: String!
-	hash: String!
+	fileAttachments: [FileAttachment!]!
 	reference: String!
 	allocations: [Allocation!]!
 }
@@ -55,6 +55,11 @@ type Receipt {
 type Allocation {
 	amount: Float!
 	bucket: Bucket!
+}
+
+type FileAttachment {
+	hash: String!
+	name: String!
 }
 
 type FileInfo {
@@ -69,9 +74,14 @@ input ReceiptInput {
 	date: String!
 	timezone: String!
 	notes: String
-	hash: String
+	fileAttachments: [FileAttachmentInput!]
 	reference: String
 	allocations: [AllocationInput!]
+}
+
+input FileAttachmentInput {
+	hash: String!
+	name: String!
 }
 
 input AllocationInput {

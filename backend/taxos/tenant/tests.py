@@ -248,7 +248,7 @@ def _tenant_state(db, tenant) -> dict:
     RETURN
       r.guid AS guid, r.total AS total, r.date AS date,
       r.timezone AS timezone, r.reference AS reference,
-      r.notes AS notes, r.hash AS hash,
+      r.notes AS notes, r.file_attachments AS file_attachments,
       v.guid AS vendor_guid,
       collect({bucket: b.guid, amount: a.amount}) AS allocations
     """,
@@ -263,7 +263,7 @@ def _tenant_state(db, tenant) -> dict:
         "timezone": r["timezone"],
         "reference": r["reference"] or "",
         "notes": r["notes"] or "",
-        "hash": r["hash"] or "",
+        "file_attachments": r["file_attachments"] or "{}",
         "vendor_guid": r["vendor_guid"],
         "allocations": sorted(
           [
@@ -308,7 +308,7 @@ class TestBackupRestore:
     fake_file.write_bytes(b"fake pdf content")
     with patch("taxos.tenant.tools.TENANTS_DIR", tmp_path):
       receipt = AttachFile(receipt_ref=receipt, filepath=fake_file).execute()
-    file_hash = receipt.hash
+    file_hash = next(iter(receipt.file_attachments))
 
     original_guid = tenant.guid.hex
     before = _tenant_state(db, tenant)

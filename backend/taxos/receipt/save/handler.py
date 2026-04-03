@@ -1,3 +1,5 @@
+import json
+
 from taxos import db
 from taxos.context.tools import require_tenant, require_vendor
 from taxos.receipt.save.command import SaveReceipt
@@ -31,8 +33,8 @@ def handle(command: SaveReceipt):
     """
     MERGE (r:Receipt {guid: $guid})
     SET r.total = $total, r.date = $date, r.timezone = $timezone,
-        r.notes = $notes, r.hash = $hash, r.reference = $reference
-    REMOVE r.vendor
+        r.notes = $notes, r.file_attachments = $file_attachments, r.reference = $reference
+    REMOVE r.vendor, r.hash
     """,
     {
       "guid": r.guid.hex,
@@ -40,7 +42,7 @@ def handle(command: SaveReceipt):
       "date": r.date.isoformat(),
       "timezone": r.timezone,
       "notes": r.notes or "",
-      "hash": r.hash or "",
+      "file_attachments": json.dumps(r.file_attachments or {}),
       "reference": r.reference or "",
     },
     database=tenant.db_name,

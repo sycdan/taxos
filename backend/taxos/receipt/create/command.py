@@ -18,10 +18,7 @@ class CreateReceipt:
   allocations: set[Allocation] = field(default_factory=set)
   reference: str = ""
   notes: str = ""
-  hash: str = field(
-    default="",
-    doc="SHA256 hash of the receipt file.",
-  )
+  file_attachments: dict[str, str] = field(default_factory=dict)
   guid: UUID = field(default_factory=lambda: uuid7())
 
   def __post_init__(self):

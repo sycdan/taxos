@@ -3,6 +3,7 @@ import logging
 from taxos import db
 from taxos.context.tools import require_tenant
 from taxos.receipt.entity import Receipt
+from taxos.receipt.load.handler import _read_file_attachments
 from taxos.tenant.dashboard.entity import BucketSummary, Dashboard
 from taxos.tenant.dashboard.get.query import GetDashboard
 from taxos.vendor.list.query import ListVendors
@@ -71,7 +72,7 @@ def handle(query: GetDashboard) -> Dashboard:
       date=row["r"]["date"],
       timezone=row["r"]["timezone"],
       notes=row["r"].get("notes", ""),
-      hash=row["r"].get("hash", ""),
+      file_attachments=_read_file_attachments(row["r"]),
       reference=row["r"].get("reference", ""),
     )
     for row in unallocated_records
