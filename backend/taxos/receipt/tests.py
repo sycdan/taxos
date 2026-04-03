@@ -174,7 +174,9 @@ class TestLoadReceiptHandler:
     import json
     from taxos.receipt.load.handler import _read_file_attachments
 
-    node = _node({"file_attachments": json.dumps({"abc123": "invoice", "def456": "payment"})})
+    node = _node(
+      {"file_attachments": json.dumps({"abc123": "invoice", "def456": "payment"})}
+    )
     assert _read_file_attachments(node) == {"abc123": "invoice", "def456": "payment"}
 
   @pytest.mark.unit

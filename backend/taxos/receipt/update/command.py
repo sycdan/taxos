@@ -17,7 +17,10 @@ class UpdateReceipt:
   allocations: set[Allocation] = field(default_factory=set)
   reference: str = ""
   notes: str = ""
-  file_attachments: dict[str, str] | None = field(default=None, doc="If None, existing attachments will be preserved. If empty dict, all attachments will be removed.",)
+  file_attachments: dict[str, str] | None = field(
+    default=None,
+    doc="If None, existing attachments will be preserved. If empty dict, all attachments will be removed.",
+  )
 
   def __post_init__(self):
     # TODO: tenant timezone
