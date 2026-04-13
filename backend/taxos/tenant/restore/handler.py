@@ -170,7 +170,8 @@ def handle(command: RestoreTenant) -> AccessToken:
       return counts
 
     counts = _restore()
-    _restore_files(flat_dir, tenant)
+    if command.include_files:
+      _restore_files(flat_dir, tenant)
 
   logger.info(
     f"Restored {tenant} ({tenant.guid}): "

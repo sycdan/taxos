@@ -16,10 +16,12 @@ class BackupTenant:
   If `zip` is True the directory is zipped and only the archive is kept.
   If `path` is given it overrides the auto-generated destination (the
   directory/zip will be written there instead of data/backups/).
+  If `include_files` is False, file attachments will not be included in the backup.
   """
 
   zip: bool = False
   path: str = field(default="")
+  include_files: bool = False
 
   def execute(self) -> Path:
     from taxos.tenant.backup.handler import handle

@@ -127,14 +127,16 @@ def handle(command: BackupTenant) -> Path:
     with tempfile.TemporaryDirectory() as tmp:
       tmp_dir = Path(tmp)
       _write_flat_dir(tmp_dir, tenant, buckets, vendors, receipts)
-      _copy_files(tmp_dir, tenant)
+      if command.include_files:
+        _copy_files(tmp_dir, tenant)
       with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as zf:
         for file in tmp_dir.rglob("*"):
           zf.write(file, file.relative_to(tmp_dir))
   else:
     dest.mkdir(parents=True, exist_ok=True)
     _write_flat_dir(dest, tenant, buckets, vendors, receipts)
-    _copy_files(dest, tenant)
+    if command.include_files:
+      _copy_files(dest, tenant)
 
   logger.info(f"Backed up tenant {tenant.guid} to {dest}")
   return dest
