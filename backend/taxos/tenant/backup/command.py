@@ -21,7 +21,7 @@ class BackupTenant:
 
   zip: bool = False
   path: str = field(default="")
-  include_files: bool = False
+  include_files: bool = True
 
   def execute(self) -> Path:
     from taxos.tenant.backup.handler import handle
