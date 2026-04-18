@@ -317,7 +317,7 @@ class TestBackupRestore:
       patch("taxos.tenant.tools.TENANTS_DIR", tmp_path),
       patch("taxos.BACKUPS_DIR", tmp_path / "backups"),
     ):
-      backup_path = BackupTenant(zip=True).execute()
+      backup_path = BackupTenant(zip=True, include_files=True).execute()
 
     _delete_tenant_for_backup(tmp_path, tenant)
 
