@@ -35,6 +35,6 @@ export interface Receipt {
 	ref?: string;
 	notes?: string;
 	file?: string; // filename or stub
-	hash?: string; // SHA-256 hash for duplicate prevention
+	fileAttachments?: Array<{hash: string; name: string}>;
 }
 

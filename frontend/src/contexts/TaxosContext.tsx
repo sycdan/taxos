@@ -147,11 +147,11 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 
 	const vendorNames = useMemo(() => vendors.map((v) => v.name), [vendors]);
 
-	// Track receipt hashes for O(1) duplicate detection
+	// Track receipt file hashes for O(1) duplicate detection
 	const receiptHashes = useMemo(() => {
 		const hashes = new Set<string>();
 		Object.values(receipts).forEach((r) => {
-			if (r.hash) hashes.add(r.hash);
+			r.fileAttachments?.forEach((fa) => hashes.add(fa.hash));
 		});
 		return hashes;
 	}, [receipts]);
@@ -252,7 +252,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 						})),
 						ref: r.vendorRef || undefined,
 						notes: r.notes || undefined,
-						hash: r.hash || undefined,
+						fileAttachments: r.fileAttachments?.length ? r.fileAttachments : undefined,
 					}),
 				);
 
@@ -403,7 +403,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				})),
 				vendorRef: receipt.ref || "",
 				notes: receipt.notes || "",
-				hash: receipt.hash || "",
+				fileAttachments: receipt.fileAttachments,
 			});
 
 			const createdReceipt: Receipt = {
@@ -418,10 +418,10 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				})),
 				ref: response.vendorRef || undefined,
 				notes: response.notes || undefined,
-				hash: response.hash || undefined,
+				fileAttachments: response.fileAttachments?.length ? response.fileAttachments : undefined,
 			};
 
-			if (createdReceipt.hash && receiptHashes.has(createdReceipt.hash)) {
+			if (createdReceipt.fileAttachments?.[0]?.hash && receiptHashes.has(createdReceipt.fileAttachments[0].hash)) {
 				console.warn(
 					"Duplicate receipt detected, skipping:",
 					createdReceipt.vendor,
@@ -469,7 +469,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				})),
 				vendorRef: receipt.ref || "",
 				notes: receipt.notes || "",
-				hash: receipt.hash || "",
+				fileAttachments: receipt.fileAttachments,
 			});
 
 			const updatedReceipt: Receipt = {
@@ -484,7 +484,7 @@ export const TaxosProvider: React.FC<{ children: ReactNode }> = ({
 				})),
 				ref: response.vendorRef || "",
 				notes: response.notes || "",
-				hash: response.hash || "",
+				fileAttachments: response.fileAttachments ?? [],
 			};
 
 			setReceipts((prev) => ({ ...prev, [updatedReceipt.id]: updatedReceipt }));

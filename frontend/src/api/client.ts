@@ -73,7 +73,10 @@ const LIST_RECEIPTS_QUERY = gql`
 			date
 			timezone
 			notes
-			hash
+			fileAttachments {
+				hash
+				name
+			}
 			reference
 			allocations {
 				amount
@@ -110,7 +113,7 @@ const DELETE_BUCKET_MUTATION = gql`
 `;
 
 const RECEIPT_FIELDS = `
-	guid vendor { guid } total date timezone notes hash reference
+	guid vendor { guid } total date timezone notes fileAttachments { hash name } reference
   allocations { amount bucket { guid } }
 `;
 
@@ -193,7 +196,7 @@ function mapReceiptResponse(r: {
 	date: string;
 	timezone: string;
 	notes?: string | null;
-	hash?: string | null;
+	fileAttachments?: Array<{hash: string; name: string}> | null;
 	reference?: string | null;
 	allocations: GQLAlloc[];
 }) {
@@ -204,7 +207,7 @@ function mapReceiptResponse(r: {
 		date: r.date,
 		timezone: r.timezone,
 		notes: r.notes ?? "",
-		hash: r.hash ?? "",
+		fileAttachments: r.fileAttachments ?? [],
 		vendorRef: r.reference ?? "",
 		allocations: r.allocations.map((a) => ({
 			bucket: a.bucket.guid,
@@ -331,7 +334,7 @@ export const client = {
 		allocations?: AllocationInput[];
 		vendorRef?: string;
 		notes?: string;
-		hash?: string;
+		fileAttachments?: Array<{hash: string; name: string}>;
 	}) {
 		try {
 			const dateIso = args.date.toISOString();
@@ -346,7 +349,7 @@ export const client = {
 						allocations: mapAllocationsInput(args.allocations ?? []),
 						reference: args.vendorRef ?? "",
 						notes: args.notes ?? "",
-						hash: args.hash ?? "",
+						fileAttachments: args.fileAttachments?.map(fa => ({hash: fa.hash, name: fa.name})),
 					},
 				},
 			});
@@ -365,7 +368,7 @@ export const client = {
 		allocations?: AllocationInput[];
 		vendorRef?: string;
 		notes?: string;
-		hash?: string;
+		fileAttachments?: Array<{hash: string; name: string}>;
 	}) {
 		const dateIso = args.date.toISOString();
 		const { data } = await apolloClient.mutate<Record<string, any>>({
@@ -380,7 +383,7 @@ export const client = {
 					allocations: mapAllocationsInput(args.allocations ?? []),
 					reference: args.vendorRef ?? "",
 					notes: args.notes ?? "",
-					hash: args.hash ?? "",
+					fileAttachments: args.fileAttachments?.map(fa => ({hash: fa.hash, name: fa.name})),
 				},
 			},
 		});

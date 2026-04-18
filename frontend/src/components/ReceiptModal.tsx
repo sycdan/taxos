@@ -230,7 +230,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 	};
 
 	const handleDownload = async () => {
-		const fileHash = editingReceipt?.hash;
+		const fileHash = editingReceipt?.fileAttachments?.[0]?.hash;
 		if (!fileHash) {
 			setDownloadError("No file available for download");
 			return;
@@ -261,7 +261,9 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 			ref: ref || undefined,
 			notes: notes || undefined,
 			file: uploadedFileName || initialFile || editingReceipt?.file,
-			hash: uploadedFileHash || editingReceipt?.hash,
+			fileAttachments: uploadedFileHash
+				? [{hash: uploadedFileHash, name: uploadedFileName || uploadingFile?.file.name || 'file'}]
+				: editingReceipt?.fileAttachments,
 		} as Receipt);
 		if (shouldClose !== false) {
 			onClose();
@@ -390,16 +392,16 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 					)}
 
 					{/* Download File Section (when editing with an existing file) */}
-					{editingReceipt?.hash && (
+					{(editingReceipt?.fileAttachments?.length ?? 0) > 0 && (
 						<div className="mb-6">
 							<label className="label-caps">Attached File</label>
 							<div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
 								<div className="flex-1">
 									<p className="text-sm font-semibold">
-										{editingReceipt.file || "Receipt file"}
+										{editingReceipt!.fileAttachments![0].name || editingReceipt!.file || "Receipt file"}
 									</p>
 									<p className="text-xs text-muted">
-										Hash: {editingReceipt.hash.substring(0, 12)}...
+										Hash: {editingReceipt!.fileAttachments![0].hash.substring(0, 12)}...
 									</p>
 								</div>
 								<button
