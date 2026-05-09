@@ -63,7 +63,8 @@ def handle(command: PruneBackups) -> list[Path]:
 
   for path, ts in files:
     key = _bucket_key(
-      ts, now,
+      ts,
+      now,
       command.keep_daily,
       command.keep_weekly,
       command.keep_monthly,
