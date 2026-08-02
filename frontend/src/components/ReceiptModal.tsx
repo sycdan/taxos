@@ -186,6 +186,15 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 		if (allocations.some((a) => a.bucketId === bucketId)) return;
 		const newAllocations = [...allocations, { bucketId, amount: 0 }];
 		updateSplits(newAllocations, manualAllocations, total);
+		// Update MRU: move bucketId to front, keep up to 20 entries
+		try {
+			const stored = localStorage.getItem("taxos_bucket_mru");
+			const prev: string[] = stored ? JSON.parse(stored) : [];
+			const next = [bucketId, ...prev.filter((id) => id !== bucketId)].slice(0, 20);
+			localStorage.setItem("taxos_bucket_mru", JSON.stringify(next));
+		} catch {
+			// localStorage unavailable — silently ignore
+		}
 	};
 
 	const handleRemoveBucket = (bucketId: string) => {
@@ -322,11 +331,26 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 		return map;
 	}, [bucketSummaries]);
 
-	// Sort buckets by receiptCount (descending) to show most-used first
+	// Sort buckets by MRU order first, then by receiptCount for buckets not in MRU
 	const availableBuckets = useMemo(() => {
+		let mru: string[] = [];
+		try {
+			const stored = localStorage.getItem("taxos_bucket_mru");
+			mru = stored ? JSON.parse(stored) : [];
+		} catch {
+			// ignore
+		}
+		const mruIndex = (id: string) => {
+			const i = mru.indexOf(id);
+			return i === -1 ? Infinity : i;
+		};
 		return bucketSummaries
 			.filter((s) => !allocations.some((a) => a.bucketId === s.bucket.id))
-			.sort((a, b) => b.receiptCount - a.receiptCount)
+			.sort((a, b) => {
+				const mruDiff = mruIndex(a.bucket.id) - mruIndex(b.bucket.id);
+				if (mruDiff !== 0) return mruDiff;
+				return b.receiptCount - a.receiptCount;
+			})
 			.map((s) => s.bucket);
 	}, [bucketSummaries, allocations]);
 	const isOverAllocated = allocatedTotal > total;
